@@ -2,10 +2,19 @@
 # the other with no differences. Installers are attached to each run as downloadable artifacts.
 name: macOS and Windows
 
-# Started by hand only (Actions tab > macOS and Windows > Run workflow). The free GitHub plan allows
-# 2,000 minutes a month, macOS minutes count ten times and Windows twice, and one full run uses about
-# 200. Run it before a release, not on every push.
+# Runs on every push to main and to short-lived fix/** branches, and can be started by hand
+# (Actions tab > macOS and Windows > Run workflow). Pushes that change only notes are skipped.
+# Standard runners are free for public repositories. If this repository ever becomes private,
+# remove the push trigger first: private macOS minutes count ten times against 2,000 a month,
+# and one full run uses about 200.
 on:
+  push:
+    branches: [main, 'fix/**']
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.claude/**'
+      - 'LICENSE'
   workflow_dispatch:
 
 concurrency:
