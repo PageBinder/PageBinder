@@ -173,7 +173,8 @@ async function main(): Promise<void> {
   // 6. Right-click a card offers Open in default application; Delete removes a selected card.
   await page.locator('.file-card').first().click({ button: 'right' })
   assert(await page.locator('.context-item', { hasText: 'Open in default application' }).count(), 'context menu offers Open in default application')
-  assert(await page.locator('.context-item', { hasText: 'Show in Finder' }).count(), 'context menu offers Show in Finder')
+  const reveal = process.platform === 'win32' ? 'Show in Explorer' : 'Show in Finder'
+  assert(await page.locator('.context-item', { hasText: reveal }).count(), `context menu offers ${reveal}`)
   await page.keyboard.press('Escape')
   await page.waitForTimeout(100)
   await page.screenshot({ path: join(shots, 'phase3-cards.png') })

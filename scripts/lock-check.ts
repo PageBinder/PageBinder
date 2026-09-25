@@ -32,8 +32,16 @@ async function main(): Promise<void> {
   const pid = app.process().pid!
   process.kill(pid, 'SIGTERM')
   await new Promise((r) => setTimeout(r, 1500))
-  if (await exists()) throw new Error('lock still present after SIGTERM')
-  process.stdout.write('  ✓ SIGTERM releases the lock\n')
+  if (process.platform === 'win32') {
+    // Windows has no SIGTERM: Node ends the process outright, so the app cannot remove its lock.
+    // What matters there is that the lock left behind, from a process that no longer exists,
+    // does not keep the notebook shut. Step 3 checks exactly that.
+    if (!(await exists())) throw new Error('expected the lock to survive a hard stop on Windows')
+    process.stdout.write('  ✓ a hard stop on Windows leaves a lock for the next start to take over\n')
+  } else {
+    if (await exists()) throw new Error('lock still present after SIGTERM')
+    process.stdout.write('  ✓ SIGTERM releases the lock\n')
+  }
 
   // 3. A stale lock from a dead process is taken over.
   await fs.writeFile(lock, JSON.stringify({ pid: 999999, host: hostname(), since: new Date().toISOString() }))
