@@ -18,6 +18,13 @@ Entry format:
 ---
 
 ## 2026-09-25 · lead (macOS, Apple silicon) · main
+**Changed:** Printout text is searchable (version stays 1.1.0; the draft release is rebuilt). `renderPdfPages` reads each PDF page's text layer while rendering; `insertPrintout` stores it on each printout picture as `printout: { source, page, text }`. The index gained a `printouts` column (INDEX_VERSION 4, so every notebook rebuilds its index on first open), and search returns a `printouts` group shown as **In printouts**. In the app the text sits invisibly inside the picture, so page search counts it and outlines the picture with the current match; `page.html` lays it transparently over the picture. Added `docs/dev/FUTURE_FEATURES.md` with the follow-ups (word highlighting, older printouts, OCR, Word printouts) and the gaps from the feature comparison.
+**Found:** Nothing new.
+**Checked:** Type check clean; 74 unit tests pass (new: printout indexing, page.html overlay); phase 1, 3, 4, 5, and 8 window suites pass, phase 8 now checks the stored text, the search group, the outlined picture, and that a plain PDF attachment is not searchable.
+**Next platform must check:** Windows: insert a printout of a PDF with text, search for a word from it, and confirm the page appears under In printouts and the picture is outlined.
+**Open:** Draft v1.1.0 is being rebuilt with this change.
+
+## 2026-09-25 · lead (macOS, Apple silicon) · main
 **Changed:** Added `docs/PageBinder-feature-comparison.xlsx`, a feature-by-feature comparison of PageBinder with Joplin, Obsidian, Logseq, Trilium Notes, SiYuan, AFFiNE, AppFlowy, Anytype, Notesnook, Zim Desktop Wiki, and Xournal++ (sheets: PageBinder at a glance, Comparison, Summary, Sources). Every derived value is a formula. The README links it. The packaged app excludes `.xlsx` files from the docs-bundle, and `check-package.ts` checks that.
 **Found:** Nothing new.
 **Checked:** LibreOffice recalculated all 734 formulas with no errors, and the pattern lists matched an independent count. The workflow run for this push covers the packaging change.

@@ -109,6 +109,21 @@ export interface ImageObject {
   originalName: string
   /** Rendered in place (default) or shown as an attachment card. */
   display?: 'inline' | 'card'
+  /**
+   * Set when the picture is one page of a printout made from an attached PDF. The text is
+   * the PDF page's own text layer, captured when the printout was made, so the page can be
+   * found by search. Attachments that are not printed out never contribute their text.
+   */
+  printout?: PrintoutInfo
+}
+
+export interface PrintoutInfo {
+  /** Name of the attachment the printout was made from, as the user sees it. */
+  source: string
+  /** Page number within that attachment, from 1. */
+  page: number
+  /** Text of that page, empty for a scanned page with no text layer. */
+  text: string
 }
 
 /** Metadata read from an attached email at insert time. */

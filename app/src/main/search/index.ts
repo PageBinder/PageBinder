@@ -12,7 +12,8 @@ import type { PageDoc } from '../../shared/types'
 import { INDEX_DIR } from '../storage/paths'
 import { extractPageText } from './text'
 
-export const INDEX_VERSION = 3
+/** 4: printout text column. A version change makes every notebook rebuild its index on open. */
+export const INDEX_VERSION = 4
 export const INDEX_FILE = 'search.sqlite'
 
 export type ResultKind = 'page' | 'section' | 'group'
@@ -26,7 +27,7 @@ export interface SearchHit {
   sectionRel: string
   /** Highlighted snippet for body or file matches, with <b> around matches. */
   snippet?: string
-  matchedIn: 'title' | 'body' | 'files'
+  matchedIn: 'title' | 'body' | 'files' | 'printouts'
 }
 
 export interface SearchResults {
@@ -34,6 +35,8 @@ export interface SearchResults {
   titles: SearchHit[]
   pages: SearchHit[]
   files: SearchHit[]
+  /** Pages whose printouts of attached PDFs contain the words. */
+  printouts: SearchHit[]
   truncated: boolean
 }
 
@@ -72,7 +75,7 @@ create index if not exists pages_section on pages(section_rel);
 create index if not exists containers_parent on containers(parent_rel);
 create virtual table if not exists fts using fts5(
   kind unindexed, rel unindexed, section unindexed, section_rel unindexed,
-  title, body, files,
+  title, body, files, printouts,
   prefix='2 3', tokenize='unicode61 remove_diacritics 2'
 );
 `
@@ -158,7 +161,7 @@ export class SearchIndex {
       deletePagesInSection: db.prepare('delete from pages where section_rel = ?'),
       deleteFtsInSection: db.prepare("delete from fts where kind = 'page' and section_rel = ?"),
       deleteFtsRow: db.prepare('delete from fts where rowid = ?'),
-      insertFts: db.prepare('insert into fts (rowid, kind, rel, section, section_rel, title, body, files) values (?, ?, ?, ?, ?, ?, ?, ?)'),
+      insertFts: db.prepare('insert into fts (rowid, kind, rel, section, section_rel, title, body, files, printouts) values (?, ?, ?, ?, ?, ?, ?, ?, ?)'),
       pageRowid: db.prepare('select rowid as id from pages where rel = ?'),
       containerRowid: db.prepare('select rowid as id from containers where rel = ?'),
       pageRowidsUnder: db.prepare('select rowid as id from pages where section_rel = ? or section_rel like ?'),
@@ -201,13 +204,13 @@ export class SearchIndex {
 
   /** Index one page from its document. `extraBody` carries text pulled from attachments such as email bodies. */
   indexPage(rel: string, doc: PageDoc, section: { name: string; rel: string }, mtime: number, extraBody = '', sort?: number): void {
-    const { body, files } = extractPageText(doc)
+    const { body, files, printouts } = extractPageText(doc)
     this.transaction(() => {
       const prev = this.getPage(rel)
       this.deletePageText(rel)
       this.stmts['upsertPage']!.run(rel, doc.id, doc.title, section.name, section.rel, mtime, doc.modified, sort ?? prev?.sort ?? 0, doc.parentPageId ?? null)
       const rowid = (this.stmts['pageRowid']!.get(rel) as { id: number }).id
-      this.stmts['insertFts']!.run(rowid, 'page', rel, section.name, section.rel, doc.title, extraBody ? `${body}\n${extraBody}` : body, files)
+      this.stmts['insertFts']!.run(rowid, 'page', rel, section.name, section.rel, doc.title, extraBody ? `${body}\n${extraBody}` : body, files, printouts)
     })
   }
 
@@ -258,7 +261,7 @@ export class SearchIndex {
       const parentRel = extra.parentRel ?? prev?.parentRel ?? (rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/')) : '')
       this.stmts['upsertContainer']!.run(rel, kind, name, extra.color ?? prev?.color ?? null, parentRel, extra.sort ?? prev?.sort ?? 0, extra.defaultTemplate === undefined ? (prev?.defaultTemplate ?? null) : extra.defaultTemplate)
       const rowid = (this.stmts['containerRowid']!.get(rel) as { id: number }).id
-      this.stmts['insertFts']!.run(-rowid, kind, rel, '', rel, name, '', '')
+      this.stmts['insertFts']!.run(-rowid, kind, rel, '', rel, name, '', '', '')
     })
   }
 
@@ -285,14 +288,14 @@ export class SearchIndex {
    * Results come grouped as OneNote shows them: titles, then page text, then file names.
    */
   search(query: string, scopeRel = '', limit = 50): SearchResults {
-    const empty: SearchResults = { query, titles: [], pages: [], files: [], truncated: false }
+    const empty: SearchResults = { query, titles: [], pages: [], files: [], printouts: [], truncated: false }
     const db = this.db!
     const scopeWhere = scopeRel ? ' and (rel = ? or rel like ?)' : ''
     const scopeArgs = scopeRel ? [scopeRel, `${scopeRel}/%`] : []
-    const run = (column: 'title' | 'body' | 'files'): SearchHit[] => {
+    const run = (column: 'title' | 'body' | 'files' | 'printouts'): SearchHit[] => {
       const match = buildMatch(column, query)
       if (!match) return []
-      const colIndex = column === 'title' ? 4 : column === 'body' ? 5 : 6
+      const colIndex = { title: 4, body: 5, files: 6, printouts: 7 }[column]
       const sql = `select kind, rel, section, section_rel as sectionRel, title,
           snippet(fts, ${colIndex}, '<b>', '</b>', '…', 12) as snippet
         from fts where fts match ?${scopeWhere}
@@ -304,7 +307,8 @@ export class SearchIndex {
     const titles = run('title')
     const pages = run('body')
     const files = run('files')
-    const truncated = titles.length > limit || pages.length > limit || files.length > limit
-    return { query, titles: titles.slice(0, limit), pages: pages.slice(0, limit), files: files.slice(0, limit), truncated }
+    const printouts = run('printouts')
+    const truncated = titles.length > limit || pages.length > limit || files.length > limit || printouts.length > limit
+    return { query, titles: titles.slice(0, limit), pages: pages.slice(0, limit), files: files.slice(0, limit), printouts: printouts.slice(0, limit), truncated }
   }
 }

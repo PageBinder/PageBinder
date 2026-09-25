@@ -14,19 +14,28 @@ function walk(node: EditorJSON | undefined, out: string[]): void {
   }
 }
 
-export function extractPageText(doc: PageDoc): { body: string; files: string } {
+export function extractPageText(doc: PageDoc): { body: string; files: string; printouts: string } {
   const body: string[] = []
   const files: string[] = []
+  const printouts: string[] = []
   for (const obj of doc.objects) {
     if (obj.kind === 'text') walk(obj.content, body)
     else if (obj.kind === 'file') {
       files.push(obj.originalName)
       if (obj.mail) files.push(obj.mail.subject, obj.mail.from)
-    } else if (obj.kind === 'image') files.push(obj.originalName)
+    } else if (obj.kind === 'image') {
+      files.push(obj.originalName)
+      // Only printouts contribute document text; a plain attachment contributes its name alone.
+      if (obj.printout?.text) printouts.push(obj.printout.text)
+    }
   }
   for (const e of doc.manifest.attachments) files.push(e.originalName)
   for (const e of doc.manifest.images) files.push(e.originalName)
-  return { body: body.join(' ').replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim(), files: [...new Set(files)].join('\n') }
+  return {
+    body: body.join(' ').replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim(),
+    files: [...new Set(files)].join('\n'),
+    printouts: printouts.join('\n')
+  }
 }
 
 /** Strip HTML tags and collapse whitespace, for email bodies. */

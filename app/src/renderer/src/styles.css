@@ -131,6 +131,11 @@ input { font: inherit; color: inherit; }
 .image-object { cursor: move; border: 1px solid transparent; }
 .image-object:hover { border-color: var(--border); }
 .image-object.selected { border-color: var(--accent); }
+/* Printout text: present for page search, never seen, never selected, never in the way. */
+/* Overrides the page.html rule from docCss (same selector, loaded later), which lays the text over the picture. */
+.canvas .image-object .printout-text { position: absolute; inset: auto; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); color: transparent; white-space: pre-wrap; pointer-events: none; user-select: none; }
+/* The printout picture holding the current search match. */
+.image-object.search-match { outline: 3px solid #f5b400; outline-offset: 2px; }
 .file-card { cursor: move; user-select: none; }
 .file-card video { pointer-events: auto; }
 .file-card.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }

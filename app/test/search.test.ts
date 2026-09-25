@@ -27,6 +27,33 @@ describe('search index', () => {
     expect(t.body).not.toContain('paragraph')
   })
 
+  it('indexes the text of printouts, but never the contents of plain attachments', async () => {
+    const d = docWith('Survey', 'Site visit')
+    d.objects.push(
+      { kind: 'file', id: 'f', x: 0, y: 0, width: 300, name: 'report.pdf', originalName: 'Drainage report.pdf' },
+      { kind: 'image', id: 'p1', x: 0, y: 0, width: 600, height: 800, name: 'p1.png', originalName: 'Drainage report page 1.png', printout: { source: 'Drainage report.pdf', page: 1, text: 'Culvert replacement estimate' } },
+      { kind: 'image', id: 'i', x: 0, y: 0, width: 200, height: 100, name: 'photo.png', originalName: 'photo.png' }
+    )
+    const t = extractPageText(d)
+    expect(t.printouts).toBe('Culvert replacement estimate')
+    expect(t.body).toBe('Site visit')
+    expect(t.files).toContain('Drainage report.pdf')
+
+    const index = new SearchIndex(dir)
+    await index.open()
+    index.indexPage('S/Survey.page', d, { name: 'S', rel: 'S' }, 1)
+    const hit = index.search('culvert')
+    expect(hit.printouts.map((h) => h.rel)).toEqual(['S/Survey.page'])
+    expect(hit.printouts[0]!.matchedIn).toBe('printouts')
+    expect(hit.printouts[0]!.snippet).toContain('<b>Culvert</b>')
+    expect(hit.pages).toEqual([])
+    // Remove the printout: its text leaves the index with it, while the attachment's name stays findable.
+    index.indexPage('S/Survey.page', { ...d, objects: d.objects.filter((o) => o.id !== 'p1') }, { name: 'S', rel: 'S' }, 2)
+    expect(index.search('culvert').printouts).toEqual([])
+    expect(index.search('drainage').files.map((h) => h.rel)).toEqual(['S/Survey.page'])
+    index.close()
+  })
+
   it('builds prefix queries safely', () => {
     expect(buildMatch('body', 'lid')).toBe('body:("lid"*)')
     expect(buildMatch('title', 'north "field" OR x')).toBe('title:("north"* "field"* "OR"* "x"*)')

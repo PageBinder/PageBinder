@@ -216,6 +216,7 @@ There is no notebook-level attachment store and no deduplication. Two pages with
 - A SQLite database in the notebook's `.index` folder holds an FTS5 full-text table of page text, page titles, section and group titles, and attachment filenames, plus tables of the notebook tree: every section and group with its name, colour, parent, and order, and every page with its title, section, order, and modification time. The window draws the tree from these tables, in milliseconds at any size, and a folder scan runs in the background after open to correct them. Every change made in the app refreshes only the section or container it touched.
 - The index is a cache. It can be deleted at any time and the app rebuilds it from the page files. It is excluded from NAS copies.
 - Only the text a reader would see is indexed, not JSON structure or formatting.
+- Printouts of attached PDFs contribute the text of each printed page, captured from the PDF's text layer when the printout is made and stored with the printout picture. Search lists them under In printouts. A plain attachment never contributes its contents.
 - Attached emails contribute sender, subject, and body text to the index. Other attachments contribute their filename and original name only.
 - FTS5 prefix indexes for two and three character prefixes are enabled so the first keystrokes are as fast as later ones.
 

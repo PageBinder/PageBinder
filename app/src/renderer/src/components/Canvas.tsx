@@ -311,6 +311,7 @@ export function Canvas({
     const root = canvasRef.current
     if (!root || !search || !search.terms.length) {
       clearHighlights()
+      root?.querySelectorAll('.image-object.search-match').forEach((el) => el.classList.remove('search-match'))
       if (matchesRef.current !== 0) {
         matchesRef.current = 0
         onSearchMatches(0)
@@ -322,6 +323,13 @@ export function Canvas({
       applyHighlights(ranges, search.active)
       const current = ranges[search.active]
       if (current) scrollToRange(current)
+      // A match inside a printout's hidden text cannot be painted on the picture, so the picture is outlined.
+      root.querySelectorAll('.image-object.search-match').forEach((el) => el.classList.remove('search-match'))
+      const holder = current?.startContainer.parentElement?.closest('.image-object')
+      if (holder && current?.startContainer.parentElement?.closest('.printout-text')) {
+        holder.classList.add('search-match')
+        holder.scrollIntoView({ block: 'center' })
+      }
       if (matchesRef.current !== ranges.length) {
         matchesRef.current = ranges.length
         onSearchMatches(ranges.length)

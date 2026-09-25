@@ -69,7 +69,7 @@ export function SearchBox({
     }
   }, [])
 
-  const flat: SearchHit[] = results ? [...results.titles, ...results.pages, ...results.files] : []
+  const flat: SearchHit[] = results ? [...results.titles, ...results.pages, ...(results.printouts ?? []), ...results.files] : []
   const choose = (hit: SearchHit): void => {
     onOpen(hit, query)
     setOpen(false)
@@ -139,7 +139,8 @@ export function SearchBox({
           {results && flat.length === 0 && <div className="search-empty">No matches{indexing ? ' yet. Indexing is still running.' : '.'}</div>}
           {results && group('Section and page titles', results.titles, 0)}
           {results && group('In pages', results.pages, results.titles.length)}
-          {results && group('Attachments', results.files, results.titles.length + results.pages.length)}
+          {results && group('In printouts', results.printouts ?? [], results.titles.length + results.pages.length)}
+          {results && group('Attachments', results.files, results.titles.length + results.pages.length + (results.printouts?.length ?? 0))}
           {results?.truncated && <div className="search-empty">More matches exist. Keep typing to narrow the search.</div>}
           {indexing && <div className="search-empty">Indexing {progress!.done} of {progress!.total} pages…</div>}
         </div>

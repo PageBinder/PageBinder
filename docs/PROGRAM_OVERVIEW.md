@@ -26,14 +26,14 @@ A page is laid out on sheets of paper from the moment you start. The page border
 - **Tables.** Add and remove rows and columns, set row heights and column widths, fill cells with colour, and choose borders for any cell or group of cells, all from the cell's right-click menu. Copying cells from one table into another brings the content and keeps the target table's look.
 - **Pictures.** Insert, paste, or drop them onto the page, then move and resize them. Very large pictures, and formats a browser cannot display, appear as a card instead, and a right-click switches between the two.
 - **Shapes.** Lines, arrows, rectangles, and ellipses, drawn from the right-click menu, with colour and line weight.
-- **Files.** Drop any file onto the page, or use Insert > File Attachment. The file is copied into the page and shown as a card with its name and size. Double-click the card to open the file in its own application. An attached PDF can also be inserted as a printout of its pages.
+- **Files.** Drop any file onto the page, or use Insert > File Attachment. The file is copied into the page and shown as a card with its name and size. Double-click the card to open the file in its own application. An attached PDF can also be inserted as a printout of its pages, and the text on those pages can then be found by search.
 - **Emails.** A saved email (`.eml` or `.msg`) shows its subject, sender, and date on its card, and its text can be searched.
 - **Signature.** Insert signature puts your name with the date and time at the cursor.
 - **Undo.** Undo and redo cover typing as well as creating, moving, resizing, and deleting objects and pages.
 
 ## Search
 
-Press Cmd+F (Ctrl+F on Windows) and start typing. Results appear as you type, covering page names, section names, page text, attachment names, and the text of attached emails. Choosing a result opens the page with every match highlighted. Search stays fast even in a notebook of tens of thousands of pages.
+Press Cmd+F (Ctrl+F on Windows) and start typing. Results appear as you type, covering page names, section names, page text, attachment names, the text of attached emails, and the text of PDF printouts. Only printouts are searched this way: a PDF or other document that is simply attached is found by its name, not its contents. A scanned PDF has no text to find. Choosing a result opens the page with every match highlighted. Search stays fast even in a notebook of tens of thousands of pages.
 
 ## Saving, history, and safety
 
