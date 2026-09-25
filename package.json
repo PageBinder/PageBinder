@@ -1,0 +1,58 @@
+{
+  "name": "pagebinder",
+  "productName": "PageBinder",
+  "version": "1.0.1",
+  "description": "Local-only, folder-based notebook application in the style of classic desktop OneNote",
+  "main": "./out/main/index.js",
+  "private": true,
+  "scripts": {
+    "dev": "electron-vite dev --watch",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "start": "electron-vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "crash-test": "tsx scripts/crash-test.ts",
+    "e2e": "npm run build:e2e && tsx scripts/e2e.ts && tsx scripts/e2e-phase2.ts && tsx scripts/e2e-phase3.ts && tsx scripts/e2e-phase4.ts && tsx scripts/e2e-phase5.ts && tsx scripts/e2e-phase6.ts && tsx scripts/e2e-phase6b.ts && tsx scripts/e2e-phase8.ts && tsx scripts/lock-check.ts",
+    "build:e2e": "electron-vite build --outDir out-e2e",
+    "icons": "electron scripts/make-icons.cjs",
+    "export": "tsx scripts/pagebinder-export.ts"
+  },
+  "dependencies": {
+    "@kenjiuno/msgreader": "^1.28.0",
+    "@tiptap/core": "^3.31.3",
+    "@tiptap/extension-list": "^3.31.3",
+    "@tiptap/extension-table": "^3.31.3",
+    "@tiptap/extension-text-align": "^3.31.3",
+    "@tiptap/extension-text-style": "^3.31.3",
+    "@tiptap/extensions": "^3.31.3",
+    "@tiptap/html": "^3.31.3",
+    "@tiptap/pm": "^3.31.3",
+    "@tiptap/react": "^3.31.3",
+    "@tiptap/starter-kit": "^3.31.3",
+    "marked": "^18.0.14",
+    "pdfjs-dist": "^6.3.289",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "electron": "^44.4.4",
+    "electron-vite": "^5.0.0",
+    "playwright": "^1.63.0",
+    "tsx": "^4.20.0",
+    "typescript": "~5.9.3",
+    "vite": "^7.0.0",
+    "vitest": "^4.0.0"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.2": true,
+    "electron@44.4.4": true,
+    "playwright@1.63.0": true
+  }
+}
