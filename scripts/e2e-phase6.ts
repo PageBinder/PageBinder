@@ -161,7 +161,10 @@ async function main(): Promise<void> {
   await page.keyboard.press('Escape')
   await page.keyboard.press('Escape')
   await page.waitForTimeout(100)
-  await page.locator('.canvas-scroll').evaluate((el) => el.scrollTo(0, 0))
+  // Scroll the new boxes up into the middle of the window. On a small screen (the macOS runner's
+  // window is 1024x642) their drag handles otherwise sit at the bottom edge, outside the page area.
+  await page.locator('.canvas-scroll').evaluate((el) => el.scrollTo(0, 300))
+  await page.waitForTimeout(100)
   const canvasBox = (await page.locator('.canvas').boundingBox())!
   // Drag a box from an empty spot across both new boxes.
   await page.mouse.move(canvasBox.x + 250, canvasBox.y + 360)
