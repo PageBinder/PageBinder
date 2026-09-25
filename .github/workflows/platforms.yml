@@ -39,6 +39,8 @@ jobs:
         run: Set-DisplayResolution -Width 1920 -Height 1080 -Force
       - name: End-to-end suites
         run: npm run e2e
+        # About 15 minutes on Windows; a hang fails here rather than using up the whole job.
+        timeout-minutes: 40
         env:
           E2E_SHOTS: ${{ runner.temp }}/e2e-shots
       - name: Screenshots from a failed end-to-end run
