@@ -18,6 +18,13 @@ Entry format:
 ---
 
 ## 2026-09-25 · lead (macOS, Apple silicon) · main
+**Changed:** The GitHub repository was deleted and recreated with the same name, settings, `main`, and `rev1` tag, to remove superseded commits from before the history cleanup that GitHub still served by commit code. The commit codes on `main` are unchanged, so existing clones keep working with no action. Actions run history restarted, and the draft v1.1.0 release was rebuilt by the Release workflow.
+**Found:** Rewriting history does not remove old commits from GitHub. They stay downloadable by code, and the repository's public activity feed lists those codes. Only deleting the repository, or a GitHub Support purge, removes them.
+**Checked:** None of the 15 superseded commits is served any more; every commit in the new repository is authored by the PageBinder noreply address; the macOS and Windows run and the Release run started from the new repository.
+**Next platform must check:** Never push branches or tags from an old clone made before 2026-09-25 that still holds pre-cleanup history. If unsure, clone fresh. Nothing else.
+**Open:** Nothing new.
+
+## 2026-09-25 · lead (macOS, Apple silicon) · main
 **Changed:** Multi-machine workflow. Git is the shared state and every Claude Code session is a disposable worker. Added the working-across-machines rules to `CLAUDE.md`, this file, `docs/DECISIONS.md`, `docs/PLATFORM_NOTES.md`, `docs/CLAUDE.local.example.md`, and the `/sync` and `/handoff` commands in `.claude/commands/`. `CLAUDE.local.md` is now ignored by git. The macOS and Windows workflow runs on every push to `main` and to `fix/**` branches, skipping pushes that change only Markdown, `docs/`, or `.claude/`.
 **Found:** This Mac's clone predated the cloud session's history rewrite; it was reset to `origin/main`. Locally, `node_modules/electron/install.js` had to be run by hand after `npm ci` before Electron would start.
 **Checked:** Type check clean, 72 unit tests pass, production build succeeds, phase 1 end-to-end suite passes (11 steps). The workflow file was validated as YAML; its first push-triggered run starts with this commit.
