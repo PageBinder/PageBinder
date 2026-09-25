@@ -11,7 +11,7 @@ declare const __BUILD_TIME__: string
 export type DocName = 'description' | 'recovery' | 'history-verify' | 'uninstall' | 'shortcuts' | 'getting-started' | 'readme'
 
 const FILES: Record<DocName, string> = {
-  description: 'docs/PROGRAM_DESCRIPTION.md',
+  description: 'docs/PROGRAM_OVERVIEW.md',
   recovery: 'docs/RECOVERY.md',
   'history-verify': 'docs/HISTORY_AND_VERIFY.md',
   uninstall: 'docs/UNINSTALL.md',

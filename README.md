@@ -91,7 +91,8 @@ The [Getting Started guide](docs/GETTING_STARTED.md) covers the first five minut
 - [Page history and Verify Notebook](docs/HISTORY_AND_VERIFY.md)
 - [Recovery guide](docs/RECOVERY.md): what to do if a page or file is damaged or missing
 - [Uninstalling](docs/UNINSTALL.md)
-- [Program description](docs/PROGRAM_DESCRIPTION.md): the full design, including the folder format
+- [What PageBinder is](docs/PROGRAM_OVERVIEW.md): everything it does, in one page
+- [Program description](docs/dev/PROGRAM_DESCRIPTION.md): the full design for developers, including the folder format
 
 ## Requirements
 

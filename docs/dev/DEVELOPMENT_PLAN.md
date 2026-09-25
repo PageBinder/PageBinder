@@ -1,6 +1,6 @@
 # PageBinder development plan
 
-Features and changes phase by phase, with the commands and file layout for working on the code. For what the program is and how to install it, see [README.md](README.md). The full design is in [PROGRAM_DESCRIPTION.md](PROGRAM_DESCRIPTION.md).
+Features and changes phase by phase, with the commands and file layout for working on the code. For what the program is and how to install it, see [README.md](README.md). The full design is in [docs/dev/PROGRAM_DESCRIPTION.md](PROGRAM_DESCRIPTION.md).
 
 This build covers phases 1 to 8: **Foundation**, **Documents**, **Attachments**, **Search**, **History and verification**, **Templates and copy or move**, **Scale**, and **Windows and installers**.
 
