@@ -20,10 +20,13 @@ afterEach(async () => { await removeDir(dir) })
 
 describe('attachments', () => {
   it('copies a file into the page folder under a safe unique name and records size and hash', async () => {
-    const src = join(dir, 'RE: Ridge Road survey?.txt')
+    // Windows cannot hold a file with this name, so the source is saved plainly and the name comes
+    // in as the original name, as it does from a mail drag.
+    const original = 'RE: Ridge Road survey?.txt'
+    const src = join(dir, 'source.txt')
     await fs.writeFile(src, 'hello attachment')
-    const a = await copyFileIntoPage(root, rel, src, ATTACHMENTS_DIR)
-    const b = await copyFileIntoPage(root, rel, src, ATTACHMENTS_DIR)
+    const a = await copyFileIntoPage(root, rel, src, ATTACHMENTS_DIR, original)
+    const b = await copyFileIntoPage(root, rel, src, ATTACHMENTS_DIR, original)
     expect(a.name).toBe('RE Ridge Road survey.txt')
     expect(b.name).toBe('RE Ridge Road survey (2).txt')
     expect(a.originalName).toBe('RE: Ridge Road survey?.txt')
