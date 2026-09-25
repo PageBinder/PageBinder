@@ -163,7 +163,9 @@ async function main(): Promise<void> {
   assert(leftovers.some((n) => n.startsWith('page.json.corrupt-')), 'damaged file kept for inspection')
   step('Restore writes the draft as the current page')
 
-  assert(await page.locator('.page-row.on', { hasText: 'Renamed page' }).count(), 'draft title restored')
+  // The page list follows the restored title once the tree refresh arrives, which takes longer on a busy machine.
+  const titled = await page.locator('.page-row.on', { hasText: 'Renamed page' }).waitFor({ timeout: 5000 }).then(() => true, () => false)
+  assert(titled, 'draft title restored')
   await page.screenshot({ path: join(shots, 'final.png') })
   await close()
   process.stdout.write(`\nPASS: ${steps.length} steps. Notebook kept at ${root}\n`)
