@@ -18,7 +18,8 @@ Choices that should outlive any one session. Add a line when a decision is made 
 - **The program name never appears in notebook files**, and image URLs (`pagebinder://`) are built at run time, so a rename never breaks notebooks. (Renamed from DigiNote to PageBinder on 2026-09-24.)
 - **The renderer never imports `src/shared/render/renderPage.ts`.** Page HTML is rendered in the main process.
 - **Window tests run from `out-e2e/`**, never `out/`, so a running dev watcher cannot overwrite them.
-- **Development and installed copies keep separate settings** (`PageBinder Dev` and `PageBinder`). A new installation that finds earlier settings asks Keep or Start fresh, never keeps them silently. `scripts/check-package.ts` keeps development data out of every package.
+- **Development and installed copies keep separate settings** (`PageBinder Dev` and `PageBinder`). A new installation that finds earlier settings asks Keep or Start fresh, never keeps them silently. `app/scripts/check-package.ts` keeps development data out of every package.
+- **Repository layout** (2026-09-25): the program is in `app/`, user documents in `docs/`, developer notes in `docs/dev/`, and only `README.md`, `LICENSE`, and `CLAUDE.md` sit at the root, so the GitHub front page stays short. The packaged app receives the documents from `docs/` as `resources/docs-bundle`.
 - **Installers are unsigned** for now: macOS ad-hoc signature, no Windows certificate.
 
 ## Repository and workflow

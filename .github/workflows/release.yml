@@ -11,6 +11,11 @@ on:
     tags: ['v*']
   workflow_dispatch:
 
+# The program lives in app/; every command runs there.
+defaults:
+  run:
+    working-directory: app
+
 permissions:
   contents: write
 
@@ -29,6 +34,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: app/package-lock.json
       - run: npm ci
       - run: npm test
       - name: Build installers
@@ -41,8 +47,8 @@ jobs:
         with:
           name: release-${{ runner.os }}
           path: |
-            dist/*.dmg
-            dist/*.exe
+            app/dist/*.dmg
+            app/dist/*.exe
           if-no-files-found: error
           retention-days: 3
 
@@ -54,7 +60,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          path: files
+          path: app/files
           merge-multiple: true
       - name: Create the draft release with the installers
         env:

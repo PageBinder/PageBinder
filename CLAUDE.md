@@ -1,6 +1,6 @@
 # PageBinder: notes for Claude
 
-Local-only, folder-based notebook app in the style of classic desktop OneNote (formerly DigiNote). Electron 44, electron-vite 5, React 19, TypeScript 5.9, TipTap 3, SQLite FTS5 via `node:sqlite`. The full spec is `PROGRAM_DESCRIPTION.md`, and features and changes by phase are in `DEVELOPMENT_PLAN.md`; `README.md` is the user-facing front page on GitHub. Recovery design is in `RECOVERY.md`, and user docs are in `docs/`. Lasting choices are in `docs/DECISIONS.md`, platform lessons in `docs/PLATFORM_NOTES.md`, and the latest work from every machine in `HANDOFF.md`.
+Local-only, folder-based notebook app in the style of classic desktop OneNote (formerly DigiNote). Electron 44, electron-vite 5, React 19, TypeScript 5.9, TipTap 3, SQLite FTS5 via `node:sqlite`. Layout: the program is in `app/` (run every npm and npx command there), user documents in `docs/`, developer notes in `docs/dev/`, and only `README.md`, `LICENSE`, and this file at the root, so the GitHub front page stays short. The full spec is `docs/PROGRAM_DESCRIPTION.md`, and features and changes by phase are in `docs/dev/DEVELOPMENT_PLAN.md`; `README.md` is the user-facing front page on GitHub. Recovery design is in `docs/RECOVERY.md`. Lasting choices are in `docs/dev/DECISIONS.md`, platform lessons in `docs/dev/PLATFORM_NOTES.md`, and the latest work from every machine in `docs/dev/HANDOFF.md`.
 
 ## Status
 - rev1 = version 1.0.1 (git tag `rev1`), the version the user tested by hand.
@@ -10,6 +10,7 @@ Local-only, folder-based notebook app in the style of classic desktop OneNote (f
 - Unverified: the native Outlook email drag-and-drop helper (the user cannot test it yet).
 
 ## Commands
+All of these run inside `app/` (`cd app` first).
 ```
 npm ci                 # install (Electron downloads its binary)
 npm run dev            # run the app with hot reload (restart it after config or main-process changes)
@@ -29,16 +30,16 @@ npx tsx scripts/make-medical.ts "<parent>/Medical Records" 500   # regenerate th
 - End-to-end tests launch `out-e2e/`, never `out/`, so a running dev watcher cannot overwrite them. Test hooks are the `PAGEBINDER_OPEN`, `PAGEBINDER_TEST_PICK_FILES`, `PAGEBINDER_TEST_SAVE_PATH`, and `PAGEBINDER_TEST_DISPLAY` environment variables.
 - In Playwright `app.evaluate` callbacks, avoid named inner functions, because tsx injects a `__name` helper that the app cannot see.
 - Automated test windows open on a second display when there is one (`PAGEBINDER_TEST_DISPLAY`), so the user's main display stays free.
-- Settings folders: the development build uses `<appData>/PageBinder Dev`, an installed copy `<appData>/PageBinder` (see `src/main/settingsFolder.ts`). Every new installation (reinstall or update) that finds earlier settings asks Keep or Start fresh; never keep them silently. Nothing from development may reach an installed copy or a package; `scripts/check-package.ts` guards the package. Test seams: `PAGEBINDER_TEST_PACKAGED=1`, `PAGEBINDER_TEST_SETTINGS_CHOICE=keep|fresh`.
+- Settings folders: the development build uses `<appData>/PageBinder Dev`, an installed copy `<appData>/PageBinder` (see `src/main/settingsFolder.ts`). Every new installation (reinstall or update) that finds earlier settings asks Keep or Start fresh; never keep them silently. Nothing from development may reach an installed copy or a package; `app/scripts/check-package.ts` guards the package, including the help documents copied in from `docs/`. Test seams: `PAGEBINDER_TEST_PACKAGED=1`, `PAGEBINDER_TEST_SETTINGS_CHOICE=keep|fresh`.
 
 ## Working across machines
-Git is the shared state; each Claude Code session is a disposable worker that takes its context from the repository. Machine-specific details (role, platform, toolchain, local test data) live in `CLAUDE.local.md` in the repository root, which is git-ignored; create it from `docs/CLAUDE.local.example.md` if it is missing.
-- **Start every task in a fresh session with `/sync`.** It pulls, reads the newest `HANDOFF.md` entries and the git log, and reports what changed. Never work from a stale session or a clone that has not been pulled.
+Git is the shared state; each Claude Code session is a disposable worker that takes its context from the repository. Machine-specific details (role, platform, toolchain, local test data) live in `CLAUDE.local.md` in the repository root, which is git-ignored; create it from `docs/dev/CLAUDE.local.example.md` if it is missing.
+- **Start every task in a fresh session with `/sync`.** It pulls, reads the newest `docs/dev/HANDOFF.md` entries and the git log, and reports what changed. Never work from a stale session or a clone that has not been pulled.
 - **End every task with `/handoff`.** It records what changed, what was found and checked, and what the next platform must verify, then commits and pushes. Work is not finished until it is pushed.
 - **Roles.** The lead is the user's Mac: core, platform-neutral work (features, `src/shared`, `src/renderer`, storage and index logic) happens there on `main`. Other machines handle their platform's pieces (code behind `process.platform` checks, installer and build configuration, platform tests, real-machine verification) on `fix/<platform>-<topic>` branches. They change shared code only in small, clearly described steps; anything larger goes into a handoff note for the lead.
 - **Merging.** Rebase a `fix/*` branch onto `origin/main`, re-run the checks, and fast-forward `main` to it, only with the user's go-ahead. Then delete the branch locally and on GitHub. Never force-push `main`.
 - **The user is the dispatcher.** Machines do not talk to each other. Finish and push on one machine, then the user tells the next machine to `/sync` and verify. CI on every push reports whether macOS and Windows still pass.
 
 ## Working with the user
-- The user tests by hand in the running app and reports numbered issues. Fix all of them, add or adjust an end-to-end check for each, run the affected suites, update the version section of `DEVELOPMENT_PLAN.md`, and finish with `/handoff`.
+- The user tests by hand in the running app and reports numbered issues. Fix all of them, add or adjust an end-to-end check for each, run the affected suites, update the version section of `docs/dev/DEVELOPMENT_PLAN.md`, and finish with `/handoff`.
 - Write final reports in plain language: lead with the outcome, and use short sentences and bullets.

@@ -1,4 +1,5 @@
-# Installers for macOS and Windows. See DEVELOPMENT_PLAN.md, Phase 8, and README.md, "Building from source".
+# Installers for macOS and Windows. See docs/dev/DEVELOPMENT_PLAN.md, Phase 8, and README.md, "Building from source".
+# Run from the app/ folder.
 #   npm run dist:mac   (on a Mac)      -> dist/PageBinder-<version>-<arch>.dmg and .zip
 #   npm run dist:win   (on Windows)    -> dist/PageBinder-Setup-<version>.exe
 appId: app.pagebinder.desktop
@@ -12,16 +13,19 @@ files:
   - resources/**
   - "!resources/logo-artwork.jpg"
   - package.json
-  # The Help menu reads these from inside the app (src/main/about.ts).
-  - README.md
-  - LICENSE
-  - PROGRAM_DESCRIPTION.md
-  - RECOVERY.md
-  - docs/**
-  # The README screenshot is for GitHub, not the app.
-  - "!docs/images/**"
   - "!**/*.map"
 asar: true
+# The Help menu reads these (src/main/about.ts). They live at the repository root, one level
+# above app/, so they are copied in beside the app as resources/docs-bundle.
+extraResources:
+  - from: ../docs
+    to: docs-bundle/docs
+    # The README screenshot is for GitHub, and docs/dev holds developer notes.
+    filter: ["**/*", "!images/**", "!dev/**"]
+  - from: ../README.md
+    to: docs-bundle/README.md
+  - from: ../LICENSE
+    to: docs-bundle/LICENSE
 # Installers are named <product>-<version>-<arch>.<ext> so the two Mac builds do not collide.
 artifactName: ${productName}-${version}-${arch}.${ext}
 

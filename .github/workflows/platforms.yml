@@ -15,7 +15,13 @@ on:
       - 'docs/**'
       - '.claude/**'
       - 'LICENSE'
+      - 'CLAUDE.md'
   workflow_dispatch:
+
+# The program lives in app/; every command runs there.
+defaults:
+  run:
+    working-directory: app
 
 concurrency:
   group: platforms-${{ github.ref }}
@@ -36,6 +42,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: app/package-lock.json
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
@@ -65,7 +72,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: notebook-${{ runner.os }}
-          path: xp-${{ runner.os }}
+          # Artifact paths are relative to the repository, not to app/.
+          path: app/xp-${{ runner.os }}
           # .history holds each page's saved versions: part of the notebook, so it must travel too.
           include-hidden-files: true
           retention-days: 7
@@ -84,6 +92,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: app/package-lock.json
       - run: npm ci
       - name: Build installers
         run: npm run ${{ runner.os == 'macOS' && 'dist:mac' || 'dist:win' }}
@@ -96,9 +105,9 @@ jobs:
         with:
           name: installer-${{ runner.os }}
           path: |
-            dist/*.dmg
-            dist/*.zip
-            dist/*.exe
+            app/dist/*.dmg
+            app/dist/*.zip
+            app/dist/*.exe
           if-no-files-found: error
           retention-days: 14
 
@@ -121,15 +130,16 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: app/package-lock.json
       - run: npm ci
       - uses: actions/download-artifact@v4
         with:
           name: notebook-${{ matrix.from }}
-          path: xp
+          path: app/xp
       - uses: actions/download-artifact@v4
         with:
           name: installer-${{ runner.os }}
-          path: installer
+          path: app/installer
       - name: Install PageBinder (Windows, per-user, silent)
         if: runner.os == 'Windows'
         shell: pwsh

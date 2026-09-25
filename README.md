@@ -89,9 +89,9 @@ The [Getting Started guide](docs/GETTING_STARTED.md) covers the first five minut
 - [Getting started](docs/GETTING_STARTED.md): first steps, backups, and finding things
 - [Keyboard shortcuts](docs/SHORTCUTS.md)
 - [Page history and Verify Notebook](docs/HISTORY_AND_VERIFY.md)
-- [Recovery guide](RECOVERY.md): what to do if a page or file is damaged or missing
+- [Recovery guide](docs/RECOVERY.md): what to do if a page or file is damaged or missing
 - [Uninstalling](docs/UNINSTALL.md)
-- [Program description](PROGRAM_DESCRIPTION.md): the full design, including the folder format
+- [Program description](docs/PROGRAM_DESCRIPTION.md): the full design, including the folder format
 
 ## Requirements
 
@@ -106,7 +106,7 @@ You need [Node.js](https://nodejs.org/) 22 or later and Git.
 
 ```bash
 git clone https://github.com/PageBinder/PageBinder.git
-cd PageBinder
+cd PageBinder/app    # the program lives in app/; the documents are in docs/
 npm ci            # install dependencies
 npm run dev       # run the app with live reload
 npm test          # unit tests

@@ -11,8 +11,8 @@ declare const __BUILD_TIME__: string
 export type DocName = 'description' | 'recovery' | 'history-verify' | 'uninstall' | 'shortcuts' | 'getting-started' | 'readme'
 
 const FILES: Record<DocName, string> = {
-  description: 'PROGRAM_DESCRIPTION.md',
-  recovery: 'RECOVERY.md',
+  description: 'docs/PROGRAM_DESCRIPTION.md',
+  recovery: 'docs/RECOVERY.md',
   'history-verify': 'docs/HISTORY_AND_VERIFY.md',
   uninstall: 'docs/UNINSTALL.md',
   shortcuts: 'docs/SHORTCUTS.md',
@@ -21,8 +21,10 @@ const FILES: Record<DocName, string> = {
 }
 
 function docRoots(): string[] {
-  // Development: the project folder. Packaged: resources beside the app.
-  return [app.getAppPath(), join(process.resourcesPath ?? '', 'docs-bundle'), process.cwd()]
+  // Packaged: electron-builder copies the documents into resources/docs-bundle (see
+  // electron-builder.yml). Development: the repository root, one level above app/.
+  if (app.isPackaged) return [join(process.resourcesPath ?? '', 'docs-bundle')]
+  return [join(app.getAppPath(), '..'), app.getAppPath(), process.cwd()]
 }
 
 export async function readDoc(name: DocName): Promise<string> {

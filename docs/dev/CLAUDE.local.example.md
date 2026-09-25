@@ -1,4 +1,4 @@
-# This machine (copy to CLAUDE.local.md in the repository root; that file is never committed)
+# This machine (copy to CLAUDE.local.md in the repository root; that file is never committed; npm commands run in app/)
 
 - **Role:** lead | platform   <!-- lead: this Mac only. platform: every other machine and cloud sessions -->
 - **Platform:** macOS (Apple silicon | Intel) | Windows (x64 | ARM) | Linux
