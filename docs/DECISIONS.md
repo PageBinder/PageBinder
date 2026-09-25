@@ -10,7 +10,7 @@ Choices that should outlive any one session. Add a line when a decision is made 
 - **`page.html` beside every page.** A rendered copy that opens in any browser without the app.
 - **Templates** hold text, tables, and inline pictures only, never attachments; pictures are duplicated, not referenced. Templates appear as a system notebook on the switch screen, one section per notebook plus Global templates.
 - **Copies are complete.** Copying a page duplicates its attachments in full. Pages move by copy and paste; there is no page move command.
-- **No OneNote import.** Researched and deliberately not developed.
+- **No OneNote import in PageBinder itself.** Researched and deliberately kept out of the core program. A limited-use importer for a modern Microsoft 365 OneNote notebook is being developed separately as a helper app (decided 2026-09-25); it is not a core feature and lives outside this repository's application code.
 - **Search** is SQLite FTS5 in `.index/search.sqlite`, type-ahead, sized for 50,000 pages and 500 GB. The notebook tree is served from the index and corrected by a background folder scan.
 - **No stylus or ink.** The app is for printable documents with text, tables, pictures, and large attachments.
 
