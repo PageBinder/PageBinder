@@ -1,14 +1,5 @@
 # Getting started
 
-## Installing
-
-Download the installer from the [latest release](https://github.com/PageBinder/PageBinder/releases/latest) on GitHub. The README has [step-by-step instructions](../README.md#download-and-install).
-
-- **macOS**: open `PageBinder-<version>-arm64.dmg` (Apple silicon) or `-x64.dmg` (Intel) and drag PageBinder to Applications. The app is not yet signed with an Apple Developer ID, so the first time you open it, macOS says it cannot check the app. Go to System Settings > Privacy & Security and choose Open Anyway. On macOS 14 or earlier, you can instead right-click PageBinder in Applications, choose Open, then Open again.
-- **Windows**: run `PageBinder-Setup-<version>.exe`. It installs for the current user without administrator rights unless you choose all users, and adds Start menu and desktop shortcuts. The installer is not yet code-signed, so Windows SmartScreen may say it protected your PC: choose More info, then Run anyway.
-
-The first time PageBinder starts, the Welcome screen has a short Getting started note. Create notebook suggests your Documents folder.
-
 PageBinder keeps notes the way classic desktop OneNote did: notebooks, section groups, sections, and pages, all stored as ordinary folders and files on your own disk. Nothing is sent anywhere.
 
 ## The first five minutes

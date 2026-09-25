@@ -12,7 +12,7 @@ import { dirname, join } from 'node:path'
 /** Top-level entries allowed inside app.asar. */
 const ALLOWED_TOP = new Set(['out', 'resources', 'node_modules', 'package.json'])
 /** Documents the Help menu reads, copied beside the app as resources/docs-bundle (electron-builder.yml). */
-const BUNDLED_DOCS = ['README.md', 'LICENSE', 'docs/PROGRAM_DESCRIPTION.md', 'docs/RECOVERY.md', 'docs/GETTING_STARTED.md', 'docs/SHORTCUTS.md', 'docs/HISTORY_AND_VERIFY.md', 'docs/UNINSTALL.md']
+const BUNDLED_DOCS = ['README.md', 'LICENSE', 'docs/PROGRAM_OVERVIEW.md', 'docs/RECOVERY.md', 'docs/GETTING_STARTED.md', 'docs/SHORTCUTS.md', 'docs/HISTORY_AND_VERIFY.md', 'docs/UNINSTALL.md']
 /** Never shipped: developer notes and the README screenshot. */
 const NOT_BUNDLED = ['docs/dev', 'docs/images']
 /** Anything that looks like user data, a notebook, or a test fixture, outside node_modules. */

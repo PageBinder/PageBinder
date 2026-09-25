@@ -20,6 +20,7 @@ Choices that should outlive any one session. Add a line when a decision is made 
 - **Window tests run from `out-e2e/`**, never `out/`, so a running dev watcher cannot overwrite them.
 - **Development and installed copies keep separate settings** (`PageBinder Dev` and `PageBinder`). A new installation that finds earlier settings asks Keep or Start fresh, never keeps them silently. `app/scripts/check-package.ts` keeps development data out of every package.
 - **Repository layout** (2026-09-25): the program is in `app/`, user documents in `docs/`, developer notes in `docs/dev/`, and only `README.md`, `LICENSE`, and `CLAUDE.md` sit at the root, so the GitHub front page stays short. The packaged app receives the documents from `docs/` as `resources/docs-bundle`.
+- **Help documents are written for end users, not developers** (2026-09-25). The Help menu's Program description is `docs/PROGRAM_OVERVIEW.md`, which explains what the program does with no development history; the developer specification lives in `docs/dev/PROGRAM_DESCRIPTION.md`. Getting started assumes the program is already installed; installation steps live only in the README.
 - **Installers are unsigned** for now: macOS ad-hoc signature, no Windows certificate.
 
 ## Repository and workflow

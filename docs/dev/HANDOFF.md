@@ -18,6 +18,13 @@ Entry format:
 ---
 
 ## 2026-09-25 · lead (macOS, Apple silicon) · main
+**Changed:** Help documents for end users. Help > Program description now shows a new `docs/PROGRAM_OVERVIEW.md`: what the program does, how notes are organised, printing, editing, search, history, templates, where notes live, and what it does not do, with no development history. The developer specification moved to `docs/dev/PROGRAM_DESCRIPTION.md` (kept out of the package). Getting started no longer has an Installing section; the README keeps the install steps.
+**Found:** Nothing new.
+**Checked:** Type check and unit tests from `app/`. The package job of this push's workflow run verifies the docs-bundle.
+**Next platform must check:** Nothing.
+**Open:** Unchanged.
+
+## 2026-09-25 · lead (macOS, Apple silicon) · main
 **Changed:** Repository layout, so the GitHub front page shows a short list before the README. The program moved into `app/` (run every npm and npx command there), user documents into `docs/`, and developer notes (this file, the decision log, platform notes, the development plan, the CLAUDE.local example) into `docs/dev/`. Only `README.md`, `LICENSE`, and `CLAUDE.md` stay at the root. The packaged app now receives its help documents from `docs/` as `resources/docs-bundle` (electron-builder `extraResources`), and `app/src/main/about.ts` reads them from there when packaged and from the repository root in development. `app/scripts/check-package.ts` checks that bundle. Workflows run every command in `app/`, and artifact paths are prefixed `app/`. `/sync`, `/handoff`, and `CLAUDE.md` use the new paths.
 **Found:** Nothing new.
 **Checked:** From `app/`: type check clean, 72 unit tests pass, production build succeeds, phase 1 end-to-end suite passes. `npm run dist:mac` built both Mac installers, and the package check passed with the docs-bundle present and `docs/dev` and `docs/images` absent. The macOS and Windows workflow run for this push is the proof for CI.
