@@ -81,6 +81,8 @@ jobs:
         env:
           # No signing certificate: never go looking for one in the runner's keychain.
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Check the package holds no development or user data
+        run: npx tsx scripts/check-package.ts
       - uses: actions/upload-artifact@v4
         with:
           name: installer-${{ runner.os }}

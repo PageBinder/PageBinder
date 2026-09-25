@@ -18,6 +18,8 @@ files:
   - PROGRAM_DESCRIPTION.md
   - RECOVERY.md
   - docs/**
+  # The README screenshot is for GitHub, not the app.
+  - "!docs/images/**"
   - "!**/*.map"
 asar: true
 # Installers are named <product>-<version>-<arch>.<ext> so the two Mac builds do not collide.

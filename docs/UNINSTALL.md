@@ -6,13 +6,13 @@ Your notebooks are ordinary folders that PageBinder never moves. Uninstalling th
 
 1. Quit PageBinder.
 2. Drag PageBinder from the Applications folder to the Trash.
-3. Optionally remove the app's settings folder, which holds only the recent-notebooks list and the global template library: `~/Library/Application Support/PageBinder`. Versions before 1.0.1, when the program was called DigiNote, used `~/Library/Application Support/diginote`; PageBinder copies it on first start and leaves the original, which can be removed.
+3. Optionally remove the app's settings folder, which holds only the recent-notebooks list and the global template library: `~/Library/Application Support/PageBinder`.
 
 ## Windows
 
 1. Quit PageBinder.
 2. Settings > Apps > Installed apps > PageBinder > Uninstall (on Windows 10: Settings > Apps > Apps & features). This removes the program files and the Start menu and desktop shortcuts.
-3. Optionally remove `%APPDATA%\PageBinder` (and `%APPDATA%\diginote` from versions before 1.0.1, if present), which holds only the recent-notebooks list and the global template library.
+3. Optionally remove `%APPDATA%\PageBinder`, which holds only the recent-notebooks list and the global template library.
 
 ## What is safe to delete inside a notebook
 
