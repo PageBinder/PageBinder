@@ -35,6 +35,8 @@ jobs:
         run: npm run ${{ runner.os == 'macOS' && 'dist:mac' || 'dist:win' }}
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Check the package holds no development or user data
+        run: npx tsx scripts/check-package.ts
       - uses: actions/upload-artifact@v4
         with:
           name: release-${{ runner.os }}
@@ -71,4 +73,9 @@ jobs:
           Installation steps are in the [README](https://github.com/${GITHUB_REPOSITORY}#download-and-install). The installers are not yet signed, so macOS and Windows ask for confirmation the first time.
           EOF
           ls -la files
+          # A rebuild replaces an earlier draft of the same version. Published releases are never touched.
+          for id in $(gh api "repos/${GITHUB_REPOSITORY}/releases" --jq ".[] | select(.draft and .tag_name == \"$tag\") | .id"); do
+            echo "Replacing earlier draft $id"
+            gh api -X DELETE "repos/${GITHUB_REPOSITORY}/releases/$id"
+          done
           gh release create "$tag" files/* --draft --title "PageBinder $version" --notes-file notes.md --target "$GITHUB_SHA"

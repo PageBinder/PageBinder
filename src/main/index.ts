@@ -1,8 +1,9 @@
 import { app, BrowserWindow, Menu, screen, shell, systemPreferences, type MenuItemConstructorOptions } from 'electron'
 import { join } from 'node:path'
-import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { registerIpc, closeCurrentNotebookSync } from './ipc'
 import { registerScheme, registerProtocolHandler } from './protocol'
+import { prepareSettingsFolder } from './settingsFolder'
 
 registerScheme()
 
@@ -10,34 +11,17 @@ registerScheme()
 // electron-builder.yml so the installed shortcut and the running window share one button.
 if (process.platform === 'win32') app.setAppUserModelId('app.pagebinder.desktop')
 
-/**
- * The program was called DigiNote before 1.0.1, and Electron names the settings folder after
- * the program. Once, on the first start under the new name, the app's own files are carried
- * across from the old folder: the recent-notebooks list, the global template library, and the
- * window storage (recent colours). Anything already present in the new folder is kept, and the
- * old folder is left in place. A marker file records that it has been done.
- */
-function migrateSettingsFolder(): void {
-  if (process.argv.some((a) => a.startsWith('--user-data-dir'))) return
-  try {
-    const current = app.getPath('userData')
-    const previous = join(app.getPath('appData'), 'diginote')
-    const marker = join(current, '.migrated-from-diginote')
-    if (!existsSync(previous) || existsSync(marker)) return
-    mkdirSync(current, { recursive: true })
-    for (const name of ['recent-notebooks.json', 'templates']) {
-      const from = join(previous, name)
-      if (existsSync(from)) cpSync(from, join(current, name), { recursive: true, force: false })
-    }
-    // Browser storage is a database: take the old one whole, or not at all.
-    const storage = join(previous, 'Local Storage')
-    if (existsSync(storage) && !existsSync(join(current, 'Local Storage'))) cpSync(storage, join(current, 'Local Storage'), { recursive: true })
-    writeFileSync(marker, new Date().toISOString())
-  } catch {
-    /* the app works without them; nothing in a notebook depends on the settings folder */
-  }
+// The installed app and the development build keep separate settings folders, so nothing from
+// development ever shows in an installed copy. See settingsFolder.ts.
+{
+  const choice = prepareSettingsFolder({
+    packaged: app.isPackaged,
+    explicitDir: process.argv.some((a) => a.startsWith('--user-data-dir')),
+    appData: app.getPath('appData'),
+    sharedDir: app.getPath('userData')
+  })
+  if (choice.userData) app.setPath('userData', choice.userData)
 }
-migrateSettingsFolder()
 
 /** Icons are generated from resources/logo-artwork.jpg by scripts/make-icons.cjs. */
 const ICON = join(__dirname, '../../resources/icon.png')

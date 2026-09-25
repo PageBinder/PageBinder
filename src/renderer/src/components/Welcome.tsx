@@ -43,7 +43,7 @@ export function Welcome({
             <h2>Getting started</h2>
             <ul>
               <li>A notebook is an ordinary folder. Keep it on this computer's own disk; your Documents folder is a good place.</li>
-              <li>Pages save as you type, and every saved version is kept in the page's history.</li>
+              <li>Pages save as you type, and earlier versions are kept in each page's history.</li>
               <li>To back up, copy the notebook folder to a NAS or an external drive. The .index folder can be left out.</li>
             </ul>
             <button type="button" className="link-button" onClick={onGettingStarted}>
