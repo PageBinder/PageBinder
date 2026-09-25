@@ -1,7 +1,7 @@
 # PageBinder: program description
 
 Name: **PageBinder**, renamed on 24 September 2026 from the working name DigiNote. The project folder is `PageBinder`, and the program icon is generated from `resources/logo-artwork.jpg`.
-Status: version 1.0.1 (the 1.0.0 feature set plus the fixes listed under Version 1.0.1 in README.md; this revision is the marker for user testing before further phases). Phases 1 to 7 (Foundation, Documents, Attachments, Search, History and verification, Templates and copy or move, Scale) built on 24 September 2026. Phase 7 results and the 1.0 interface changes are recorded in README.md. The native Outlook drop helper is the one phase 3 item still to be verified against a real Outlook drag; see section 7.2. See README.md for how to run it.
+Status: version 1.1.0. Phases 1 to 7 (Foundation, Documents, Attachments, Search, History and verification, Templates and copy or move, Scale) built on 24 September 2026; version 1.0.1 was the marker for user testing. Phase 8 (Windows build and installers) built on 25 September 2026; see DEVELOPMENT_PLAN.md. Phase 7 results and the 1.0 interface changes are recorded in DEVELOPMENT_PLAN.md. The native Outlook drop helper is the one phase 3 item still to be verified against a real Outlook drag; see section 7.2. See DEVELOPMENT_PLAN.md for how to run it.
 Date: 22 September 2026.
 
 ## 1. Purpose
