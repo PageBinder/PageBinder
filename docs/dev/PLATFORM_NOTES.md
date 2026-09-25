@@ -27,3 +27,4 @@ What each platform has taught us, so the next machine does not relearn it. Add t
 - **Playwright `app.evaluate`:** use no named inner functions, because tsx's `__name` helper does not exist inside the app.
 - **Timing.** Tests must wait for a condition, not for a fixed delay. The crash test and a restored-title check failed on slow machines until they did.
 - **Linux (cloud sessions and CI):** window suites need a display, so run them with `xvfb-run -a npm run e2e`.
+- **Every npm and npx command runs inside `app/`.** The repository root holds only the README, the licence, `CLAUDE.md`, and the `docs/` folder.

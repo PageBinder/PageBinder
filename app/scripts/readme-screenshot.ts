@@ -1,7 +1,7 @@
 /**
  * Retake the screenshot shown in README.md: the sample notebook open on its Lidar pass page.
  *   npx tsx scripts/make-sample.ts <folder> && npm run build:e2e
- *   npx tsx scripts/readme-screenshot.ts "<folder>/Farm records 2026" docs/images/pagebinder.png
+ *   npx tsx scripts/readme-screenshot.ts "<folder>/Farm records 2026" ../docs/images/pagebinder.png
  */
 import { _electron as electron } from 'playwright'
 import { join, resolve } from 'node:path'

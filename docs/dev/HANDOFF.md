@@ -1,6 +1,6 @@
 # Handoff notes
 
-Each Claude Code session ends a task with `/handoff`, which adds a note at the **top** of this file. Each session starts with `/sync`, which pulls and reads the newest notes. Keep the 20 most recent entries; git history keeps older ones.
+Each Claude Code session ends a task with `/handoff`, which adds a note at the **top** of this file (`docs/dev/HANDOFF.md`). Each session starts with `/sync`, which pulls and reads the newest notes. Keep the 20 most recent entries; git history keeps older ones.
 
 Notes are public. Write about the code, never about people: no names, emails, machine owners, or credentials.
 
@@ -16,6 +16,13 @@ Entry format:
 ```
 
 ---
+
+## 2026-09-25 · lead (macOS, Apple silicon) · main
+**Changed:** Repository layout, so the GitHub front page shows a short list before the README. The program moved into `app/` (run every npm and npx command there), user documents into `docs/`, and developer notes (this file, the decision log, platform notes, the development plan, the CLAUDE.local example) into `docs/dev/`. Only `README.md`, `LICENSE`, and `CLAUDE.md` stay at the root. The packaged app now receives its help documents from `docs/` as `resources/docs-bundle` (electron-builder `extraResources`), and `app/src/main/about.ts` reads them from there when packaged and from the repository root in development. `app/scripts/check-package.ts` checks that bundle. Workflows run every command in `app/`, and artifact paths are prefixed `app/`. `/sync`, `/handoff`, and `CLAUDE.md` use the new paths.
+**Found:** Nothing new.
+**Checked:** From `app/`: type check clean, 72 unit tests pass, production build succeeds, phase 1 end-to-end suite passes. `npm run dist:mac` built both Mac installers, and the package check passed with the docs-bundle present and `docs/dev` and `docs/images` absent. The macOS and Windows workflow run for this push is the proof for CI.
+**Next platform must check:** On every machine, after `/sync`: `cd app` before any npm command, and move any local `node_modules`, `out`, `out-e2e`, and `test-notebooks` folders into `app/` (or just run `npm ci` there). Nothing else changes.
+**Open:** Unchanged.
 
 ## 2026-09-25 · lead (macOS, Apple silicon) · main
 **Changed:** Notes only. Recorded that the OneNote importer will be a separate helper app, not a core feature (see `docs/DECISIONS.md`).

@@ -157,6 +157,8 @@ The spec's targets were under 2 s to a usable window with an existing index, und
 
 ## Commands
 
+The program lives in `app/`; run every command there (`cd app`). User documents are in `docs/` and developer notes in `docs/dev/`.
+
 ```bash
 npm install          # first time only
 npm run dev          # run the app; UI hot-reloads, main process restarts on change
@@ -175,7 +177,7 @@ npx tsx scripts/make-scale.ts <parent> [pages]        # build a large notebook f
 npx tsx scripts/measure-scale.ts <notebook>           # measure open, index, search, and add-page times through the real window
 npm run export -- <folder> [--combine out.html] [--pdf out.pdf]   # regenerate page.html files and combine pages
 npx tsx scripts/make-sample.ts   # create test-notebooks/Farm records 2026
-npx tsx scripts/readme-screenshot.ts <notebook> docs/images/pagebinder.png   # retake the README screenshot (after build:e2e)
+npx tsx scripts/readme-screenshot.ts <notebook> ../docs/images/pagebinder.png   # retake the README screenshot (after build:e2e)
 ```
 
 To open a notebook automatically at startup, set `PAGEBINDER_OPEN` to the notebook folder:

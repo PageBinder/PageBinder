@@ -6,11 +6,15 @@
  *   npx tsx scripts/check-package.ts          (checks every app.asar under dist/)
  */
 import { listPackage } from '@electron/asar'
-import { readdirSync, statSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, readdirSync, statSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 
 /** Top-level entries allowed inside app.asar. */
-const ALLOWED_TOP = new Set(['out', 'resources', 'docs', 'node_modules', 'package.json', 'README.md', 'LICENSE', 'PROGRAM_DESCRIPTION.md', 'RECOVERY.md'])
+const ALLOWED_TOP = new Set(['out', 'resources', 'node_modules', 'package.json'])
+/** Documents the Help menu reads, copied beside the app as resources/docs-bundle (electron-builder.yml). */
+const BUNDLED_DOCS = ['README.md', 'LICENSE', 'docs/PROGRAM_DESCRIPTION.md', 'docs/RECOVERY.md', 'docs/GETTING_STARTED.md', 'docs/SHORTCUTS.md', 'docs/HISTORY_AND_VERIFY.md', 'docs/UNINSTALL.md']
+/** Never shipped: developer notes and the README screenshot. */
+const NOT_BUNDLED = ['docs/dev', 'docs/images']
 /** Anything that looks like user data, a notebook, or a test fixture, outside node_modules. */
 const FORBIDDEN = /(^|\/)(recent-notebooks\.json|notebook\.json|section\.json|group\.json|page\.json|[^/]+\.page|\.index|\.history|\.recycle|Local Storage|IndexedDB|test-notebooks|Medical Records|out-e2e|\.lock|\.installed-app|\.migrated-from-diginote)(\/|$)/
 
@@ -35,7 +39,10 @@ function main(): void {
       if (!ALLOWED_TOP.has(top)) problems.push(`${asar}: unexpected ${rel}`)
       else if (top !== 'node_modules' && FORBIDDEN.test(rel)) problems.push(`${asar}: development or user data ${rel}`)
     }
-    process.stdout.write(`  checked ${asar}\n`)
+    const bundle = join(dirname(asar), 'docs-bundle')
+    for (const f of BUNDLED_DOCS) if (!existsSync(join(bundle, f))) problems.push(`${asar}: help document missing beside the app: docs-bundle/${f}`)
+    for (const f of NOT_BUNDLED) if (existsSync(join(bundle, f))) problems.push(`${asar}: development files shipped: docs-bundle/${f}`)
+    process.stdout.write(`  checked ${asar} and its docs-bundle\n`)
   }
   if (problems.length) {
     process.stderr.write(`The package contains files that must not ship:\n  ${problems.join('\n  ')}\n`)

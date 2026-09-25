@@ -67,7 +67,7 @@ Copy the notebook folder back. Open it. The search index rebuilds in the backgro
 ## Reading everything without the app
 
 ```
-npx tsx scripts/pagebinder-export.ts "/path/to/My notebook" --combine notebook.html
+cd app && npx tsx scripts/pagebinder-export.ts "/path/to/My notebook" --combine notebook.html
 ```
 
 regenerates every `page.html` and writes one HTML file holding all pages in order. Add `--pdf notebook.pdf` for a single PDF.
