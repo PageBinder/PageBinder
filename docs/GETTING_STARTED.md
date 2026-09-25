@@ -1,5 +1,12 @@
 # Getting started
 
+## Installing
+
+- **macOS**: open `PageBinder-<version>-arm64.dmg` (Apple Silicon) or `-x64.dmg` (Intel) and drag PageBinder to Applications. The app is not yet signed with an Apple Developer ID, so the first time, right-click PageBinder in Applications and choose Open, then Open again.
+- **Windows**: run `PageBinder-Setup-<version>.exe`. It installs for the current user without administrator rights unless you choose all users, and adds Start menu and desktop shortcuts. The installer is not yet code-signed, so Windows SmartScreen may say it protected your PC: choose More info, then Run anyway.
+
+The first time PageBinder starts, the Welcome screen has a short Getting started note. Create notebook suggests your Documents folder.
+
 PageBinder keeps notes the way classic desktop OneNote did: notebooks, section groups, sections, and pages, all stored as ordinary folders and files on your own disk. Nothing is sent anywhere.
 
 ## The first five minutes
@@ -45,11 +52,11 @@ You might open a notebook folder without the app to:
 
 ## Backing up
 
-A backup is a copy of the notebook folder. Any tool that copies folders works. Exclude `.index`, include everything else, and prefer a schedule that runs when you are not editing.
+A backup is a copy of the notebook folder. Any tool that copies folders works. Exclude `.index` (a search cache) and `.lock` (marks the notebook as open), include everything else, and prefer a schedule that runs when you are not editing.
 
 - **macOS, Time Machine**: keep notebooks anywhere under your home folder and Time Machine backs them up hourly to an external drive or a network share. Add `.index` to its exclusion list in System Settings > General > Time Machine > Options.
 - **Windows, File History**: keep notebooks under Documents or add their folder in Settings > Update & Security > Backup, pointed at an external or network drive.
-- **Network drive (NAS) with a scheduled copy**: on macOS, a scheduled `rsync -a --delete --exclude .index` job; on Windows, `robocopy "C:\Notebooks" "\\nas\Notebooks" /MIR /XD .index`, run by Task Scheduler. A Synology or QNAP NAS can run its own sync client for the same purpose.
+- **Network drive (NAS) with a scheduled copy**: on macOS, a scheduled `rsync -a --delete --exclude .index --exclude .lock` job; on Windows, `robocopy "C:\Notebooks" "\\nas\Notebooks" /MIR /XD .index /XF .lock`, run by Task Scheduler. A Synology or QNAP NAS can run its own sync client for the same purpose.
 - **Cloud drives** such as iCloud Drive, Google Drive, OneDrive, or Dropbox work as a backup destination when they sync from a separate copy, not from the live notebook folder. Point them at a backup copy made by one of the methods above rather than keeping the notebook itself inside their synced folder.
 - **Third-party backup software** such as Backblaze, Carbon Copy Cloner, Arq, or Macrium Reflect can back up the notebook folder like any other folder.
 

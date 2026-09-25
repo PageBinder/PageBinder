@@ -4,6 +4,7 @@
  */
 import { promises as fs } from 'node:fs'
 import { join, basename } from 'node:path'
+import { renameDurable } from './atomic'
 import type { PageDoc, SectionMeta } from '../../shared/types'
 import { readJson, writeJson } from './notebook'
 import { now, timestampForFileName } from './ids'
@@ -35,7 +36,7 @@ export async function recyclePage(root: string, pageRel: string, title: string):
   await fs.mkdir(recycle, { recursive: true })
   const name = `${timestampForFileName()} ${basename(dir)}`
   const dest = join(recycle, name)
-  await fs.rename(dir, dest)
+  await renameDurable(dir, dest)
   const note: RecycleNote = { kind: 'page', originalSection: toRel(root, join(dir, '..')), originalFolder: basename(dir), title, deleted: now() }
   await writeJson(join(dest, RECYCLE_NOTE), note)
   return name
@@ -79,7 +80,7 @@ export async function restoreRecycled(root: string, name: string, fallbackSectio
     const parentAbs = container ? resolveInside(root, container) : root
     const folder = await uniqueName(parentAbs, note.originalFolder)
     await fs.rm(join(src, RECYCLE_NOTE), { force: true })
-    await fs.rename(src, join(parentAbs, folder))
+    await renameDurable(src, join(parentAbs, folder))
     const metaPath = container ? join(parentAbs, 'group.json') : join(root, 'notebook.json')
     const meta = await readJson<{ order?: string[] }>(metaPath)
     if (meta) await writeJson(metaPath, { ...meta, order: [...(meta.order ?? []), folder] })
@@ -95,7 +96,7 @@ export async function restoreRecycled(root: string, name: string, fallbackSectio
   const folder = await uniqueName(sectionAbs, (note?.originalFolder ?? name).replace(new RegExp(`${PAGE_SUFFIX}$`), ''), PAGE_SUFFIX)
   const dest = join(sectionAbs, folder)
   await fs.rm(join(src, RECYCLE_NOTE), { force: true })
-  await fs.rename(src, dest)
+  await renameDurable(src, dest)
   const meta = await readJson<SectionMeta>(join(sectionAbs, SECTION_META))
   if (meta) await writeJson(join(sectionAbs, SECTION_META), { ...meta, pageOrder: [...(meta.pageOrder ?? []), folder] })
   return toRel(root, dest)

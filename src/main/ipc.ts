@@ -314,6 +314,8 @@ export function registerIpc(): void {
     const result = await dialog.showOpenDialog(win!, {
       title: 'Choose where to create the notebook',
       buttonLabel: 'Create here',
+      // Documents is the suggested home for notebooks: on the local disk and in every OS backup.
+      defaultPath: app.getPath('documents'),
       properties: ['openDirectory', 'createDirectory']
     })
     return result.canceled ? null : (result.filePaths[0] ?? null)

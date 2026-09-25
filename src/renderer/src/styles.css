@@ -170,6 +170,10 @@ input { font: inherit; color: inherit; }
 .recent-list button { width: 100%; text-align: left; display: flex; flex-direction: column; gap: 2px; border: none; border-bottom: 1px solid var(--border); border-radius: 0; padding: 8px 4px; }
 .recent-name { font-weight: 600; }
 .recent-path { color: var(--muted); font-size: 11px; }
+.first-run ul { margin: 0 0 8px; padding-left: 18px; line-height: 1.5; }
+.first-run li { margin-bottom: 4px; }
+.link-button { border: none; background: none; padding: 0; color: var(--accent); cursor: pointer; }
+.link-button:hover { text-decoration: underline; }
 
 /* ---------- dialogs and menus ---------- */
 .dialog-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.25); display: flex; align-items: center; justify-content: center; z-index: 50; }

@@ -16,7 +16,7 @@ import {
   type SectionMeta,
   type CanvasObject
 } from '../../shared/types'
-import { atomicWriteFile, durableCopy, exists, cleanTempFiles } from './atomic'
+import { atomicWriteFile, durableCopy, exists, cleanTempFiles, renameDurable } from './atomic'
 import { newId, now, timestampForFileName } from './ids'
 import { sanitizeName, uniqueName } from './names'
 import { readJson, writeJson } from './notebook'
@@ -198,7 +198,7 @@ export async function loadPage(root: string, pageRel: string): Promise<LoadPageR
   if (!doc) {
     // Keep the damaged file for inspection, then look for the newest valid snapshot.
     if (await exists(docPath)) {
-      await fs.rename(docPath, join(dir, `${PAGE_DOC}.corrupt-${timestampForFileName()}`))
+      await renameDurable(docPath, join(dir, `${PAGE_DOC}.corrupt-${timestampForFileName()}`))
     }
     const history = await listHistory(root, pageRel)
     for (const entry of history) {
@@ -297,7 +297,7 @@ export async function savePage(root: string, pageRel: string, input: PageDoc, po
     const folder = await uniqueName(sectionAbs, wanted, PAGE_SUFFIX)
     const dest = join(sectionAbs, folder)
     try {
-      await fs.rename(dir, dest)
+      await renameDurable(dir, dest)
       await replacePageOrder(sectionAbs, currentFolder, folder)
       dir = dest
     } catch {

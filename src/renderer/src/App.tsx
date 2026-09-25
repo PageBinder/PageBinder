@@ -1252,7 +1252,7 @@ export function App(): JSX.Element {
   if (!tree) {
     return (
       <>
-        <Welcome onCreate={() => void createNotebook()} onOpen={() => void openNotebookFolder()} onOpenRecent={(r) => void openRecent(r)} onOpenTemplates={() => void openTemplatesNotebook()} />
+        <Welcome onCreate={() => void createNotebook()} onOpen={() => void openNotebookFolder()} onOpenRecent={(r) => void openRecent(r)} onOpenTemplates={() => void openTemplatesNotebook()} onGettingStarted={() => setAbout('getting-started')} />
         {error && (
           <div className="error-bar">
             <span>{error}</span>

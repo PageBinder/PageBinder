@@ -130,6 +130,26 @@ Measured on a 50,000-page notebook (`npx tsx scripts/make-scale.ts`, `npx tsx sc
 
 The spec's targets were under 2 s to a usable window with an existing index, under 20 ms per type-ahead query, and under 5 minutes for the first index. All three are met.
 
+## Phase 8: Windows and installers (version 1.1.0)
+
+- **Installers.** `npm run dist:mac` on a Mac builds `dist/PageBinder-1.1.0-arm64.dmg` and `-x64.dmg` (plus zips). `npm run dist:win` on Windows builds `dist/PageBinder-Setup-1.1.0.exe`, one installer for x64 and ARM PCs. It installs per user by default, needs no administrator rights, lets the user pick the folder, and adds Start menu and desktop shortcuts. The configuration is `electron-builder.yml`, and the icons come from `build/`. Neither installer is signed yet: macOS gets an ad-hoc signature, which Apple Silicon requires, and Windows SmartScreen asks once before the first run. The Help menu documents are packaged inside the app.
+- **Checked on real Windows and macOS machines.** `.github/workflows/platforms.yml` runs on every push. On `windows-latest` and `macos-latest` it runs the type check, the unit tests, the crash test, and every end-to-end suite, then builds both installers and attaches them to the run for download. It also runs the acceptance check below in both directions. The Windows side installs the real installer silently and opens the Mac's notebook in the installed app, and the Mac side does the same with a notebook made on Windows.
+- **Acceptance check (Mac notebook opens on Windows from a copy, no differences).** `scripts/cross-platform.ts make <folder>` builds a notebook and records the size and SHA-256 of every file. `check <folder>`, run on the other system against a copy, confirms these points:
+  - the same files arrive with the same bytes;
+  - every page's checksum holds, and rendering here gives a byte-identical `page.html`;
+  - a full Verify Notebook is clean;
+  - the app shows every section, page, picture, and attachment;
+  - after all that, not one file has changed.
+  The notebook uses accented names, emoji, characters Windows forbids (`:`, `?`, `<`, `"`), a reserved name (`CON`), two sections whose names differ only in case, history, a picture, and a PDF.
+- **Saves on Windows.** There, a rename fails for a moment while another program has the file open: a virus scanner, the search indexer, a backup job, or Explorer's preview pane. Every rename in the storage layer (atomic saves, page folder renames, moves, recycling) now retries for up to about three seconds on Windows before reporting a failure. macOS behaviour is unchanged.
+- **Long paths.** The app reads and writes paths past Windows' 260-character limit. Pictures, attachments, and rendered pages with a full path of 250 characters or more are served straight from disk rather than through Chromium's file loader, and video can still seek. Verify Notebook reports a **Long file path** warning for any page with a file whose full path is over 240 characters, because older programs, backup tools included, stop at 260.
+- **Notebook copied with a lock.** A `.lock` written on another computer, for example in a NAS copy taken while the notebook was open, is ignored and replaced. Before, its process number was checked against this computer's processes and could refuse to open the notebook. The lock now records the computer's own name, so a window started from the Dock or Start menu and one started from a terminal agree.
+- **Files the system adds.** Verify Notebook no longer reports `Thumbs.db`, `desktop.ini`, or the macOS `Icon` file as unused page files. Explorer and Finder create these in picture folders, and they travel with NAS copies.
+- **Exports on Windows.** A combined HTML export saved outside the notebook links pictures as `file:///C:/...`. Before, the drive letter made those links unusable.
+- **First run.** With no recent notebooks, the Welcome screen shows a short Getting started note: a notebook is a folder, pages save themselves with history, and a backup is a copy of the folder. It also links to the full guide, and Create notebook suggests the Documents folder. The Getting Started guide now opens with installation steps for both systems.
+- **Windows details.** The right-click item is labelled **Show in Explorer** on Windows, and the taskbar groups the running window with its Start menu shortcut.
+- Backup instructions now leave out `.lock` as well as `.index`.
+
 ## Commands
 
 ```bash
@@ -141,7 +161,10 @@ npm test             # storage layer unit tests
 npm run typecheck    # TypeScript checks for main, preload, and renderer
 npm run crash-test   # kill a saving process 30 times and prove nothing is lost
 npm run icons        # rebuild every icon and the in-app logo from resources/logo-artwork.jpg
-npm run e2e          # build to out-e2e/ and drive the real window through phase 1 to 6 checks
+npm run e2e          # build to out-e2e/ and drive the real window through every suite
+npm run dist:mac     # macOS installers into dist/ (run on a Mac)
+npm run dist:win     # Windows installer into dist/ (run on Windows)
+npx tsx scripts/cross-platform.ts make|check <folder>   # phase 8 acceptance check across two computers
 npx tsx scripts/make-medical.ts <notebook> [groups]   # fill a notebook with people, pets, and visit pages for usability testing
 npx tsx scripts/make-scale.ts <parent> [pages]        # build a large notebook for scale testing
 npx tsx scripts/measure-scale.ts <notebook>           # measure open, index, search, and add-page times through the real window

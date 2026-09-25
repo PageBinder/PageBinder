@@ -2,6 +2,7 @@
  * Notebook creation, opening, and tree scanning.
  * Phase 1 walks the folders directly; the SQLite tree cache arrives in phase 4.
  */
+import { hostname } from 'node:os'
 import { promises as fs, readFileSync, rmSync } from 'node:fs'
 import { join, basename } from 'node:path'
 import {
@@ -94,7 +95,11 @@ export interface LockInfo {
 export async function acquireLock(root: string): Promise<{ ok: true } | { ok: false; holder: LockInfo }> {
   const path = join(root, LOCK_FILE)
   const existing = await readJson<LockInfo>(path)
-  if (existing && existing.pid !== process.pid && isProcessAlive(existing.pid)) {
+  // A lock written on another computer cannot be checked from here, and its process number means
+  // nothing on this one. It arrives with a copy of the notebook (from a backup or the NAS, taken
+  // while the notebook was open), so it is stale by definition and is replaced.
+  const sameHost = !existing?.host || existing.host.toLowerCase() === hostName().toLowerCase()
+  if (existing && sameHost && existing.pid !== process.pid && isProcessAlive(existing.pid)) {
     return { ok: false, holder: existing }
   }
   const info: LockInfo = { pid: process.pid, host: hostName(), since: now() }
@@ -130,7 +135,9 @@ function isProcessAlive(pid: number): boolean {
 
 function hostName(): string {
   try {
-    return (process.env.HOSTNAME ?? process.env.COMPUTERNAME ?? require('node:os').hostname()) as string
+    // The OS name, not an environment variable: a shell exports HOSTNAME but an app started from
+    // the Dock or Start menu does not, and both must agree for the lock check above.
+    return hostname() || 'unknown'
   } catch {
     return 'unknown'
   }

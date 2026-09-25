@@ -1,0 +1,122 @@
+# Phase 8: build, test, and package on macOS and Windows, and prove a notebook made on one opens on
+# the other with no differences. Installers are attached to each run as downloadable artifacts.
+name: macOS and Windows
+
+on:
+  push:
+    branches: [main, 'claude/**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: platforms-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Crash test (kill mid-save, 30 rounds)
+        run: npm run crash-test
+      - name: End-to-end suites
+        run: npm run e2e
+      - name: Make a notebook for the other platform
+        run: npx tsx scripts/cross-platform.ts make xp-${{ runner.os }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: notebook-${{ runner.os }}
+          path: xp-${{ runner.os }}
+          # .history holds each page's saved versions: part of the notebook, so it must travel too.
+          include-hidden-files: true
+          retention-days: 7
+
+  package:
+    name: Installer (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build installers
+        run: npm run ${{ runner.os == 'macOS' && 'dist:mac' || 'dist:win' }}
+        env:
+          # No signing certificate: never go looking for one in the runner's keychain.
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ runner.os }}
+          path: |
+            dist/*.dmg
+            dist/*.zip
+            dist/*.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  cross-check:
+    name: Notebook from ${{ matrix.from }} opens in the ${{ matrix.os }} installed app
+    needs: [test, package]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            from: macOS
+          - os: macos-latest
+            from: Windows
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: notebook-${{ matrix.from }}
+          path: xp
+      - uses: actions/download-artifact@v4
+        with:
+          name: installer-${{ runner.os }}
+          path: installer
+      - name: Install PageBinder (Windows, per-user, silent)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem installer -Filter 'PageBinder-Setup-*.exe' | Select-Object -First 1
+          Start-Process -FilePath $setup.FullName -ArgumentList '/S' -Wait
+          $exe = Join-Path $env:LOCALAPPDATA 'Programs\PageBinder\PageBinder.exe'
+          if (-not (Test-Path $exe)) { throw "PageBinder.exe not found at $exe" }
+          "PAGEBINDER_EXE=$exe" | Out-File -FilePath $env:GITHUB_ENV -Append
+      - name: Install PageBinder (macOS, from the zip for this Mac's architecture)
+        if: runner.os == 'macOS'
+        run: |
+          arch=$(uname -m); [ "$arch" = x86_64 ] && arch=x64
+          zip=$(ls installer/PageBinder-*-${arch}.zip | head -1)
+          ditto -x -k "$zip" "$RUNNER_TEMP/app"
+          echo "PAGEBINDER_EXE=$RUNNER_TEMP/app/PageBinder.app/Contents/MacOS/PageBinder" >> "$GITHUB_ENV"
+      - name: Open the other platform's notebook in the installed app
+        run: npx tsx scripts/cross-platform.ts check xp

@@ -1,0 +1,70 @@
+# Installers for macOS and Windows. See README.md, "Building the installers".
+#   npm run dist:mac   (on a Mac)      -> dist/PageBinder-<version>-<arch>.dmg and .zip
+#   npm run dist:win   (on Windows)    -> dist/PageBinder-Setup-<version>.exe
+appId: app.pagebinder.desktop
+productName: PageBinder
+copyright: Copyright © 2026
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**
+  - resources/**
+  - "!resources/logo-artwork.jpg"
+  - package.json
+  # The Help menu reads these from inside the app (src/main/about.ts).
+  - README.md
+  - PROGRAM_DESCRIPTION.md
+  - RECOVERY.md
+  - docs/**
+  - "!**/*.map"
+asar: true
+# Installers are named <product>-<version>-<arch>.<ext> so the two Mac builds do not collide.
+artifactName: ${productName}-${version}-${arch}.${ext}
+
+mac:
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
+  category: public.app-category.productivity
+  icon: build/icon.icns
+  # No Apple Developer ID yet: an ad-hoc signature, which Apple Silicon requires to run at all.
+  # With a Developer ID, set identity to its name (or remove this line) and hardenedRuntime to true.
+  identity: "-"
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  extendInfo:
+    NSDocumentsFolderUsageDescription: PageBinder keeps notebooks wherever you choose, including your Documents folder.
+    NSDesktopFolderUsageDescription: PageBinder keeps notebooks wherever you choose, including your Desktop.
+    NSDownloadsFolderUsageDescription: PageBinder can insert files from your Downloads folder.
+    NSNetworkVolumesUsageDescription: PageBinder can open notebooks and templates kept on a network drive.
+    NSRemovableVolumesUsageDescription: PageBinder can open notebooks kept on an external drive.
+dmg:
+  title: ${productName} ${version}
+  contents:
+    - { x: 130, y: 220 }
+    - { x: 410, y: 220, type: link, path: /Applications }
+
+win:
+  target:
+    - target: nsis
+      arch: [x64, arm64]
+  icon: build/icon.ico
+  # No code-signing certificate yet, so Windows SmartScreen asks once before the first run.
+  signAndEditExecutable: true
+nsis:
+  artifactName: ${productName}-Setup-${version}.${ext}
+  # A per-user install needs no administrator rights; the installer lets the user choose.
+  oneClick: false
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: PageBinder
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  # Settings (recent notebooks, global templates) are kept on uninstall; notebooks are never touched.
+  deleteAppDataOnUninstall: false

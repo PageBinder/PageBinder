@@ -8,6 +8,7 @@ import { resolveInside } from './storage/paths'
 import { currentNotebookRoot, resolveRel } from './ipc'
 import { readSnapshot } from './storage/page'
 import { renderPageHtml } from '../shared/render/renderPage'
+import { fileResponse, needsNodeRead } from './fileResponse'
 
 export const SCHEME = 'pagebinder'
 
@@ -46,7 +47,7 @@ export function registerProtocolHandler(): void {
     } catch {
       return new Response('Forbidden', { status: 403 })
     }
-    const response = await net.fetch(pathToFileURL(abs).toString())
+    const response = needsNodeRead(abs) ? await fileResponse(abs, request.headers.get('Range')) : await net.fetch(pathToFileURL(abs).toString())
     // Rendered pages must not be cached: they change on every save.
     const headers = new Headers(response.headers)
     headers.set('Cache-Control', 'no-store')

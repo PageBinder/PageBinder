@@ -1,6 +1,7 @@
 /** Recursive folder copy that clones files on APFS and never leaves a half-copied folder under the final name. */
 import { promises as fs, constants as fsConstants } from 'node:fs'
 import { join, dirname, basename } from 'node:path'
+import { renameDurable } from './atomic'
 
 export async function copyDir(src: string, dest: string, skip: (name: string, relFromSrc: string) => boolean = () => false): Promise<void> {
   const tmp = join(dirname(dest), `.tmp-${basename(dest)}`)
@@ -15,5 +16,5 @@ export async function copyDir(src: string, dest: string, skip: (name: string, re
     }
   }
   await walk(src, tmp, '')
-  await fs.rename(tmp, dest)
+  await renameDurable(tmp, dest)
 }

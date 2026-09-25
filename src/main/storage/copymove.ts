@@ -5,6 +5,7 @@
  */
 import { promises as fs } from 'node:fs'
 import { join, dirname, basename } from 'node:path'
+import { renameDurable } from './atomic'
 import { FORMAT_VERSION, type PageDoc, type SectionMeta, type GroupMeta, type NotebookMeta } from '../../shared/types'
 import { readJson, writeJson } from './notebook'
 import { newId, now } from './ids'
@@ -46,7 +47,7 @@ export async function movePage(root: string, pageRel: string, targetSectionRel: 
   if (fromSection === targetSectionRel) return pageRel
   const targetAbs = resolveInside(root, targetSectionRel)
   const folder = await uniqueName(targetAbs, basename(src).slice(0, -PAGE_SUFFIX.length), PAGE_SUFFIX)
-  await fs.rename(src, join(targetAbs, folder))
+  await renameDurable(src, join(targetAbs, folder))
   await editPageOrder(root, fromSection, (o) => o.filter((n) => n !== basename(src)))
   await editPageOrder(root, targetSectionRel, (o) => [...o, folder])
   return `${targetSectionRel}/${folder}`
@@ -85,7 +86,7 @@ export async function moveContainer(root: string, rel: string, targetContainerRe
   if (fromContainer === targetContainerRel) return rel
   const targetAbs = targetContainerRel ? resolveInside(root, targetContainerRel) : root
   const folder = await uniqueName(targetAbs, basename(src))
-  await fs.rename(src, join(targetAbs, folder))
+  await renameDurable(src, join(targetAbs, folder))
   await editOrder(root, fromContainer, (o) => o.filter((n) => n !== basename(src)))
   await editOrder(root, targetContainerRel, (o) => [...o, folder])
   return targetContainerRel ? `${targetContainerRel}/${folder}` : folder
@@ -135,7 +136,7 @@ export async function recycleContainer(root: string, rel: string): Promise<strin
   const recycle = join(root, RECYCLE_DIR)
   await fs.mkdir(recycle, { recursive: true })
   const name = `${timestampForFileName()} ${basename(src)}`
-  await fs.rename(src, join(recycle, name))
+  await renameDurable(src, join(recycle, name))
   const fromContainer = toRel(root, dirname(src)) === '.' ? '' : toRel(root, dirname(src))
   await editOrder(root, fromContainer, (o) => o.filter((n) => n !== basename(src)))
   await writeJson(join(recycle, name, 'recycle.json'), { kind, originalContainer: fromContainer, originalFolder: basename(src), title: meta?.name ?? basename(src), deleted: now(), format: FORMAT_VERSION })

@@ -3,11 +3,25 @@ import { useEffect, useState } from 'react'
 import type { RecentNotebook } from '../../../preload/api'
 import logo from '../assets/logo.png'
 
-export function Welcome({ onCreate, onOpen, onOpenRecent, onOpenTemplates }: { onCreate: () => void; onOpen: () => void; onOpenRecent: (root: string) => void; onOpenTemplates: () => void }): JSX.Element {
-  const [recent, setRecent] = useState<RecentNotebook[]>([])
+export function Welcome({
+  onCreate,
+  onOpen,
+  onOpenRecent,
+  onOpenTemplates,
+  onGettingStarted
+}: {
+  onCreate: () => void
+  onOpen: () => void
+  onOpenRecent: (root: string) => void
+  onOpenTemplates: () => void
+  onGettingStarted: () => void
+}): JSX.Element {
+  const [recent, setRecent] = useState<RecentNotebook[] | null>(null)
   useEffect(() => {
     void window.pagebinder.notebook.recent().then(setRecent)
   }, [])
+  // First run, or every notebook has been removed from the list: a few lines on how the app works.
+  const firstRun = recent !== null && recent.length === 0
   return (
     <div className="welcome">
       <div className="welcome-card">
@@ -24,6 +38,19 @@ export function Welcome({ onCreate, onOpen, onOpenRecent, onOpenTemplates }: { o
             Open notebook folder
           </button>
         </div>
+        {firstRun && (
+          <div className="first-run">
+            <h2>Getting started</h2>
+            <ul>
+              <li>A notebook is an ordinary folder. Keep it on this computer's own disk; your Documents folder is a good place.</li>
+              <li>Pages save as you type, and every saved version is kept in the page's history.</li>
+              <li>To back up, copy the notebook folder to a NAS or an external drive. The .index folder can be left out.</li>
+            </ul>
+            <button type="button" className="link-button" onClick={onGettingStarted}>
+              Read the Getting Started guide
+            </button>
+          </div>
+        )}
         <h2>System</h2>
         <ul className="recent-list">
           <li>
@@ -33,7 +60,7 @@ export function Welcome({ onCreate, onOpen, onOpenRecent, onOpenTemplates }: { o
             </button>
           </li>
         </ul>
-        {recent.length > 0 && (
+        {recent && recent.length > 0 && (
           <>
             <h2>Recent</h2>
             <ul className="recent-list">

@@ -3,6 +3,7 @@
  */
 import { promises as fs } from 'node:fs'
 import { join, dirname, basename } from 'node:path'
+import { renameDurable } from './atomic'
 import {
   FORMAT_VERSION,
   SECTION_COLORS,
@@ -83,7 +84,7 @@ export async function renameContainer(root: string, rel: string, newName: string
   if (wanted.toLowerCase() === basename(abs).toLowerCase()) return rel
   const folder = await uniqueName(parent, wanted)
   const dest = join(parent, folder)
-  await fs.rename(abs, dest)
+  await renameDurable(abs, dest)
   await replaceInOrder(root, toRel(root, parent), basename(abs), folder)
   return toRel(root, dest)
 }

@@ -19,7 +19,8 @@ const LABELS: Record<Finding['kind'], string> = {
   'stale-html': 'Rendered copy out of date',
   'history-over-policy': 'History beyond policy',
   'temp-file': 'Leftover temporary file',
-  'regenerated-meta': 'Rebuilt metadata'
+  'regenerated-meta': 'Rebuilt metadata',
+  'long-path': 'Long file path'
 }
 
 export function VerifyPanel({ onClose, onRebuildIndex }: { onClose: () => void; onRebuildIndex: () => void }): JSX.Element {
