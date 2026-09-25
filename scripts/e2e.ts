@@ -163,7 +163,7 @@ async function main(): Promise<void> {
   assert(leftovers.some((n) => n.startsWith('page.json.corrupt-')), 'damaged file kept for inspection')
   step('Restore writes the draft as the current page')
 
-  // The page list follows the restored title once the tree refresh arrives, which takes longer on a busy machine.
+  // The page list shows the restored title once the save and its index update have finished.
   const titled = await page.locator('.page-row.on', { hasText: 'Renamed page' }).waitFor({ timeout: 5000 }).then(() => true, () => false)
   assert(titled, 'draft title restored')
   await page.screenshot({ path: join(shots, 'final.png') })

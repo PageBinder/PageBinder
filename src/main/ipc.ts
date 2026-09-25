@@ -74,6 +74,11 @@ async function sectionOf(root: string, pageRel: string): Promise<{ name: string;
   return { name: meta?.name ?? basename(sectionRel), rel: sectionRel }
 }
 
+/**
+ * Update one page in the index. Callers await it before returning, because the renderer reloads
+ * the tree from the index straight after: left running on its own, a save's new title could lose
+ * that race (it did on macOS and Windows) and the page list would keep the old one.
+ */
 async function reindexPage(rel: string, doc: PageDoc, oldRel?: string): Promise<void> {
   if (!indexer || !currentRoot) return
   try {
@@ -383,7 +388,7 @@ export function registerIpc(): void {
       try {
         const tmeta = await readJson<TemplateMeta>(joinPath(dir, TEMPLATE_META))
         const made = await createPageFromTemplate(root, sectionRel, dir, title ?? tmeta?.name ?? 'Untitled page', { section: (await sectionOf(root, `${sectionRel}/x`)).name, notebook: meta?.name ?? '' }, historyPolicy())
-        void reindexPage(made.relPath, made.doc)
+        await reindexPage(made.relPath, made.doc)
         return { relPath: made.relPath, tree: await afterSectionChange(sectionRel) }
       } catch {
         /* template missing: fall back to a blank page */
@@ -399,7 +404,7 @@ export function registerIpc(): void {
     // A page restored from history on load may have a different title than the index knows.
     if (!template && result.notices.some((n) => n.kind === 'recovered-from-history' || n.kind === 'no-valid-version')) {
       await indexer?.refreshSection(parentOf(rel)).catch(() => undefined)
-      void reindexPage(rel, result.doc)
+      await reindexPage(rel, result.doc)
     }
     return { ...result, relPath: relIn }
   })
@@ -412,7 +417,7 @@ export function registerIpc(): void {
       return { ...result, relPath: relIn }
     }
     const result = await savePage(root, rel, doc, historyPolicy())
-    void reindexPage(result.relPath, result.doc, rel)
+    await reindexPage(result.relPath, result.doc, rel)
     return result
   })
   ipcMain.handle('page:saveDraft', async (_e, relIn: string, doc: PageDoc) => {
@@ -439,7 +444,7 @@ export function registerIpc(): void {
       return { ...result, relPath: relIn, tree: await templatesTree() }
     }
     const result = await renamePage(root, rel, title)
-    void reindexPage(result.relPath, result.doc, rel)
+    await reindexPage(result.relPath, result.doc, rel)
     return { ...result, tree: await afterSectionChange(parentOf(rel)) }
   })
   ipcMain.handle('page:addImage', async (_e, relIn: string, originalName: string, bytes: ArrayBuffer | Uint8Array) => {
@@ -522,13 +527,13 @@ export function registerIpc(): void {
   ipcMain.handle('page:restoreSnapshot', async (_e, rel: string, name: string) => {
     const root = requireRoot()
     const result = await restoreSnapshot(root, rel, name, historyPolicy())
-    void reindexPage(result.relPath, result.doc, rel)
+    await reindexPage(result.relPath, result.doc, rel)
     return { ...result, tree: await afterSectionChange(parentOf(rel)) }
   })
   ipcMain.handle('page:copySnapshot', async (_e, rel: string, name: string) => {
     const root = requireRoot()
     const created = await copySnapshotToNewPage(root, rel, name, historyPolicy())
-    void reindexPage(created.relPath, created.doc)
+    await reindexPage(created.relPath, created.doc)
     return { relPath: created.relPath, tree: await afterSectionChange(parentOf(rel)) }
   })
   ipcMain.handle('recycle:list', async () => listRecycled(requireRoot()))
@@ -579,7 +584,7 @@ export function registerIpc(): void {
     const dir = joinPath(libraryDir(root, parsed.scope, globalTemplatesDir()), parsed.folder)
     const tmeta = await readJson<TemplateMeta>(joinPath(dir, TEMPLATE_META))
     const made = await createPageFromTemplate(root, sectionRel, dir, title ?? tmeta?.name ?? 'Untitled page', { section: (await sectionOf(root, `${sectionRel}/x`)).name, notebook: tree.meta.name }, historyPolicy())
-    void reindexPage(made.relPath, made.doc)
+    await reindexPage(made.relPath, made.doc)
     return { relPath: made.relPath, tree: await openNotebook(root) }
   })
   ipcMain.handle('section:setDefaultTemplate', async (_e, rel: string, ref: string | null) => {
