@@ -21,7 +21,7 @@ extraResources:
   - from: ../docs
     to: docs-bundle/docs
     # The README screenshot is for GitHub, and docs/dev holds developer notes.
-    filter: ["**/*", "!images/**", "!dev/**"]
+    filter: ["**/*", "!images/**", "!dev/**", "!*.xlsx"]
   - from: ../README.md
     to: docs-bundle/README.md
   - from: ../LICENSE
