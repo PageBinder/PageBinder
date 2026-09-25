@@ -93,6 +93,7 @@ The [Getting Started guide](docs/GETTING_STARTED.md) covers the first five minut
 - [Uninstalling](docs/UNINSTALL.md)
 - [What PageBinder is](docs/PROGRAM_OVERVIEW.md): everything it does, in one page
 - [Program description](docs/dev/PROGRAM_DESCRIPTION.md): the full design for developers, including the folder format
+- [Feature comparison](docs/PageBinder-feature-comparison.xlsx): PageBinder beside eleven other note-taking programs, feature by feature, with a quick-reference sheet of where it differs
 
 ## Requirements
 

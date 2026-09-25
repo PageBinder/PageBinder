@@ -18,6 +18,13 @@ Entry format:
 ---
 
 ## 2026-09-25 · lead (macOS, Apple silicon) · main
+**Changed:** Added `docs/PageBinder-feature-comparison.xlsx`, a feature-by-feature comparison of PageBinder with Joplin, Obsidian, Logseq, Trilium Notes, SiYuan, AFFiNE, AppFlowy, Anytype, Notesnook, Zim Desktop Wiki, and Xournal++ (sheets: PageBinder at a glance, Comparison, Summary, Sources). Every derived value is a formula. The README links it. The packaged app excludes `.xlsx` files from the docs-bundle, and `check-package.ts` checks that.
+**Found:** Nothing new.
+**Checked:** LibreOffice recalculated all 734 formulas with no errors, and the pattern lists matched an independent count. The workflow run for this push covers the packaging change.
+**Next platform must check:** Nothing.
+**Open:** Entries marked * in the spreadsheet rest on general knowledge of a project rather than a page read on the date; re-check them when the comparison is next updated.
+
+## 2026-09-25 · lead (macOS, Apple silicon) · main
 **Changed:** Help documents for end users. Help > Program description now shows a new `docs/PROGRAM_OVERVIEW.md`: what the program does, how notes are organised, printing, editing, search, history, templates, where notes live, and what it does not do, with no development history. The developer specification moved to `docs/dev/PROGRAM_DESCRIPTION.md` (kept out of the package). Getting started no longer has an Installing section; the README keeps the install steps.
 **Found:** The first push failed the phase 5 suite on both platforms: the test build is launched from `app/out-e2e/main`, and the app looked for its Help documents only one level above its app path. `about.ts` now tries the app path and the working folder with up to three parent levels each. In a real installation the documents come from `docs-bundle`, which was never affected.
 **Checked:** Type check and unit tests from `app/`; phase 5 suite passes locally after the fix. The workflow run for the fix commit is the proof on CI.

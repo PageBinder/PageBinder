@@ -14,7 +14,7 @@ const ALLOWED_TOP = new Set(['out', 'resources', 'node_modules', 'package.json']
 /** Documents the Help menu reads, copied beside the app as resources/docs-bundle (electron-builder.yml). */
 const BUNDLED_DOCS = ['README.md', 'LICENSE', 'docs/PROGRAM_OVERVIEW.md', 'docs/RECOVERY.md', 'docs/GETTING_STARTED.md', 'docs/SHORTCUTS.md', 'docs/HISTORY_AND_VERIFY.md', 'docs/UNINSTALL.md']
 /** Never shipped: developer notes and the README screenshot. */
-const NOT_BUNDLED = ['docs/dev', 'docs/images']
+const NOT_BUNDLED = ['docs/dev', 'docs/images', 'docs/PageBinder-feature-comparison.xlsx']
 /** Anything that looks like user data, a notebook, or a test fixture, outside node_modules. */
 const FORBIDDEN = /(^|\/)(recent-notebooks\.json|notebook\.json|section\.json|group\.json|page\.json|[^/]+\.page|\.index|\.history|\.recycle|Local Storage|IndexedDB|test-notebooks|Medical Records|out-e2e|\.lock|\.installed-app|\.migrated-from-diginote)(\/|$)/
 
