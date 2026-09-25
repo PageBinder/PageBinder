@@ -48,6 +48,15 @@ describe('renderPageHtml', () => {
     expect(html).toContain('data-paper-h="1056"')
   })
 
+  it('lays the text of a printout invisibly over its picture, escaped', () => {
+    const html = renderPageHtml(docWith([
+      { kind: 'image', id: 'p1', x: 96, y: 96, width: 624, height: 800, name: 'r1.png', originalName: 'Report page 1.png', printout: { source: 'Report.pdf', page: 1, text: 'Total <cost> & tax' } },
+      { kind: 'image', id: 'i', x: 0, y: 0, width: 100, height: 100, name: 'photo.png', originalName: 'photo.png' }
+    ]))
+    expect(html).toContain('<div class="printout-text">Total &lt;cost&gt; &amp; tax</div>')
+    expect(html.match(/class="printout-text"/g)?.length).toBe(1)
+  })
+
   it('escapes the title', () => {
     const doc = docWith([])
     doc.title = '<script>x</script>'

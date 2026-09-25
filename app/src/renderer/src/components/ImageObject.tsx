@@ -109,6 +109,12 @@ export function ImageObject({
         }}
       />
       )}
+      {!card && obj.printout?.text && (
+        // Invisible, unselectable copy of the printout's text: page search finds it and outlines the picture.
+        <span className="printout-text" aria-hidden="true">
+          {obj.printout.text}
+        </span>
+      )}
       {selected && !card && (
         <div
           className="image-resize"

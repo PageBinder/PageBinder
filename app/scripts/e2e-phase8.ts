@@ -188,6 +188,13 @@ async function main(): Promise<void> {
   await page.locator('.page-row', { hasText: 'Alpha' }).click()
   await page.locator('.page-row', { hasText: 'Beta' }).click()
   await page.waitForSelector('.file-card')
+  // Before any printout, the attached PDF's text is not searchable: only its name is.
+  const searchFor = async (q: string): Promise<{ printouts: string[]; pages: string[] }> =>
+    page.evaluate(async (q) => {
+      const r = await window.pagebinder.search.query(q, '')
+      return { printouts: r.printouts.map((h) => h.rel), pages: r.pages.map((h) => h.rel) }
+    }, q)
+  assert((await searchFor('value')).printouts.length === 0, 'a plain PDF attachment contributes no text to search')
   await page.locator('.file-card').click({ button: 'right' })
   await page.locator('.context-item', { hasText: 'Insert printout' }).click()
   await page.waitForFunction(() => document.querySelectorAll('.image-object').length >= 2, undefined, { timeout: 60000 })
@@ -195,7 +202,22 @@ async function main(): Promise<void> {
   d = await doc(b)
   const printouts = d.objects.filter((o) => o.kind === 'image')
   assert(printouts.length === 2 && printouts.every((o) => o.kind === 'image' && o.width === 624), `printout pages are pictures at the printable width (${printouts.length})`)
-  step('a PDF attachment becomes a printout of its pages')
+  // The PDF is the exported section, so its first page carries Alpha's text, including "value".
+  const texts = printouts.map((o) => (o.kind === 'image' ? o.printout : undefined))
+  assert(texts.every((t, i) => t && t.page === i + 1 && t.source.endsWith('.pdf')), `each printout page records its source and page number (${JSON.stringify(texts.map((t) => t && { s: t.source, p: t.page }))})`)
+  assert(texts[0]?.text.includes('value'), `the first printout page keeps the PDF's text (${texts[0]?.text.slice(0, 80)})`)
+  const html = await fs.readFile(join(root, b, 'page.html'), 'utf8')
+  assert(html.includes('class="printout-text"') && /printout-text">[^<]*value/.test(html), 'page.html carries the printout text for find-on-page')
+  await page.waitForFunction(async (rel) => (await window.pagebinder.search.query('value', '')).printouts.some((h) => h.rel === rel), b, { timeout: 15000 })
+  // Search from the box: the page is listed under In printouts, and opening it outlines the matching picture.
+  await page.locator('.page-row', { hasText: 'Alpha' }).click()
+  await page.locator('.search-box input').fill('value')
+  await page.locator('.search-group', { hasText: 'In printouts' }).locator('.search-hit').first().click()
+  await page.waitForSelector('.image-object.search-match', { timeout: 10000 })
+  const bar = (await page.locator('.search-bar').textContent()) ?? ''
+  assert(/of \d+ match/.test(bar), `the page's match count includes the printout (${bar})`)
+  await page.locator('.search-bar button', { hasText: 'Done' }).click()
+  step('a PDF attachment becomes a printout of its pages, and the printout text is searchable while the plain attachment is not')
 
   // 7. One full-screen item, the native role (on macOS AppKit itself titles it Enter or Exit Full
   //    Screen, so the label can no longer lag the window), and the window still toggles.

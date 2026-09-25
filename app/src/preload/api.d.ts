@@ -16,7 +16,7 @@ export interface SearchHit {
   section: string
   sectionRel: string
   snippet?: string
-  matchedIn: 'title' | 'body' | 'files'
+  matchedIn: 'title' | 'body' | 'files' | 'printouts'
 }
 
 export interface SearchResults {
@@ -24,6 +24,7 @@ export interface SearchResults {
   titles: SearchHit[]
   pages: SearchHit[]
   files: SearchHit[]
+  printouts: SearchHit[]
   truncated: boolean
 }
 

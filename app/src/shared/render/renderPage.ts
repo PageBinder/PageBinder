@@ -78,7 +78,8 @@ export function renderObjectsHtml(doc: PageDoc, imageBase = 'images/', attachmen
         const entry = doc.manifest.images.find((e) => e.name === obj.name)
         return fileCardHtml({ id: obj.id, href: imageBase + encodeURIComponent(obj.name), x: obj.x, y: obj.y, width: obj.width, name: obj.originalName, meta: entry ? formatSize(entry.size) : '', kind: 'image' })
       }
-      return `<div class="image-object" data-id="${attr(obj.id)}" style="left:${obj.x}px;top:${obj.y}px;width:${obj.width}px;height:${obj.height}px"><img src="${attr(imageBase + encodeURIComponent(obj.name))}" alt="${attr(obj.originalName)}"></div>`
+      const text = obj.printout?.text ? `<div class="printout-text">${esc(obj.printout.text)}</div>` : ''
+      return `<div class="image-object" data-id="${attr(obj.id)}" style="left:${obj.x}px;top:${obj.y}px;width:${obj.width}px;height:${obj.height}px"><img src="${attr(imageBase + encodeURIComponent(obj.name))}" alt="${attr(obj.originalName)}">${text}</div>`
     })
     .join('\n')
 }

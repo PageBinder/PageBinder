@@ -42,6 +42,9 @@ export const docCss = `
 .text-container .editor { padding: 12px 10px 8px; }
 .image-object { position: absolute; box-sizing: border-box; }
 .image-object img { display: block; width: 100%; height: 100%; object-fit: fill; }
+/* A printout's text lies transparently over its picture: invisible on screen and paper, but found by
+   a browser's find-on-page and kept as searchable text in PDFs exported from page.html. */
+.image-object .printout-text { position: absolute; inset: 0; overflow: hidden; color: transparent; font-size: 9px; line-height: 1.25; white-space: pre-wrap; pointer-events: none; }
 .file-card { position: absolute; box-sizing: border-box; display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 8px 12px; border: 1px solid #d9d7d0; border-radius: 6px; background: #f8f7f4; font-family: ${DOC_FONT}; font-size: 13px; color: #2c2c2a; text-decoration: none; }
 .file-card.missing { border-color: #e24b4a; background: #fcebeb; }
 .file-card .file-head { display: flex; align-items: center; gap: 10px; min-width: 0; }

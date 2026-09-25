@@ -741,7 +741,17 @@ export function App(): JSX.Element {
         let y = obj.y + 72
         const objects: CanvasObject[] = pages.map((pg, i) => {
           const height = Math.round((width * pg.height) / pg.width)
-          const made: CanvasObject = { kind: 'image', id: newId(), x: paper.margins.left, y, width, height, name: entries[i]!.name, originalName: entries[i]!.originalName }
+          const made: CanvasObject = {
+            kind: 'image',
+            id: newId(),
+            x: paper.margins.left,
+            y,
+            width,
+            height,
+            name: entries[i]!.name,
+            originalName: entries[i]!.originalName,
+            printout: { source: obj.originalName, page: i + 1, text: pg.text }
+          }
           y += height + 16
           return made
         })

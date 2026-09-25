@@ -168,7 +168,7 @@ export class Indexer {
   }
 
   search(query: string, scopeRel = ''): SearchResults {
-    if (!this.opened) return { query, titles: [], pages: [], files: [], truncated: false }
+    if (!this.opened) return { query, titles: [], pages: [], files: [], printouts: [], truncated: false }
     return this.index.search(query, scopeRel)
   }
 }

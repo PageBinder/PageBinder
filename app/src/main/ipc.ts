@@ -642,7 +642,7 @@ export function registerIpc(): void {
   ipcMain.handle('log:renderer', async (_e, text: string) => appendRendererLog(text))
 
   /* ---------- search ---------- */
-  ipcMain.handle('search:query', async (_e, query: string, scopeRel: string) => indexer?.search(query, scopeRel) ?? { query, titles: [], pages: [], files: [], truncated: false })
+  ipcMain.handle('search:query', async (_e, query: string, scopeRel: string) => indexer?.search(query, scopeRel) ?? { query, titles: [], pages: [], files: [], printouts: [], truncated: false })
   ipcMain.handle('search:status', async () => indexer?.status() ?? { phase: 'idle', done: 0, total: 0, rebuilt: false })
   ipcMain.handle('search:rebuild', async () => {
     if (!indexer || !currentRoot) return
