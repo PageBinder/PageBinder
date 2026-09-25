@@ -1,0 +1,73 @@
+# Build the macOS and Windows installers and attach them to a draft GitHub release.
+#
+#   git tag v1.1.0 && git push origin v1.1.0     (or run this workflow by hand from the Actions tab)
+#
+# The release is created as a draft: check it on the Releases page, then press Publish.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Build installers
+        run: npm run ${{ runner.os == 'macOS' && 'dist:mac' || 'dist:win' }}
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ runner.os }}
+          path: |
+            dist/*.dmg
+            dist/*.exe
+          if-no-files-found: error
+          retention-days: 3
+
+  release:
+    name: Draft release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: files
+          merge-multiple: true
+      - name: Create the draft release with the installers
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(node -p "require('./package.json').version")
+          tag="${GITHUB_REF_NAME}"
+          case "$tag" in v*) ;; *) tag="v$version" ;; esac
+          cat > notes.md <<EOF
+          PageBinder $version for macOS and Windows.
+
+          - **Mac with Apple silicon (M1 or later):** PageBinder-$version-arm64.dmg
+          - **Mac with an Intel processor:** PageBinder-$version-x64.dmg
+          - **Windows 10 or 11:** PageBinder-Setup-$version.exe
+
+          Installation steps are in the [README](https://github.com/${GITHUB_REPOSITORY}#download-and-install). The installers are not yet signed, so macOS and Windows ask for confirmation the first time.
+          EOF
+          ls -la files
+          gh release create "$tag" files/* --draft --title "PageBinder $version" --notes-file notes.md --target "$GITHUB_SHA"

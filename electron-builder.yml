@@ -1,4 +1,4 @@
-# Installers for macOS and Windows. See README.md, "Building the installers".
+# Installers for macOS and Windows. See DEVELOPMENT_PLAN.md, Phase 8, and README.md, "Building from source".
 #   npm run dist:mac   (on a Mac)      -> dist/PageBinder-<version>-<arch>.dmg and .zip
 #   npm run dist:win   (on Windows)    -> dist/PageBinder-Setup-<version>.exe
 appId: app.pagebinder.desktop

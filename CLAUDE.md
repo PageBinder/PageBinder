@@ -1,6 +1,6 @@
 # PageBinder: notes for Claude
 
-Local-only, folder-based notebook app in the style of classic desktop OneNote (formerly DigiNote). Electron 44, electron-vite 5, React 19, TypeScript 5.9, TipTap 3, SQLite FTS5 via `node:sqlite`. The full spec is `PROGRAM_DESCRIPTION.md`, and features and changes by phase are in `README.md`. Recovery design is in `RECOVERY.md`, and user docs are in `docs/`.
+Local-only, folder-based notebook app in the style of classic desktop OneNote (formerly DigiNote). Electron 44, electron-vite 5, React 19, TypeScript 5.9, TipTap 3, SQLite FTS5 via `node:sqlite`. The full spec is `PROGRAM_DESCRIPTION.md`, and features and changes by phase are in `DEVELOPMENT_PLAN.md`; `README.md` is the user-facing front page on GitHub. Recovery design is in `RECOVERY.md`, and user docs are in `docs/`.
 
 ## Status
 - rev1 = version 1.0.1 (git tag `rev1`), the version the user tested by hand.
@@ -29,5 +29,5 @@ npx tsx scripts/make-medical.ts "<parent>/Medical Records" 500   # regenerate th
 - On the user's Mac, automated windows go on the second display. The user's main display stays free.
 
 ## Working with the user
-- The user tests by hand in the running app and reports numbered issues. Fix all of them, add or adjust an end-to-end check for each, run the affected suites, and update the README's version section.
+- The user tests by hand in the running app and reports numbered issues. Fix all of them, add or adjust an end-to-end check for each, run the affected suites, and update the version section of `DEVELOPMENT_PLAN.md`.
 - Write final reports in plain language: lead with the outcome, and use short sentences and bullets.
