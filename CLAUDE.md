@@ -5,7 +5,8 @@ Local-only, folder-based notebook app in the style of classic desktop OneNote (f
 ## Status
 - rev1 = version 1.0.1 (git tag `rev1`), the version the user tested by hand.
 - Phases 1 to 8 are built; version 1.1.0 adds phase 8 (Windows build, installers, long paths, first run). `.github/workflows/platforms.yml` tests on real macOS and Windows runners, builds both installers, and runs `scripts/cross-platform.ts` across the two. It runs only when started by hand, because the account is on GitHub's free plan (2,000 Actions minutes a month; one run uses about 200). Never add push or pull-request triggers to Mac or Windows jobs. `release.yml` builds a draft release from a `v*` tag.
-- One branch: work directly on `main`, the default branch. Do not create other branches unless the user asks. Installers are unsigned (macOS ad-hoc, no Windows certificate).
+- One branch: work directly on `main`, the default branch. Do not create other branches unless the user asks.
+- The repository is meant to be public. Commit as `PageBinder <4245724+PageBinder@users.noreply.github.com>`. Commit messages carry no `Co-Authored-By` or `Claude-Session` lines, and the owner's personal name and email appear nowhere in the repository. Installers are unsigned (macOS ad-hoc, no Windows certificate).
 - Unverified: the native Outlook email drag-and-drop helper (the user cannot test it yet).
 
 ## Commands
