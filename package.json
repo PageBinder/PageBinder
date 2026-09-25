@@ -3,6 +3,8 @@
   "productName": "PageBinder",
   "version": "1.1.0",
   "description": "Local-only, folder-based notebook application in the style of classic desktop OneNote",
+  "license": "MIT",
+  "author": "PageBinder",
   "main": "./out/main/index.js",
   "private": true,
   "scripts": {
