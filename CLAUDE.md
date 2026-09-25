@@ -14,7 +14,7 @@ Local-only, folder-based notebook app in the style of classic desktop OneNote (f
 npm ci                 # install (Electron downloads its binary)
 npm run dev            # run the app with hot reload (restart it after config or main-process changes)
 npm run typecheck      # main, preload, and renderer
-npm test               # vitest unit tests (66)
+npm test               # vitest unit tests (72)
 npm run e2e            # build to out-e2e/ and drive the real window through every suite (needs a display; use xvfb-run on Linux)
 npm run dist:mac       # macOS dmg and zip into dist/ (on a Mac); npm run dist:win for the Windows installer (on Windows)
 npx tsx scripts/cross-platform.ts make|check <folder>   # notebook made on one OS must open on the other with no differences
@@ -29,7 +29,7 @@ npx tsx scripts/make-medical.ts "<parent>/Medical Records" 500   # regenerate th
 - End-to-end tests launch `out-e2e/`, never `out/`, so a running dev watcher cannot overwrite them. Test hooks are the `PAGEBINDER_OPEN`, `PAGEBINDER_TEST_PICK_FILES`, `PAGEBINDER_TEST_SAVE_PATH`, and `PAGEBINDER_TEST_DISPLAY` environment variables.
 - In Playwright `app.evaluate` callbacks, avoid named inner functions, because tsx injects a `__name` helper that the app cannot see.
 - On the user's Mac, automated windows go on the second display. The user's main display stays free.
-- Settings folders: the development build uses `<appData>/PageBinder Dev`, an installed copy `<appData>/PageBinder` (see `src/main/settingsFolder.ts`). Nothing from development may reach an installed copy or a package; `scripts/check-package.ts` guards the package.
+- Settings folders: the development build uses `<appData>/PageBinder Dev`, an installed copy `<appData>/PageBinder` (see `src/main/settingsFolder.ts`). Every new installation (reinstall or update) that finds earlier settings asks Keep or Start fresh; never keep them silently. Nothing from development may reach an installed copy or a package; `scripts/check-package.ts` guards the package. Test seams: `PAGEBINDER_TEST_PACKAGED=1`, `PAGEBINDER_TEST_SETTINGS_CHOICE=keep|fresh`.
 
 ## Working with the user
 - The user tests by hand in the running app and reports numbered issues. Fix all of them, add or adjust an end-to-end check for each, run the affected suites, and update the version section of `DEVELOPMENT_PLAN.md`.

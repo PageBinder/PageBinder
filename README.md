@@ -69,7 +69,7 @@ PageBinder is added to the Start menu and the desktop.
 
 ### Updating
 
-Download the new installer and install it over the old version, as above. Your notebooks, recent-notebook list, and templates are kept.
+Download the new installer and install it over the old version, as above. The first time the new version starts, it asks whether to keep your settings (the recent-notebook list and global templates) or start fresh. Starting fresh moves them to a backup folder, so nothing is lost. The same question appears after any reinstall. Your notebooks are never affected either way.
 
 ### Uninstalling
 

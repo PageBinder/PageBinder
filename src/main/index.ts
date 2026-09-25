@@ -1,9 +1,9 @@
-import { app, BrowserWindow, Menu, screen, shell, systemPreferences, type MenuItemConstructorOptions } from 'electron'
-import { join } from 'node:path'
-import { existsSync } from 'node:fs'
+import { app, BrowserWindow, Menu, dialog, screen, session, shell, systemPreferences, type MenuItemConstructorOptions } from 'electron'
+import { join, resolve } from 'node:path'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import { registerIpc, closeCurrentNotebookSync } from './ipc'
 import { registerScheme, registerProtocolHandler } from './protocol'
-import { prepareSettingsFolder } from './settingsFolder'
+import { chooseSettingsFolder, decideFirstRun, earlierSettings, firstRunQuestion, readInstallRecord, setAsideEarlierSettings, writeInstallRecord } from './settingsFolder'
 
 registerScheme()
 
@@ -14,13 +14,59 @@ if (process.platform === 'win32') app.setAppUserModelId('app.pagebinder.desktop'
 // The installed app and the development build keep separate settings folders, so nothing from
 // development ever shows in an installed copy. See settingsFolder.ts.
 {
-  const choice = prepareSettingsFolder({
+  const folder = chooseSettingsFolder({
     packaged: app.isPackaged,
     explicitDir: process.argv.some((a) => a.startsWith('--user-data-dir')),
     appData: app.getPath('appData'),
     sharedDir: app.getPath('userData')
   })
-  if (choice.userData) app.setPath('userData', choice.userData)
+  if (folder) app.setPath('userData', folder)
+}
+
+/**
+ * This installation's ID, so a new installation can be told from a restart. On Windows the installer
+ * writes the time of installation beside the app (build/installer.nsh); on macOS, copying the app
+ * into Applications makes a new bundle with a new creation time.
+ */
+function installationId(): string {
+  try {
+    const written = join(process.resourcesPath, 'install-id.txt')
+    if (existsSync(written)) return `installer:${readFileSync(written, 'utf8').trim()}`
+    const target = process.platform === 'darwin' ? resolve(process.execPath, '../../..') : process.execPath
+    const st = statSync(target)
+    return `${process.platform}:${Math.round(st.birthtimeMs || st.ctimeMs)}`
+  } catch {
+    return 'unknown'
+  }
+}
+
+/**
+ * On the first start of every installation (a reinstall or an update) that finds settings left by
+ * an earlier one, the user chooses: keep them, or start fresh (they move to a backup folder). Test seams: PAGEBINDER_TEST_PACKAGED=1 runs this outside an installed copy, and
+ * PAGEBINDER_TEST_SETTINGS_CHOICE=keep|fresh answers the question.
+ */
+async function confirmSettings(): Promise<void> {
+  if (!app.isPackaged && process.env['PAGEBINDER_TEST_PACKAGED'] !== '1') return
+  const dir = app.getPath('userData')
+  const version = app.getVersion()
+  const id = installationId()
+  const earlier = earlierSettings(dir)
+  const decision = decideFirstRun(readInstallRecord(dir), earlier, id)
+  if (decision === 'nothing') return
+  if (decision === 'ask' && earlier) {
+    const q = firstRunQuestion(earlier, dir)
+    const preset = process.env['PAGEBINDER_TEST_SETTINGS_CHOICE']
+    const choice = preset
+      ? preset === 'fresh'
+        ? 1
+        : 0
+      : dialog.showMessageBoxSync({ type: 'question', title: 'PageBinder', message: q.message, detail: q.detail, buttons: q.buttons, defaultId: 0, cancelId: 0, noLink: true })
+    if (choice === 1) {
+      setAsideEarlierSettings(dir)
+      await session.defaultSession.clearStorageData({ storages: ['localstorage'] })
+    }
+  }
+  writeInstallRecord(dir, version, id)
 }
 
 /** Icons are generated from resources/logo-artwork.jpg by scripts/make-icons.cjs. */
@@ -184,9 +230,15 @@ function buildMenu(): void {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // The packaged app takes its Dock icon from the bundle; during development it is set here.
   if (process.platform === 'darwin' && existsSync(DOCK_ICON)) app.dock?.setIcon(DOCK_ICON)
+  // Before any window: settings from an earlier installation are kept or set aside first.
+  try {
+    await confirmSettings()
+  } catch {
+    /* the app works without its settings files; never block startup on them */
+  }
   registerIpc()
   registerProtocolHandler()
   buildMenu()

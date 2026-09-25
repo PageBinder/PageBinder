@@ -21,8 +21,8 @@ function step(s: string): void {
   process.stdout.write(`  ✓ ${s}\n`)
 }
 
-async function launch(userData: string, root?: string): Promise<{ app: ElectronApplication; page: Page }> {
-  const env: Record<string, string> = { ...(process.env as Record<string, string>), PAGEBINDER_TEST_DISPLAY: '2' }
+async function launch(userData: string, root?: string, extra: Record<string, string> = {}): Promise<{ app: ElectronApplication; page: Page }> {
+  const env: Record<string, string> = { ...(process.env as Record<string, string>), PAGEBINDER_TEST_DISPLAY: '2', ...extra }
   if (root) env['PAGEBINDER_OPEN'] = root
   else delete env['PAGEBINDER_OPEN']
   const app = await electron.launch({ args: [resolve(process.env['E2E_OUT'] ?? 'out-e2e', 'main/index.js'), `--user-data-dir=${userData}`], cwd: resolve('.'), env })
@@ -107,6 +107,35 @@ async function main(): Promise<void> {
     assert(!(await page.locator('.first-run').count()), 'no first-run panel once a notebook has been opened')
     await app.close()
     step('the first-run panel is replaced by the recent list once a notebook has been opened')
+  }
+
+  // 6. As an installed copy, settings nobody has confirmed (as development leaves them) bring the
+  //    Keep or Start fresh question. PAGEBINDER_TEST_PACKAGED runs the installed-copy check here, and
+  //    PAGEBINDER_TEST_SETTINGS_CHOICE answers the question.
+  const keepDir = join(base, 'user-keep')
+  const freshDir = join(base, 'user-fresh')
+  await fs.cp(userData, keepDir, { recursive: true })
+  await fs.cp(userData, freshDir, { recursive: true })
+  {
+    const { app, page } = await launch(keepDir, undefined, { PAGEBINDER_TEST_PACKAGED: '1', PAGEBINDER_TEST_SETTINGS_CHOICE: 'keep' })
+    await page.locator('.recent-name', { hasText: 'Deep notebook' }).waitFor()
+    await app.close()
+    assert(await fs.stat(join(keepDir, 'install.json')).then(() => true, () => false), 'the installation is recorded after Keep')
+    // The same installation starting again must not ask: a dialog would stop the window from appearing.
+    const again = await launch(keepDir, undefined, { PAGEBINDER_TEST_PACKAGED: '1' })
+    await again.page.locator('.recent-name', { hasText: 'Deep notebook' }).waitFor()
+    await again.app.close()
+    step('Keep my settings keeps the recent list, and the next start does not ask again')
+  }
+  {
+    const { app, page } = await launch(freshDir, undefined, { PAGEBINDER_TEST_PACKAGED: '1', PAGEBINDER_TEST_SETTINGS_CHOICE: 'fresh' })
+    await page.waitForSelector('.first-run')
+    assert(!(await page.locator('.recent-name', { hasText: 'Deep notebook' }).count()), 'Start fresh shows no recent notebooks')
+    await app.close()
+    const backups = (await fs.readdir(freshDir)).filter((n) => n.startsWith('Earlier settings '))
+    assert(backups.length === 1, `one backup folder (${backups.join(', ')})`)
+    assert(await fs.stat(join(freshDir, backups[0]!, 'recent-notebooks.json')).then(() => true, () => false), 'the earlier recent list is in the backup, not deleted')
+    step('Start fresh opens clean and keeps the earlier settings in a backup folder')
   }
 
   console.log(`\nPASS: platforms. Files kept at ${base}`)
