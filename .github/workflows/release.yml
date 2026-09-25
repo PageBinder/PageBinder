@@ -3,6 +3,7 @@
 #   git tag v1.1.0 && git push origin v1.1.0     (or run this workflow by hand from the Actions tab)
 #
 # The release is created as a draft: check it on the Releases page, then press Publish.
+# One release run uses about 60 of the free plan's 2,000 monthly minutes (macOS minutes count ten times).
 name: Release
 
 on:

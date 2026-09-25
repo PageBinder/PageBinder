@@ -114,6 +114,10 @@ npm run dist:mac  # build the macOS installers into dist/ (on a Mac)
 npm run dist:win  # build the Windows installer into dist/ (on Windows)
 ```
 
-Publishing a release: push a version tag such as `v1.1.0`, or run the **Release** workflow from the Actions tab. It builds both installers and creates a draft release with them attached. Check it on the Releases page, then press **Publish**.
+Publishing a release: push a version tag such as `v1.1.0`, or run the **Release** workflow from the Actions tab. The full macOS and Windows test run (**macOS and Windows** in the Actions tab) is started by hand before a release. It builds both installers and creates a draft release with them attached. Check it on the Releases page, then press **Publish**.
 
 The [development plan](DEVELOPMENT_PLAN.md) lists what each phase added, every development command, and the source layout.
+
+## License
+
+PageBinder is free software under the [MIT License](LICENSE). The licences of the libraries it uses are listed in the app under **Help > Dependencies and Licences**.

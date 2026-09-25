@@ -3,7 +3,7 @@
 #   npm run dist:win   (on Windows)    -> dist/PageBinder-Setup-<version>.exe
 appId: app.pagebinder.desktop
 productName: PageBinder
-copyright: Copyright © 2026
+copyright: Copyright © 2026 PageBinder
 directories:
   output: dist
   buildResources: build
@@ -14,6 +14,7 @@ files:
   - package.json
   # The Help menu reads these from inside the app (src/main/about.ts).
   - README.md
+  - LICENSE
   - PROGRAM_DESCRIPTION.md
   - RECOVERY.md
   - docs/**

@@ -2,10 +2,10 @@
 # the other with no differences. Installers are attached to each run as downloadable artifacts.
 name: macOS and Windows
 
+# Started by hand only (Actions tab > macOS and Windows > Run workflow). The free GitHub plan allows
+# 2,000 minutes a month, macOS minutes count ten times and Windows twice, and one full run uses about
+# 200. Run it before a release, not on every push.
 on:
-  push:
-    branches: [main, 'claude/**']
-  pull_request:
   workflow_dispatch:
 
 concurrency:
