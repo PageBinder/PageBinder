@@ -19,7 +19,7 @@
 
 PageBinder organises notes into **notebooks**, **section groups**, **sections**, and **pages**. Each page is a free-form canvas: click anywhere and start typing, and place text, tables, pictures, drawings, and attached files wherever you like.
 
-- **Your files, in plain sight.** A notebook is a folder, and each page is a folder inside it. Every page also saves a `page.html` copy that opens in any web browser, so your notes stay readable without PageBinder.
+- **Your files, in plain sight.** A notebook is a folder, and section is a folder inside it. Every page also saves a `page.html` copy that opens in any web browser, so your notes stay readable without PageBinder.
 - **Nothing is lost.** Pages save themselves as you type. Earlier versions are kept in each page's history, and a damaged page is restored from its last good version automatically.
 - **Rich pages.** Fonts, colours, lists, to-do lists, headings, and tables. Pictures, lines, arrows, and shapes. Any file can be attached, and saved emails (`.eml` and `.msg`) show their subject, sender, and date.
 - **Fast search.** Search page text, page and section names, attachment names, and the text of attached emails as you type, even across tens of thousands of pages.
