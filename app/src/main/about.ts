@@ -22,9 +22,19 @@ const FILES: Record<DocName, string> = {
 
 function docRoots(): string[] {
   // Packaged: electron-builder copies the documents into resources/docs-bundle (see
-  // electron-builder.yml). Development: the repository root, one level above app/.
+  // electron-builder.yml). Otherwise the repository root, which is a few levels above the
+  // app path (app/ under `npm run dev`, app/out-e2e/main when a built file is launched) or
+  // above the working folder, so each starting point is tried with its parents.
   if (app.isPackaged) return [join(process.resourcesPath ?? '', 'docs-bundle')]
-  return [join(app.getAppPath(), '..'), app.getAppPath(), process.cwd()]
+  const roots: string[] = []
+  for (const start of [app.getAppPath(), process.cwd()]) {
+    let dir = start
+    for (let i = 0; i < 4; i++) {
+      roots.push(dir)
+      dir = join(dir, '..')
+    }
+  }
+  return roots
 }
 
 export async function readDoc(name: DocName): Promise<string> {

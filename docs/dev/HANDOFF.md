@@ -19,8 +19,8 @@ Entry format:
 
 ## 2026-09-25 · lead (macOS, Apple silicon) · main
 **Changed:** Help documents for end users. Help > Program description now shows a new `docs/PROGRAM_OVERVIEW.md`: what the program does, how notes are organised, printing, editing, search, history, templates, where notes live, and what it does not do, with no development history. The developer specification moved to `docs/dev/PROGRAM_DESCRIPTION.md` (kept out of the package). Getting started no longer has an Installing section; the README keeps the install steps.
-**Found:** Nothing new.
-**Checked:** Type check and unit tests from `app/`. The package job of this push's workflow run verifies the docs-bundle.
+**Found:** The first push failed the phase 5 suite on both platforms: the test build is launched from `app/out-e2e/main`, and the app looked for its Help documents only one level above its app path. `about.ts` now tries the app path and the working folder with up to three parent levels each. In a real installation the documents come from `docs-bundle`, which was never affected.
+**Checked:** Type check and unit tests from `app/`; phase 5 suite passes locally after the fix. The workflow run for the fix commit is the proof on CI.
 **Next platform must check:** Nothing.
 **Open:** Unchanged.
 
