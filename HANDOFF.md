@@ -18,6 +18,14 @@ Entry format:
 ---
 
 ## 2026-09-25 · lead (macOS, Apple silicon) · main
+**Changed:** Notes only. Recorded that the OneNote importer will be a separate helper app, not a core feature (see `docs/DECISIONS.md`).
+**Found:** The draft v1.1.0 `PageBinder-1.1.0-arm64.dmg` was downloaded and installed on a real Apple silicon Mac by the user with no issue. The first push-triggered macOS and Windows run on the recreated repository passed every job, including both installers and the cross-platform notebook checks.
+**Checked:** Nothing run locally for this note.
+**Next platform must check:**
+- **Windows machine (fresh session, `/sync` first):** download and install the draft `PageBinder-Setup-1.1.0.exe`; confirm it starts and asks Keep or Start fresh only when earlier settings exist. Then the major test: **drag and drop emails from Outlook** onto a page (single and several at once, with the native drop helper). Also run `npx tsx scripts/cross-platform.ts check <folder>` on a notebook made on the Mac.
+**Open:** The draft v1.1.0 release stays unpublished until the Windows installer has been tried. Outlook drag-and-drop remains unverified.
+
+## 2026-09-25 · lead (macOS, Apple silicon) · main
 **Changed:** The GitHub repository was deleted and recreated with the same name, settings, `main`, and `rev1` tag, to remove superseded commits from before the history cleanup that GitHub still served by commit code. The commit codes on `main` are unchanged, so existing clones keep working with no action. Actions run history restarted, and the draft v1.1.0 release was rebuilt by the Release workflow.
 **Found:** Rewriting history does not remove old commits from GitHub. They stay downloadable by code, and the repository's public activity feed lists those codes. Only deleting the repository, or a GitHub Support purge, removes them.
 **Checked:** None of the 15 superseded commits is served any more; every commit in the new repository is authored by the PageBinder noreply address; the macOS and Windows run and the Release run started from the new repository.
