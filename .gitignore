@@ -1,0 +1,16 @@
+node_modules/
+out/
+dist/
+*.log
+.DS_Store
+.vite/
+test-notebooks/
+*.log
+*.tsbuildinfo
+out-e2e/
+# Generated usability-test notebook (rebuild with scripts/make-medical.ts)
+Medical Records/
+# Personal copy of the artwork; the tracked source is resources/logo-artwork.jpg
+logo icon.jpg
+# Local Claude Code permissions
+.claude/settings.local.json
