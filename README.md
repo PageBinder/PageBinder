@@ -149,6 +149,7 @@ The spec's targets were under 2 s to a usable window with an existing index, und
 - **First run.** With no recent notebooks, the Welcome screen shows a short Getting started note: a notebook is a folder, pages save themselves with history, and a backup is a copy of the folder. It also links to the full guide, and Create notebook suggests the Documents folder. The Getting Started guide now opens with installation steps for both systems.
 - **Windows details.** The right-click item is labelled **Show in Explorer** on Windows, and the taskbar groups the running window with its Start menu shortcut.
 - Backup instructions now leave out `.lock` as well as `.index`.
+- **Page list shows a new title straight away.** Saving, renaming, restoring a version, or creating a page from a template now finishes updating the search index before the page list is refreshed. Before, the list could keep showing the old title; the Mac and Windows test runs caught this.
 
 ## Commands
 
