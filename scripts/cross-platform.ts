@@ -14,14 +14,15 @@
  *   3. a full Verify Notebook finds nothing wrong;
  *   4. the real app opens the notebook and shows every section, page, picture, and attachment;
  *   5. after the app has opened every page, the files are still identical to the manifest.
- * Step 4 runs out-e2e/ by default; PAGEBINDER_EXE=<path to an installed PageBinder> checks an
- * installed copy instead.
+ * Step 4 drives the out-e2e/ build page by page. With PAGEBINDER_EXE=<path to an installed
+ * PageBinder>, it first starts that installed copy on the notebook and waits for it to open it.
  */
 import { _electron as electron } from 'playwright'
 import { promises as fs } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { join, resolve, relative, sep } from 'node:path'
-import { tmpdir } from 'node:os'
+import { tmpdir, hostname } from 'node:os'
+import { spawn } from 'node:child_process'
 import { createNotebook, openNotebook } from '../src/main/storage/notebook'
 import { createSection, createGroup } from '../src/main/storage/section'
 import { createPage, savePage, loadPage } from '../src/main/storage/page'
@@ -159,12 +160,38 @@ async function check(folder: string): Promise<void> {
   const stale = report.findings.length - real.length
   step(`Verify Notebook (full) is clean${stale ? ` (${stale} page.html files dated older than their page by the copy; content identical)` : ''}`)
 
-  // 4. The real app opens it and shows everything.
+  // 4a. An installed copy (PAGEBINDER_EXE) starts and opens the notebook. Automation cannot attach to
+  //     a packaged build, so the proof is the lock file the app writes on opening, from this host.
   const exe = process.env['PAGEBINDER_EXE']
+  if (exe) {
+    const lock = join(root, '.lock')
+    const child = spawn(exe, [`--user-data-dir=${join(tmpdir(), `pagebinder-xp-installed-${Date.now()}`)}`], { env: { ...process.env, PAGEBINDER_OPEN: root }, stdio: 'ignore' })
+    try {
+      let opened = false
+      for (let i = 0; i < 120 && !opened; i++) {
+        await new Promise((r) => setTimeout(r, 500))
+        try {
+          const info = JSON.parse(await fs.readFile(lock, 'utf8')) as { pid: number; host: string }
+          opened = info.host.toLowerCase() === hostname().toLowerCase()
+        } catch {
+          /* not yet */
+        }
+      }
+      assert(opened, `the installed app (${exe}) opened the notebook within 60 s`)
+      // Let it finish loading the first page before it is closed.
+      await new Promise((r) => setTimeout(r, 3000))
+      assert(child.exitCode === null, 'the installed app is still running')
+    } finally {
+      child.kill()
+      await new Promise((r) => setTimeout(r, 2000))
+      // A hard stop can leave the lock behind; it is not notebook content (see SKIP).
+    }
+    step(`the installed app starts and opens the notebook (${exe})`)
+  }
+
+  // 4b. The app, driven page by page, shows every section, page, picture, and attachment.
   const userData = join(tmpdir(), `pagebinder-xp-userdata-${Date.now()}`)
-  const app = exe
-    ? await electron.launch({ executablePath: exe, args: [`--user-data-dir=${userData}`], env: { ...process.env, PAGEBINDER_OPEN: root } })
-    : await electron.launch({ args: [resolve(process.env['E2E_OUT'] ?? 'out-e2e', 'main/index.js'), `--user-data-dir=${userData}`], cwd: resolve('.'), env: { ...process.env, PAGEBINDER_OPEN: root } })
+  const app = await electron.launch({ args: [resolve(process.env['E2E_OUT'] ?? 'out-e2e', 'main/index.js'), `--user-data-dir=${userData}`], cwd: resolve('.'), env: { ...process.env, PAGEBINDER_OPEN: root } })
   try {
     const page = await app.firstWindow()
     await page.waitForSelector('.section-tabs')

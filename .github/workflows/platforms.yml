@@ -135,5 +135,7 @@ jobs:
           zip=$(ls installer/PageBinder-*-${arch}.zip | head -1)
           ditto -x -k "$zip" "$RUNNER_TEMP/app"
           echo "PAGEBINDER_EXE=$RUNNER_TEMP/app/PageBinder.app/Contents/MacOS/PageBinder" >> "$GITHUB_ENV"
+      - name: Build the app for the page-by-page check
+        run: npm run build:e2e
       - name: Open the other platform's notebook in the installed app
         run: npx tsx scripts/cross-platform.ts check xp

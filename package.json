@@ -33,6 +33,7 @@
     "@tiptap/pm": "^3.31.3",
     "@tiptap/react": "^3.31.3",
     "@tiptap/starter-kit": "^3.31.3",
+    "happy-dom": "^20.14.5",
     "marked": "^18.0.14",
     "pdfjs-dist": "^6.3.289",
     "react": "^19.3.0",
