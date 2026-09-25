@@ -53,6 +53,9 @@ async function main(): Promise<void> {
   if (errors) throw new Error('stale lock was not taken over')
   process.stdout.write('  ✓ stale lock from a dead process is taken over\n')
   process.stdout.write('PASS\n')
+  // On Windows the hard-stopped app from step 2 leaves Playwright's connection open, which would
+  // keep this script alive after it has passed; end it explicitly.
+  process.exit(0)
 }
 main().catch((err) => {
   process.stderr.write(`FAIL: ${(err as Error).message}\n`)
