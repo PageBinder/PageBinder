@@ -46,7 +46,10 @@ async function main(): Promise<void> {
   // Files to attach through the (test-seamed) picker.
   const eml = join(base, 'Ridge Road quote.eml')
   await fs.writeFile(eml, 'From: Sam Rivers <sam@example.com>\r\nSubject: Ridge Road quote\r\nDate: Mon, 14 Sep 2026 09:42:11 +0000\r\n\r\nPlease find the quote attached.\r\n')
-  const txt = join(base, 'RE: field notes day 1?.txt')
+  // Windows cannot hold ':' or '?' in a file name, so there the awkward name uses what it does
+  // allow and the app still cleans up (a double space, a space before the extension).
+  const awkward = process.platform === 'win32' ? 'RE  field notes day 1 .txt' : 'RE: field notes day 1?.txt'
+  const txt = join(base, awkward)
   await fs.writeFile(txt, 'x'.repeat(4096))
 
   const app = await electron.launch({
@@ -159,7 +162,7 @@ async function main(): Promise<void> {
   assert(files.length === 2, 'two file objects on the page')
   const mail = files.find((o) => o.kind === 'file' && o.mail)
   assert(mail && mail.kind === 'file' && mail.mail?.subject === 'Ridge Road quote' && mail.mail.from.includes('Sam Rivers'), 'email card carries subject and sender')
-  assert(d5.manifest.attachments.some((e) => e.name === 'RE field notes day 1.txt' && e.originalName === 'RE: field notes day 1?.txt'), 'awkward filename sanitised, original kept')
+  assert(d5.manifest.attachments.some((e) => e.name === 'RE field notes day 1.txt' && e.originalName === awkward), 'awkward filename sanitised, original kept')
   const names = await fs.readdir(join(root, rel, 'attachments'))
   assert(names.sort().join('|') === 'RE field notes day 1.txt|Ridge Road quote.eml', `attachments folder holds the files (${names.join(', ')})`)
   const h5 = await html()
