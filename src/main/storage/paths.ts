@@ -31,3 +31,13 @@ export function toRel(root: string, abs: string): string {
 export function isHiddenEntry(name: string): boolean {
   return name.startsWith('.')
 }
+
+/**
+ * Files the operating system drops into folders on its own: dot files (macOS .DS_Store and ._
+ * resource forks), Explorer's thumbnail cache and folder settings, and the macOS custom-icon file.
+ * They travel with NAS copies between the two systems and are never part of a page.
+ */
+const SYSTEM_FILES = new Set(['thumbs.db', 'ehthumbs.db', 'desktop.ini', 'icon\r'])
+export function isSystemFile(name: string): boolean {
+  return name.startsWith('.') || SYSTEM_FILES.has(name.toLowerCase())
+}

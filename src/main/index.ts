@@ -6,6 +6,10 @@ import { registerScheme, registerProtocolHandler } from './protocol'
 
 registerScheme()
 
+// Windows groups taskbar buttons and Start menu shortcuts by this id; it matches appId in
+// electron-builder.yml so the installed shortcut and the running window share one button.
+if (process.platform === 'win32') app.setAppUserModelId('app.pagebinder.desktop')
+
 /**
  * The program was called DigiNote before 1.0.1, and Electron names the settings folder after
  * the program. Once, on the first start under the new name, the app's own files are carried

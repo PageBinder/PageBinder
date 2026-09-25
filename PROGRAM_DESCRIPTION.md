@@ -427,6 +427,8 @@ Builds: Windows build, long path support, installers for macOS and Windows, firs
 
 Done when: a notebook created on the Mac opens on Windows from a NAS copy with no differences.
 
+How it is checked: `scripts/cross-platform.ts` builds a notebook on one system and records the SHA-256 of every file. On the other system, it confirms that a copy has the same bytes, that each page renders to a byte-identical `page.html`, that a full Verify is clean, and that the installed app opens every page without changing a file. The `platforms` workflow runs it from macOS to Windows and from Windows to macOS on every push.
+
 ## 19. Import from OneNote (deferred, reference only)
 
 Decision on 22 September 2026: this feature is not to be developed at this time. The findings below are kept so the work does not need to be repeated if the decision changes.

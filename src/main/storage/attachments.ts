@@ -10,7 +10,7 @@ import type { FileEntry, MailMeta } from '../../shared/types'
 import { now } from './ids'
 import { sanitizeFileName, uniqueName } from './names'
 import { resolveInside } from './paths'
-import { atomicWriteFile, fsyncDir } from './atomic'
+import { atomicWriteFile, fsyncDir, renameDurable } from './atomic'
 
 export const ATTACHMENTS_DIR = 'attachments'
 export const IMAGES_DIR = 'images'
@@ -45,7 +45,7 @@ export async function copyFileIntoPage(root: string, pageRel: string, sourcePath
   const name = await pickName(dir, originalName)
   const tmp = join(dir, `.tmp-${name}`)
   await fs.copyFile(sourcePath, tmp, fsConstants.COPYFILE_FICLONE)
-  await fs.rename(tmp, join(dir, name))
+  await renameDurable(tmp, join(dir, name))
   await fsyncDir(dir)
   const stat = await fs.stat(join(dir, name))
   const sha256 = stat.size <= HASH_LIMIT_BYTES ? await hashFile(join(dir, name)) : ''

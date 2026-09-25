@@ -570,7 +570,7 @@ export function Canvas({
     }
     const fileItems: MenuItem[] = [
       { label: 'Open in default application', onClick: () => void window.pagebinder.file.open(relFor(obj)) },
-      { label: 'Show in Finder', onClick: () => void window.pagebinder.file.reveal(relFor(obj)) },
+      { label: navigator.userAgent.includes('Windows') ? 'Show in Explorer' : 'Show in Finder', onClick: () => void window.pagebinder.file.reveal(relFor(obj)) },
       { separator: true }
     ]
     if (obj.kind === 'image') {

@@ -55,7 +55,7 @@ export interface RecycledPage {
 }
 
 export interface Finding {
-  kind: 'corrupt-page' | 'missing-file' | 'orphan-file' | 'stale-html' | 'history-over-policy' | 'temp-file' | 'regenerated-meta'
+  kind: 'corrupt-page' | 'missing-file' | 'orphan-file' | 'stale-html' | 'history-over-policy' | 'temp-file' | 'regenerated-meta' | 'long-path'
   rel: string
   file?: string
   detail: string

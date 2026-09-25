@@ -5,6 +5,7 @@
  */
 import { promises as fs } from 'node:fs'
 import { join, basename } from 'node:path'
+import { renameDurable } from './atomic'
 import { FORMAT_VERSION, type PageDoc, type EditorJSON, type SectionMeta, type CanvasObject, type PaperSettings } from '../../shared/types'
 import { readJson, writeJson } from './notebook'
 import { newId, now } from './ids'
@@ -193,7 +194,7 @@ export async function moveTemplate(srcDir: string, targetLibrary: string): Promi
   const folder = await uniqueName(targetLibrary, basename(srcDir).replace(new RegExp(`${TEMPLATE_SUFFIX}$`), ''), TEMPLATE_SUFFIX)
   const dest = join(targetLibrary, folder)
   try {
-    await fs.rename(srcDir, dest)
+    await renameDurable(srcDir, dest)
   } catch {
     // Different volume: copy, then remove the source.
     await copyDir(srcDir, dest)

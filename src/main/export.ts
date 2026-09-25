@@ -3,7 +3,8 @@
  * command-line script, so both produce the same output.
  */
 import { promises as fs } from 'node:fs'
-import { join, resolve, basename } from 'node:path'
+import { join, resolve, basename, relative, isAbsolute } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { tmpdir } from 'node:os'
 import { readValidPage, writeRendered } from './storage/page'
 import { readJson } from './storage/notebook'
@@ -61,7 +62,8 @@ export async function collectPages(dir: string, log: (s: string) => void = () =>
 export function combineHtml(pages: ExportedPage[], root: string, absoluteLinks = false): string {
   const parts = pages.map((p) => {
     const relDir = p.dir.slice(root.length + 1).split(/[\\/]/).map(encodeURIComponent).join('/')
-    const base = absoluteLinks ? `file://${p.dir.split(/[\\/]/).map(encodeURIComponent).join('/')}/` : `${relDir}/`
+    // pathToFileURL writes a drive letter as file:///C:/... on Windows; building the URL by hand did not.
+    const base = absoluteLinks ? `${pathToFileURL(p.dir).href}/` : `${relDir}/`
     const html = renderPageHtml(p.doc, { imageBase: `${base}images/`, attachmentBase: `${base}attachments/` })
     const body = /<body[^>]*>([\s\S]*)<\/body>/.exec(html)?.[1] ?? ''
     const bodyAttrs = /<body([^>]*)>/.exec(html)?.[1] ?? ''
@@ -86,7 +88,8 @@ document.querySelectorAll('.page-body').forEach(function (body) { ${perPage} });
 export async function exportHtml(targetDir: string, outPath: string, log?: (s: string) => void): Promise<number> {
   const pages = await collectPages(targetDir, log)
   const root = targetDir.endsWith('.page') ? resolve(targetDir, '..') : targetDir
-  const inside = resolve(outPath).startsWith(root)
+  const back = relative(root, resolve(outPath))
+  const inside = !back.startsWith('..') && !isAbsolute(back)
   await atomicWriteFile(outPath, combineHtml(pages, root, !inside))
   return pages.length
 }

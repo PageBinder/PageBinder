@@ -8,13 +8,38 @@ import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
 import type { NotebookTree, TreeChild, PageDoc } from '../../shared/types'
 import { readValidPage, listHistory, writeRendered, readSnapshot } from './page'
-import { HISTORY_DIR, PAGE_DOC, PAGE_HTML, RECYCLE_DIR, resolveInside } from './paths'
-import { TMP_PREFIX, durableCopy } from './atomic'
+import { HISTORY_DIR, PAGE_DOC, PAGE_HTML, RECYCLE_DIR, isSystemFile, resolveInside } from './paths'
+import { TMP_PREFIX, durableCopy, renameDurable } from './atomic'
 import { selectSnapshotsToDelete, pruneHistory, type HistoryPolicy, DEFAULT_HISTORY_POLICY } from './history'
 import { timestampForFileName } from './ids'
 
-export type FindingKind = 'corrupt-page' | 'missing-file' | 'orphan-file' | 'stale-html' | 'history-over-policy' | 'temp-file' | 'regenerated-meta'
+export type FindingKind = 'corrupt-page' | 'missing-file' | 'orphan-file' | 'stale-html' | 'history-over-policy' | 'temp-file' | 'regenerated-meta' | 'long-path'
 export type Repair = 'restore-from-history' | 'regenerate-html' | 'recycle-orphan' | 'prune-history' | 'remove-temp'
+
+/**
+ * Windows' classic limit on a full path is 260 characters. PageBinder itself is not bound by it
+ * (Node reaches longer paths on Windows through the \\?\ prefix), but older backup and copy tools
+ * are, so a warning is given once any file's full path passes this length.
+ */
+export const LONG_PATH_WARN = 240
+
+/** The longest full path of any file in a page folder, with the file's name inside the folder. */
+async function longestPath(dir: string, names: string[]): Promise<{ length: number; file: string }> {
+  let best = { length: 0, file: '' }
+  const consider = (file: string): void => {
+    const length = join(dir, file).length
+    if (length > best.length) best = { length, file }
+  }
+  for (const n of names) consider(n)
+  for (const sub of ['images', 'attachments', HISTORY_DIR]) {
+    try {
+      for (const n of await fs.readdir(join(dir, sub))) consider(join(sub, n))
+    } catch {
+      /* no such folder */
+    }
+  }
+  return best
+}
 
 export interface Finding {
   kind: FindingKind
@@ -72,6 +97,14 @@ export async function verifyNotebook(
       continue
     }
     for (const n of names) if (n.startsWith(TMP_PREFIX)) findings.push({ kind: 'temp-file', rel, file: n, detail: 'Leftover from an interrupted write.', repair: 'remove-temp' })
+    const longest = await longestPath(dir, names)
+    if (longest.length > LONG_PATH_WARN) {
+      findings.push({
+        kind: 'long-path',
+        rel,
+        detail: `A file in this page has a full path of ${longest.length} characters (${longest.file.split(/[\\/]/).join('/')}). Windows' traditional limit is 260. PageBinder reads and writes longer paths, but some older programs, including backup tools and the application an attachment opens in, stop at that limit. A shorter page, section, or group name, or a notebook folder nearer the top of the drive, gives them more room.`
+      })
+    }
 
     const doc = await readValidPage(join(dir, PAGE_DOC))
     if (!doc) {
@@ -122,7 +155,7 @@ export async function verifyNotebook(
         continue
       }
       for (const n of files) {
-        if (n.startsWith('.')) continue
+        if (isSystemFile(n)) continue
         if (!referenced.has(`${sub}/${n}`)) findings.push({ kind: 'orphan-file', rel, file: `${sub}/${n}`, detail: 'No object on the page uses this file. It can be moved to the recycle folder.', repair: 'recycle-orphan' })
       }
     }
@@ -172,7 +205,7 @@ export async function repairFinding(root: string, finding: Finding, policy: Hist
       const recycle = join(root, RECYCLE_DIR, 'orphaned files')
       await fs.mkdir(recycle, { recursive: true })
       const target = join(recycle, `${timestampForFileName()} ${finding.file.replace('/', ' ')}`)
-      await fs.rename(join(dir, finding.file), target)
+      await renameDurable(join(dir, finding.file), target)
       return `Moved ${finding.file} to the recycle folder.`
     }
     case 'restore-from-history': {
@@ -182,7 +215,7 @@ export async function repairFinding(root: string, finding: Finding, policy: Hist
         if (snap) {
           const docPath = join(dir, PAGE_DOC)
           try {
-            await fs.rename(docPath, join(dir, `${PAGE_DOC}.corrupt-${timestampForFileName()}`))
+            await renameDurable(docPath, join(dir, `${PAGE_DOC}.corrupt-${timestampForFileName()}`))
           } catch {
             /* nothing to keep */
           }

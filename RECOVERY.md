@@ -62,7 +62,7 @@ File > Verify Notebook. Quick checks names and sizes; Full also verifies every f
 
 ## Restoring a whole notebook from the NAS
 
-Copy the notebook folder back. Open it. The search index rebuilds in the background. Skip `.index` when copying to or from the NAS; everything else must be included.
+Copy the notebook folder back. Open it. The search index rebuilds in the background. Skip `.index` and `.lock` when copying to or from the NAS; everything else must be included. A notebook made on a Mac opens on Windows and the other way round, with no conversion: the files are identical on both. A `.lock` left in a copy from another computer is ignored and replaced.
 
 ## Reading everything without the app
 

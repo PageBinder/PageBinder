@@ -27,6 +27,28 @@ export async function fsyncDir(dir: string): Promise<void> {
   }
 }
 
+/**
+ * Rename, retrying briefly on Windows. There a rename fails with EPERM, EACCES, or EBUSY while
+ * another program holds the file or folder open without sharing delete access: a virus scanner,
+ * the search indexer, a backup job, or Explorer's preview pane. Those holds last milliseconds to a
+ * second or two, so the rename is tried again for up to about three seconds before giving up.
+ */
+const TRANSIENT = new Set(['EPERM', 'EACCES', 'EBUSY'])
+export async function renameDurable(from: string, to: string, platform: NodeJS.Platform = process.platform): Promise<void> {
+  const delays = platform === 'win32' ? [20, 50, 100, 200, 400, 800, 1200] : []
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await fs.rename(from, to)
+      return
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code ?? ''
+      const wait = delays[attempt]
+      if (wait === undefined || !TRANSIENT.has(code)) throw err
+      await new Promise((r) => setTimeout(r, wait))
+    }
+  }
+}
+
 export async function atomicWriteFile(target: string, data: string | Buffer): Promise<void> {
   const dir = dirname(target)
   const tmp = join(dir, `${TMP_PREFIX}${basename(target)}-${randomBytes(6).toString('hex')}`)
@@ -38,7 +60,7 @@ export async function atomicWriteFile(target: string, data: string | Buffer): Pr
     await handle.close()
   }
   try {
-    await fs.rename(tmp, target)
+    await renameDurable(tmp, target)
   } catch (err) {
     await fs.rm(tmp, { force: true })
     throw err

@@ -40,17 +40,22 @@ async function main(): Promise<void> {
     })
     let lastSeen = confirmed
     let lastRel = relPath
+    let firstSave: () => void = () => {}
+    const saving = new Promise<void>((r) => (firstSave = r))
     child.stdout.on('data', (chunk: Buffer) => {
       for (const line of chunk.toString().split('\n')) {
         const m = /^saved (\d+) (.+)$/.exec(line.trim())
         if (m) {
           lastSeen = Number(m[1])
           lastRel = m[2]!
+          firstSave()
         }
       }
     })
-    // Let it warm up (tsx startup), then kill at a random moment inside the save loop.
-    await new Promise((r) => setTimeout(r, 900 + Math.random() * 400))
+    // Wait for the save loop to start (tsx startup takes longer on a slow or busy machine), then
+    // kill at a random moment inside it.
+    await Promise.race([saving, new Promise((r) => setTimeout(r, 60_000))])
+    await new Promise((r) => setTimeout(r, Math.random() * 400))
     child.kill('SIGKILL')
     await new Promise<void>((r) => child.on('exit', () => r()))
 
