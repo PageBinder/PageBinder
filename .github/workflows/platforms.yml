@@ -32,8 +32,23 @@ jobs:
       - run: npm test
       - name: Crash test (kill mid-save, 30 rounds)
         run: npm run crash-test
+      - name: Screen size for the app window (Windows runners start at 1024x768)
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        shell: pwsh
+        run: Set-DisplayResolution -Width 1920 -Height 1080 -Force
       - name: End-to-end suites
         run: npm run e2e
+        env:
+          E2E_SHOTS: ${{ runner.temp }}/e2e-shots
+      - name: Screenshots from a failed end-to-end run
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-shots-${{ runner.os }}
+          path: ${{ runner.temp }}/e2e-shots
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Make a notebook for the other platform
         run: npx tsx scripts/cross-platform.ts make xp-${{ runner.os }}
       - uses: actions/upload-artifact@v4

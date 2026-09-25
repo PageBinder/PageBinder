@@ -29,6 +29,9 @@ async function save(page: Page): Promise<void> {
   await page.waitForTimeout(300)
 }
 
+/** The window, kept so a failure can be photographed (E2E_SHOTS) with its size on record. */
+let shownPage: Page | undefined
+
 async function main(): Promise<void> {
   const base = join(tmpdir(), `pagebinder-e2e6-${Date.now()}`)
   await fs.mkdir(base, { recursive: true })
@@ -52,6 +55,7 @@ async function main(): Promise<void> {
     env: { ...process.env, PAGEBINDER_OPEN: root }
   })
   const page = await app.firstWindow()
+  shownPage = page
   await page.waitForSelector('.section-tabs')
 
   // 1. Save the page as a notebook template, then make a page from it: placeholders filled.
@@ -166,17 +170,21 @@ async function main(): Promise<void> {
   await page.mouse.up()
   await page.waitForTimeout(150)
   const selectedCount = await page.locator('.text-container.selected').count()
-  assert(selectedCount >= 2, `rubber band selected the boxes (${selectedCount})`)
+  if (selectedCount < 2) {
+    const boxes = await page.evaluate(() => Array.from(document.querySelectorAll('.text-container')).map((el) => { const r = el.getBoundingClientRect(); return `${Math.round(r.left)},${Math.round(r.top)} ${Math.round(r.width)}x${Math.round(r.height)}` }).join('; '))
+    throw new Error(`ASSERT: rubber band selected the boxes (${selectedCount}); canvas at ${Math.round(canvasBox.x)},${Math.round(canvasBox.y)}; boxes ${boxes}`)
+  }
   const before = (await page.evaluate(() => Array.from(document.querySelectorAll('.text-container.selected')).map((el) => (el as HTMLElement).style.left)))
   const handle = page.locator('.text-container.selected .container-handle').first()
   const hb = (await handle.boundingBox())!
   await page.mouse.move(hb.x + hb.width / 2, hb.y + 3)
+  const underMouse = await page.evaluate(([x, y]) => (document.elementFromPoint(x!, y!) as HTMLElement | null)?.className ?? 'nothing', [hb.x + hb.width / 2, hb.y + 3])
   await page.mouse.down()
   await page.mouse.move(hb.x + hb.width / 2 + 120, hb.y + 3 + 90, { steps: 8 })
   await page.mouse.up()
   await page.waitForTimeout(150)
   const after = (await page.evaluate(() => Array.from(document.querySelectorAll('.text-container.selected')).map((el) => (el as HTMLElement).style.left)))
-  assert(after.length === before.length && after.every((l, i) => parseInt(l, 10) > parseInt(before[i]!, 10) + 60), `all selected boxes moved together (${before.join(',')} -> ${after.join(',')})`)
+  assert(after.length === before.length && after.every((l, i) => parseInt(l, 10) > parseInt(before[i]!, 10) + 60), `all selected boxes moved together (${before.join(',')} -> ${after.join(',')}; handle at ${Math.round(hb.x)},${Math.round(hb.y)} ${Math.round(hb.width)}x${Math.round(hb.height)}, under the mouse: ${underMouse})`)
   const total = await page.locator('.text-container').count()
   await page.keyboard.press('Delete')
   await page.waitForTimeout(150)
@@ -214,7 +222,20 @@ async function main(): Promise<void> {
   process.stdout.write(`\nPASS. Notebook kept at ${root}\n`)
 }
 
-main().catch((err) => {
+main().catch(async (err) => {
   process.stderr.write(`FAIL: ${(err as Error).stack ?? String(err)}\n`)
+  if (shownPage) {
+    try {
+      const size = await shownPage.evaluate(() => `window ${window.innerWidth}x${window.innerHeight}, screen ${screen.width}x${screen.height}`)
+      process.stderr.write(`  ${size}\n`)
+      const dir = process.env['E2E_SHOTS']
+      if (dir) {
+        await fs.mkdir(dir, { recursive: true })
+        await shownPage.screenshot({ path: join(dir, 'phase6-failure.png') })
+      }
+    } catch {
+      /* the window may already be gone */
+    }
+  }
   process.exit(1)
 })
