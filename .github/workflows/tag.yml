@@ -1,0 +1,38 @@
+# Create an annotated tag on GitHub, tagged by PageBinder. Started by hand (Actions tab > Create tag >
+# Run workflow). Runs on Linux for a few seconds, so it costs about one of the free plan's minutes.
+name: Create tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag name, for example rev1 or v1.1.0
+        required: true
+      commit:
+        description: Commit to tag (full or short ID); leave empty for the latest commit on main
+        required: false
+      message:
+        description: Tag message
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Create and push the tag
+        env:
+          TAG: ${{ inputs.tag }}
+          COMMIT: ${{ inputs.commit }}
+          MESSAGE: ${{ inputs.message }}
+        run: |
+          git config user.name PageBinder
+          git config user.email 4245724+PageBinder@users.noreply.github.com
+          git tag -a "$TAG" "${COMMIT:-HEAD}" -m "$MESSAGE"
+          git push origin "refs/tags/$TAG"
