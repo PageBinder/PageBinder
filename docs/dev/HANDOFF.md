@@ -17,6 +17,13 @@ Entry format:
 
 ---
 
+## 2026-09-26 · lead (macOS, Apple silicon) · main
+**Changed:** (1) Text boxes that cross a page break now look in the editor as they print: `app/src/renderer/src/sheetBreaks.ts` applies the print script's push rule live as node decorations, recalculated on edit, move, resize, paper change, and zoom. (2) Order submenu (bring to front, bring forward, send backward, send to back) on every object's right-click menu and on multi-selections; objects stack in list order everywhere, so it reorders the page's object list. (3) Word wrap options written up in `docs/dev/FUTURE_FEATURES.md`, awaiting the user's choice.
+**Found:** Printing had always pushed blocks past sheet boundaries; the editor never did, which is why the two differed. Pictures and attachments placed across a page break are deliberately not handled, as agreed with the user.
+**Checked:** See the commit: unit tests, and the window suites including two new phase 8 steps (editor and page.html push the same lines by the same amounts; Order commands, their stacking in the editor and page.html, and undo).
+**Next platform must check:** Windows: a long text box across a page break looks the same on screen and in Print Preview; Order works on overlapping objects.
+**Open:** Choice of word wrap option.
+
 ## 2026-09-25 · lead (macOS, Apple silicon) · main
 **Changed:** Printout text is searchable (version stays 1.1.0; the draft release is rebuilt). `renderPdfPages` reads each PDF page's text layer while rendering; `insertPrintout` stores it on each printout picture as `printout: { source, page, text }`. The index gained a `printouts` column (INDEX_VERSION 4, so every notebook rebuilds its index on first open), and search returns a `printouts` group shown as **In printouts**. In the app the text sits invisibly inside the picture, so page search counts it and outlines the picture with the current match; `page.html` lays it transparently over the picture. Added `docs/dev/FUTURE_FEATURES.md` with the follow-ups (word highlighting, older printouts, OCR, Word printouts) and the gaps from the feature comparison.
 **Found:** Nothing new.

@@ -182,6 +182,28 @@ export function Canvas({
     [onChange]
   )
 
+  /**
+   * Stacking order. Objects stack in the order they are stored, in the editor and in page.html
+   * alike, so reordering the list is all that is needed. Several selected objects keep their
+   * order relative to each other.
+   */
+  const reorder = useCallback(
+    (ids: Set<string>, how: 'front' | 'back' | 'forward' | 'backward') => {
+      update((objs) => {
+        if (how === 'front') return [...objs.filter((o) => !ids.has(o.id)), ...objs.filter((o) => ids.has(o.id))]
+        if (how === 'back') return [...objs.filter((o) => ids.has(o.id)), ...objs.filter((o) => !ids.has(o.id))]
+        const arr = [...objs]
+        if (how === 'forward') {
+          for (let i = arr.length - 2; i >= 0; i--) if (ids.has(arr[i]!.id) && !ids.has(arr[i + 1]!.id)) [arr[i], arr[i + 1]] = [arr[i + 1]!, arr[i]!]
+        } else {
+          for (let i = 1; i < arr.length; i++) if (ids.has(arr[i]!.id) && !ids.has(arr[i - 1]!.id)) [arr[i - 1], arr[i]] = [arr[i]!, arr[i - 1]!]
+        }
+        return arr
+      })
+    },
+    [update]
+  )
+
   const removeObject = useCallback(
     (id: string) => {
       update((objs) => objs.filter((o) => o.id !== id))
@@ -512,6 +534,16 @@ export function Canvas({
   const menuItems = (id: string, tableEditor: Editor | null = null, textEditor: Editor | null = null): MenuItem[] => {
     const obj = doc.objects.find((o) => o.id === id)
     if (!obj) return []
+    const orderIds = selectedIds.has(id) && selectedIds.size > 1 ? new Set(selectedIds) : new Set([id])
+    const orderItem: MenuItem = {
+      label: 'Order',
+      submenu: [
+        { label: 'Bring to front', onClick: () => reorder(orderIds, 'front') },
+        { label: 'Bring forward', onClick: () => reorder(orderIds, 'forward') },
+        { label: 'Send backward', onClick: () => reorder(orderIds, 'backward') },
+        { label: 'Send to back', onClick: () => reorder(orderIds, 'back') }
+      ]
+    }
     const copyItem: MenuItem = { label: selectedIds.has(id) && selectedIds.size > 1 ? `Copy ${selectedIds.size} objects` : 'Copy', onClick: () => onCopyObjects(doc.objects.filter((o) => (selectedIds.has(id) ? selectedIds.has(o.id) : o.id === id))) }
     if (obj.kind === 'shape') {
       const setShape = (patch: Partial<ShapeModel>): void => update((objs) => objs.map((o) => (o.id === id && o.kind === 'shape' ? { ...o, ...patch } : o)))
@@ -521,13 +553,14 @@ export function Canvas({
         { label: 'Line colour', submenu: [{ colors: { current: obj.stroke, onPick: (c: string) => setShape({ stroke: c }) } }] },
         { label: `Line weight: ${obj.strokeWidth} px (click to change)`, keepOpen: true, onClick: () => setShape({ strokeWidth: obj.strokeWidth >= 6 ? 1 : obj.strokeWidth + 1 }) },
         { separator: true },
+        orderItem,
         copyItem,
         { label: 'Delete', onClick: () => removeObject(id) }
       ]
     }
     if (selectedIds.has(id) && selectedIds.size > 1) {
       const n = selectedIds.size
-      return [{ label: `Delete ${n} selected objects`, onClick: () => removeObjects(selectedIds) }]
+      return [orderItem, { label: `Delete ${n} selected objects`, onClick: () => removeObjects(selectedIds) }]
     }
     if (obj.kind === 'text') {
       const items: MenuItem[] = []
@@ -573,7 +606,7 @@ export function Canvas({
         )
       }
       if (ed) items.push({ label: 'Insert signature', onClick: () => onSignature(ed) }, { separator: true })
-      items.push(copyItem, { label: 'Delete text box', onClick: () => removeObject(id) })
+      items.push(orderItem, copyItem, { label: 'Delete text box', onClick: () => removeObject(id) })
       return items
     }
     const fileItems: MenuItem[] = [
@@ -589,7 +622,7 @@ export function Canvas({
       fileItems.push({ separator: true })
     }
     if (obj.kind === 'file' && /\.pdf$/i.test(obj.name)) fileItems.push({ label: 'Insert printout of this PDF', onClick: () => onPrintout(obj) }, { separator: true })
-    fileItems.push(copyItem, { label: 'Delete', onClick: () => removeObject(id) })
+    fileItems.push(orderItem, copyItem, { label: 'Delete', onClick: () => removeObject(id) })
     return fileItems
   }
 
@@ -666,6 +699,7 @@ export function Canvas({
               zoom={zoom}
               onContextMenu={(id, x, y, tableEditor, textEditor) => setObjectMenu({ id, x, y, tableEditor, textEditor })}
               onMeasure={onMeasure}
+              sheet={{ height: paper.height, marginTop: paper.margins.top, marginBottom: paper.margins.bottom }}
             />
           ) : obj.kind === 'shape' ? (
             <ShapeObject

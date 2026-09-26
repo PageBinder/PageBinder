@@ -6,6 +6,7 @@ import { documentExtensions } from '@shared/render/extensions'
 import type { TextContainer as TextContainerModel, EditorJSON } from '@shared/types'
 import type { Editor } from '@tiptap/react'
 import { useActiveEditor } from '../editorContext'
+import { SheetBreaks, layoutSheetBreaks, type SheetGeometry } from '../sheetBreaks'
 
 const MIN_WIDTH = 160
 
@@ -21,7 +22,8 @@ export function TextContainer({
   onDragStart,
   zoom,
   onContextMenu,
-  onMeasure
+  onMeasure,
+  sheet
 }: {
   obj: TextContainerModel
   autoFocus: false | 'start' | 'end'
@@ -35,10 +37,12 @@ export function TextContainer({
   zoom: number
   onContextMenu: (id: string, x: number, y: number, tableEditor: Editor | null, textEditor: Editor | null) => void
   onMeasure: (id: string, height: number) => void
+  /** Paper geometry, so text crossing a sheet boundary is laid out as it will print. */
+  sheet: SheetGeometry
 }): JSX.Element {
   const { setEditor, editor: active } = useActiveEditor()
   const editor = useEditor({
-    extensions: [...documentExtensions(), Placeholder.configure({ placeholder: 'Type here' })],
+    extensions: [...documentExtensions(), Placeholder.configure({ placeholder: 'Type here' }), SheetBreaks],
     content: obj.content,
     autofocus: autoFocus || false,
     onUpdate: ({ editor }) => onChange(obj.id, editor.getJSON() as EditorJSON),
@@ -97,6 +101,29 @@ export function TextContainer({
 
   const zoomRef = useRef(zoom)
   zoomRef.current = zoom
+
+  // Lay out text that crosses a sheet boundary the way the printout will (see sheetBreaks.ts):
+  // after every edit, move, resize, paper change, or zoom, and once the fonts have loaded.
+  const sheetRef = useRef(sheet)
+  sheetRef.current = sheet
+  useEffect(() => {
+    if (!editor) return
+    let timer = 0
+    const run = (): void => {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => {
+        const canvas = rootRef.current?.closest('.canvas') as HTMLElement | null
+        if (canvas) layoutSheetBreaks(editor, canvas, zoomRef.current, sheetRef.current)
+      }, 30)
+    }
+    run()
+    void document.fonts?.ready.then(run)
+    editor.on('update', run)
+    return () => {
+      editor.off('update', run)
+      window.clearTimeout(timer)
+    }
+  }, [editor, obj.x, obj.y, obj.width, sheet.height, sheet.marginTop, sheet.marginBottom, zoom])
   useEffect(() => {
     const move = (e: MouseEvent): void => {
       const z = zoomRef.current

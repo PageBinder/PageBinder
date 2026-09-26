@@ -14,7 +14,7 @@ A page is a blank canvas. Click anywhere to start a text box, and place text box
 
 ## Pages that print
 
-A page is laid out on sheets of paper from the moment you start. The page border and a dashed line for the margins show what will print, and a page can run over as many sheets as it needs. Anything placed outside the printable area stays on the page but does not print, and print preview shows it dimmed so nothing goes missing unnoticed.
+A page is laid out on sheets of paper from the moment you start. The page border and a dashed line for the margins show what will print, and a page can run over as many sheets as it needs. Anything placed outside the printable area stays on the page but does not print, and print preview shows it dimmed so nothing goes missing unnoticed. A text box that runs past the bottom of a sheet continues at the top of the next sheet's printable area, on screen exactly as on paper; a paragraph never splits across two sheets.
 
 - **Paper.** Letter is the default. Tabloid (11 × 17), Legal, A4, and A3 are available, portrait or landscape, with margin presets. The choice can be made for one page or for the whole notebook, and page numbers can be printed in the footer.
 - **Printing.** File > Print Preview shows exactly what will print. Print a page, a section, a section group, or a whole notebook.
@@ -29,6 +29,7 @@ A page is laid out on sheets of paper from the moment you start. The page border
 - **Files.** Drop any file onto the page, or use Insert > File Attachment. The file is copied into the page and shown as a card with its name and size. Double-click the card to open the file in its own application. An attached PDF can also be inserted as a printout of its pages, and the text on those pages can then be found by search.
 - **Emails.** A saved email (`.eml` or `.msg`) shows its subject, sender, and date on its card, and its text can be searched.
 - **Signature.** Insert signature puts your name with the date and time at the cursor.
+- **Stacking.** Where objects overlap, right-click any of them and choose Order to bring it to the front, send it to the back, or move it one step forward or back.
 - **Undo.** Undo and redo cover typing as well as creating, moving, resizing, and deleting objects and pages.
 
 ## Search

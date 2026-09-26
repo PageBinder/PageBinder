@@ -243,6 +243,79 @@ async function main(): Promise<void> {
   assert(fs7.count === 1 && fs7.inFull && !fs7.after, `one full-screen item and the window toggles (${JSON.stringify(fs7)})`)
   step('the View menu has a single Toggle Full Screen item')
 
+  // 8. A text box that runs across a page break looks in the editor exactly as it prints.
+  await page.locator('.page-row.add').click()
+  await page.waitForSelector('.page-row.renaming input')
+  await page.locator('.page-row.renaming input').fill('Gamma')
+  await page.keyboard.press('Enter')
+  await page.waitForSelector('.page-row.on:has-text("Gamma")')
+  await page.waitForTimeout(300)
+  const g = `${sec}/Gamma.page`
+  const gd = await doc(g)
+  const paras = Array.from({ length: 24 }, (_, i) => ({ type: 'paragraph', content: [{ type: 'text', text: `Break line ${i + 1}` }] }))
+  await page.evaluate(async ({ rel, d, paras }) => {
+    await window.pagebinder.page.save(rel, { ...d, objects: [
+      { kind: 'text', id: 'breakboxbreakboxbreakbox', x: 96, y: 800, width: 400, content: { type: 'doc', content: paras } },
+      { kind: 'shape', id: 'shapeaaaaaaaaaaaaaaaaaaa', shape: 'rect', x: 520, y: 100, width: 120, height: 80, a: { x: 0, y: 0 }, b: { x: 120, y: 80 }, stroke: '#000000', strokeWidth: 2, fill: '#ff0000' },
+      { kind: 'shape', id: 'shapebbbbbbbbbbbbbbbbbbb', shape: 'rect', x: 560, y: 130, width: 120, height: 80, a: { x: 0, y: 0 }, b: { x: 120, y: 80 }, stroke: '#000000', strokeWidth: 2, fill: '#0000ff' }
+    ] })
+  }, { rel: g, d: gd, paras })
+  await page.locator('.page-row', { hasText: 'Alpha' }).click()
+  await page.locator('.page-row', { hasText: 'Gamma' }).click()
+  await page.waitForSelector('.canvas .tiptap [data-sheet-break]', { timeout: 10000 })
+  await page.waitForTimeout(400)
+  // Editor: every pushed block, with its extra spacing, and where the first one after the break now starts.
+  const editorBreaks = await page.evaluate(() => {
+    const canvas = document.querySelector('.canvas') as HTMLElement
+    const zoom = Number(canvas.dataset.zoom) || 1
+    const top = canvas.getBoundingClientRect().top
+    return Array.from(document.querySelectorAll<HTMLElement>('.canvas .tiptap [data-sheet-break]')).map((el) => ({
+      text: (el.textContent ?? '').trim(),
+      margin: Math.round(parseFloat(el.style.marginTop)),
+      y: Math.round((el.getBoundingClientRect().top - top) / zoom)
+    }))
+  })
+  // Letter paper at 96 px per inch with one-inch margins: sheet 2's printable area starts at 1056 + 96.
+  assert(editorBreaks.length >= 1 && editorBreaks[0]!.y === 1152, `the first line past the break starts at the top of sheet 2's printable area (${JSON.stringify(editorBreaks)})`)
+  // Print: the same blocks are pushed by the same amounts when page.html paginates.
+  await save(page)
+  const htmlPath = join(root, g, 'page.html')
+  const printBreaks = await app.evaluate(async ({ BrowserWindow }, file) => {
+    const w = new BrowserWindow({ show: false })
+    await w.loadFile(file)
+    for (let i = 0; i < 50 && !(await w.webContents.executeJavaScript("document.body.classList.contains('paginated')")); i++) await new Promise((r) => setTimeout(r, 100))
+    const list = await w.webContents.executeJavaScript(
+      "Array.from(document.querySelectorAll('#canvas .tiptap *')).filter((el) => el.style.marginTop).map((el) => ({ text: el.textContent.trim(), margin: Math.round(parseFloat(el.style.marginTop)) }))"
+    )
+    w.destroy()
+    return list as { text: string; margin: number }[]
+  }, htmlPath)
+  const same = printBreaks.length === editorBreaks.length && printBreaks.every((p, i) => p.text === editorBreaks[i]!.text && Math.abs(p.margin - editorBreaks[i]!.margin) <= 1)
+  assert(same, `editor and print push the same lines by the same amounts (editor ${JSON.stringify(editorBreaks)}, print ${JSON.stringify(printBreaks)})`)
+  step('a text box that crosses a page break is laid out in the editor exactly as it prints')
+
+  // 9. Any object can be brought to the front or sent to the back, and undo reverses it.
+  const order = async (): Promise<string[]> => (await doc(g)).objects.map((o) => o.id.slice(0, 6))
+  assert((await order()).join() === 'breakb,shapea,shapeb', `starting order (${(await order()).join()})`)
+  await page.locator('.shape-object').nth(1).click({ button: 'right', position: { x: 100, y: 60 } })
+  await page.locator('.context-item', { hasText: /^Order/ }).click()
+  await page.locator('.context-item', { hasText: 'Send to back' }).click()
+  await save(page)
+  assert((await order()).join() === 'shapeb,breakb,shapea', `Send to back puts it first in the stacking order (${(await order()).join()})`)
+  const domOrder = await page.evaluate(() => Array.from(document.querySelectorAll('.canvas [data-object-id]')).map((el) => (el as HTMLElement).dataset.objectId!.slice(0, 6)))
+  assert(domOrder.join() === 'shapeb,breakb,shapea', `the editor stacks objects in the same order (${domOrder.join()})`)
+  await page.locator('.shape-object').nth(0).click({ button: 'right', position: { x: 100, y: 60 } })
+  await page.locator('.context-item', { hasText: /^Order/ }).click()
+  await page.locator('.context-item', { hasText: 'Bring to front' }).click()
+  await save(page)
+  assert((await order()).join() === 'breakb,shapea,shapeb', `Bring to front puts it last in the stacking order (${(await order()).join()})`)
+  await page.keyboard.press(`${mod}+z`)
+  await save(page)
+  assert((await order()).join() === 'shapeb,breakb,shapea', `undo restores the previous order (${(await order()).join()})`)
+  const htmlOrder = await fs.readFile(htmlPath, 'utf8')
+  assert(htmlOrder.indexOf('shapebbbb') < htmlOrder.indexOf('breakboxb') && htmlOrder.indexOf('breakboxb') < htmlOrder.indexOf('shapeaaaa'), 'page.html prints in the stacking order')
+  step('objects can be brought to the front or sent to the back from the right-click menu, and undo reverses it')
+
   await app.close()
   process.stdout.write(`\nPASS. Notebook kept at ${root}\n`)
 }
