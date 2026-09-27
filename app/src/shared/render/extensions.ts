@@ -12,6 +12,7 @@ import { TableSizing } from './tableSizing'
 import { TableBorders, bordersToStyle, type Borders } from './tableBorders'
 import { TabKey } from './tabKey'
 import { TableContentPaste } from './tableContentPaste'
+import { ParagraphSpacing } from './lineHeight'
 
 /** Cells carry a fill colour and vertical alignment, set from the table toolbar. */
 const cellAttributes = {
@@ -78,7 +79,8 @@ export function documentExtensions() {
     TableContentPaste,
     TaskList,
     TaskItem.configure({ nested: true }),
-    TextStyleKit,
-    TextAlign.configure({ types: ['heading', 'paragraph'] })
+    TextStyleKit.configure({ lineHeight: false }),
+    TextAlign.configure({ types: ['heading', 'paragraph'] }),
+    ParagraphSpacing
   ]
 }

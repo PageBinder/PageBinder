@@ -22,7 +22,7 @@ A page is laid out on sheets of paper from the moment you start. The page border
 
 ## Writing and editing
 
-- **Text.** Fonts, sizes, colours, highlighting, bold, italic, underline, and alignment. Bulleted, numbered, and to-do lists. Tab works as in a word processor: a tab stop in text, indent in lists, next cell in tables.
+- **Text.** Fonts, sizes, colours, highlighting, bold, italic, underline, alignment, and line spacing (1.0 to 3.0, from the ribbon or by highlighting text and right-clicking). Right-click > Line spacing > Default for new text boxes sets the spacing every new text box starts with on this computer. Bulleted, numbered, and to-do lists. Tab works as in a word processor: a tab stop in text, indent in lists, next cell in tables.
 - **Tables.** Add and remove rows and columns, set row heights and column widths, fill cells with colour, and choose borders for any cell or group of cells, all from the cell's right-click menu. Copying cells from one table into another brings the content and keeps the target table's look.
 - **Pictures.** Insert, paste, or drop them onto the page, then move and resize them. Very large pictures, and formats a browser cannot display, appear as a card instead, and a right-click switches between the two.
 - **Shapes.** Lines, arrows, rectangles, and ellipses, drawn from the right-click menu, with colour and line weight.

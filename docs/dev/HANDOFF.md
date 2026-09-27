@@ -17,6 +17,13 @@ Entry format:
 
 ---
 
+## 2026-09-27 · lead (macOS, Apple silicon) · main
+**Changed:** Line spacing. A paragraph attribute (`lineHeight`: 1, 1.15, 2, 2.5, or 3; none means the standard 1.5) set from a new ribbon control beside the font size or from Line spacing in a text box's right-click menu, for every paragraph the selection touches (`app/src/shared/render/lineHeight.ts`). The same menu has Default for new text boxes, kept per computer in window storage (`app/src/renderer/src/textDefaults.ts`) and written into each new text box and table, so pages look the same everywhere. TextStyleKit's own character-level line height is switched off to avoid a second, conflicting kind.
+**Found:** TextStyleKit ships a character-level `lineHeight` command; the paragraph command is named `setParagraphSpacing` to keep them apart.
+**Checked:** Type check clean; 75 unit tests pass (new: page.html line spacing). Phase 8 gained a step: right-click spacing on highlighted text, ribbon spacing, the default for a new box and its next paragraph, and editor-versus-print page breaks at double and 1.15 spacing. All window suites rerun on this change.
+**Next platform must check:** Windows: line spacing from the ribbon and the right-click menu; a long double-spaced text box across a page break looks the same on screen and in Print Preview.
+**Open:** Word wrap option still to be chosen.
+
 ## 2026-09-26 · lead (macOS, Apple silicon) · main
 **Changed:** (1) Text boxes that cross a page break now look in the editor as they print: `app/src/renderer/src/sheetBreaks.ts` applies the print script's push rule live as node decorations, recalculated on edit, move, resize, paper change, and zoom. (2) Order submenu (bring to front, bring forward, send backward, send to back) on every object's right-click menu and on multi-selections; objects stack in list order everywhere, so it reorders the page's object list. (3) Word wrap options written up in `docs/dev/FUTURE_FEATURES.md`, awaiting the user's choice.
 **Found:** Printing had always pushed blocks past sheet boundaries; the editor never did, which is why the two differed. Pictures and attachments placed across a page break are deliberately not handled, as agreed with the user.

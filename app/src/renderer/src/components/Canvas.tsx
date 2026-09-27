@@ -13,6 +13,8 @@ import { snapPosition } from '../snap'
 import { findRanges, applyHighlights, clearHighlights, scrollToRange } from '../highlight'
 import type { Editor } from '@tiptap/react'
 import { currentSizes } from '@shared/render/tableSizing'
+import { LINE_HEIGHTS, STANDARD_LINE_HEIGHT, lineHeightLabel } from '@shared/render/lineHeight'
+import { defaultLineHeight, newParagraphAttrs, setDefaultLineHeight } from '../textDefaults'
 
 function newId(): string {
   const bytes = new Uint8Array(12)
@@ -248,14 +250,16 @@ export function Canvas({
       const id = newId()
       setFocusId({ id, at: 'end' })
       setSelectedIds(new Set())
-      update((objs) => [...objs, { kind: 'text', id, x: p.x, y: Math.max(0, p.y - 12), width: 360, content: { type: 'doc', content: [{ type: 'paragraph' }] } }])
+      const attrs = newParagraphAttrs()
+      update((objs) => [...objs, { kind: 'text', id, x: p.x, y: Math.max(0, p.y - 12), width: 360, content: { type: 'doc', content: [{ type: 'paragraph', ...(attrs ? { attrs } : {}) }] } }])
     },
     [update]
   )
   const insertTable = useCallback(
     (at?: { x: number; y: number }) => {
       const p = at ?? { x: 96, y: Math.max(96, docRef.current.objects.reduce((acc, o) => Math.max(acc, o.y + 120), 0) + 16) }
-      const cell = () => ({ type: 'tableCell', content: [{ type: 'paragraph' }] })
+      const attrs = newParagraphAttrs()
+      const cell = () => ({ type: 'tableCell', content: [{ type: 'paragraph', ...(attrs ? { attrs } : {}) }] })
       const row = () => ({ type: 'tableRow', content: [cell(), cell(), cell()] })
       const id = newId()
       // Focus at the start so the cursor lands in the first cell and Tab moves between cells.
@@ -565,6 +569,22 @@ export function Canvas({
     if (obj.kind === 'text') {
       const items: MenuItem[] = []
       const ed = tableEditor ?? textEditor
+      if (ed) {
+        // Line spacing for the paragraphs the selection touches, and the default for new text boxes.
+        const current = ((ed.isActive('heading') ? ed.getAttributes('heading') : ed.getAttributes('paragraph'))['lineHeight'] as string | null) ?? STANDARD_LINE_HEIGHT
+        const byDefault = defaultLineHeight()
+        items.push({
+          label: 'Line spacing',
+          submenu: [
+            ...LINE_HEIGHTS.map((v) => ({ label: `${v === current ? '✓ ' : ''}${lineHeightLabel(v)}${v === STANDARD_LINE_HEIGHT ? ' (standard)' : ''}`, onClick: () => ed.chain().focus().setParagraphSpacing(v).run() })),
+            { separator: true },
+            {
+              label: 'Default for new text boxes',
+              submenu: LINE_HEIGHTS.map((v) => ({ label: `${v === byDefault ? '✓ ' : ''}${lineHeightLabel(v)}`, onClick: () => setDefaultLineHeight(v) }))
+            }
+          ]
+        }, { separator: true })
+      }
       if (tableEditor && ed) {
         const sizes = currentSizes(ed.state)
         const many = (sizes?.cells ?? 1) > 1

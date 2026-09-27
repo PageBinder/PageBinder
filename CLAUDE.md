@@ -15,7 +15,7 @@ All of these run inside `app/` (`cd app` first).
 npm ci                 # install (Electron downloads its binary)
 npm run dev            # run the app with hot reload (restart it after config or main-process changes)
 npm run typecheck      # main, preload, and renderer
-npm test               # vitest unit tests (72)
+npm test               # vitest unit tests (75)
 npm run e2e            # build to out-e2e/ and drive the real window through every suite (needs a display; use xvfb-run on Linux)
 npm run dist:mac       # macOS dmg and zip into dist/ (on a Mac); npm run dist:win for the Windows installer (on Windows)
 npx tsx scripts/cross-platform.ts make|check <folder>   # notebook made on one OS must open on the other with no differences

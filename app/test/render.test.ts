@@ -57,6 +57,14 @@ describe('renderPageHtml', () => {
     expect(html.match(/class="printout-text"/g)?.length).toBe(1)
   })
 
+  it('renders paragraph line spacing, and nothing for the standard spacing', () => {
+    const para = (text: string, lineHeight?: string) => ({ type: 'paragraph', ...(lineHeight ? { attrs: { lineHeight } } : {}), content: [{ type: 'text', text }] })
+    const html = renderPageHtml(docWith([{ kind: 'text', id: 't', x: 0, y: 0, width: 300, content: { type: 'doc', content: [para('Double', '2'), para('Plain'), para('Odd', '7')] } }]))
+    expect(html).toContain('<p style="line-height: 2; min-height: 2em;">Double</p>')
+    expect(html).toContain('<p>Plain</p>')
+    expect(html).toContain('<p>Odd</p>')
+  })
+
   it('escapes the title', () => {
     const doc = docWith([])
     doc.title = '<script>x</script>'
