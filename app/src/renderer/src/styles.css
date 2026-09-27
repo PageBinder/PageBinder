@@ -47,6 +47,7 @@ input { font: inherit; color: inherit; }
 .tb-select:hover:not(:disabled) { border-color: var(--border); background: var(--surface); }
 .tb-select:disabled { opacity: 0.45; }
 .tb-select.font { width: 120px; }
+.tb-select.spacing { width: 64px; }
 .tb-select.size { width: 56px; }
 .tb.bold { font-weight: 700; }
 .tb.italic { font-style: italic; }

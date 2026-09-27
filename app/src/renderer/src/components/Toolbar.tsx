@@ -3,6 +3,7 @@ import { useState, type MouseEvent } from 'react'
 import { useActiveEditor } from '../editorContext'
 import { ContextMenu, type MenuItem } from './ContextMenu'
 import { FONT_FAMILIES, FONT_SIZES } from '@shared/render/extensions'
+import { LINE_HEIGHTS, STANDARD_LINE_HEIGHT, lineHeightLabel } from '@shared/render/lineHeight'
 import type { DrawTool } from '@shared/types'
 import type React from 'react'
 
@@ -59,6 +60,7 @@ export function Toolbar({
   const attrs = editor?.getAttributes('textStyle') ?? {}
   const fontFamily = (attrs['fontFamily'] as string | undefined) ?? ''
   const fontSize = ((attrs['fontSize'] as string | undefined) ?? '').replace('px', '')
+  const lineHeight = ((editor ? (editor.isActive('heading') ? editor.getAttributes('heading') : editor.getAttributes('paragraph'))['lineHeight'] : null) as string | null) ?? STANDARD_LINE_HEIGHT
 
   const G = ({ children }: { children: React.ReactNode }): JSX.Element => <span className="tb-group">{children}</span>
   return (
@@ -84,6 +86,13 @@ export function Toolbar({
             {FONT_SIZES.map((n) => (
               <option key={n} value={String(n)}>
                 {n}
+              </option>
+            ))}
+          </select>
+          <select className="tb-select spacing" disabled={!can} value={lineHeight} title="Line spacing" onChange={(e) => chain().setParagraphSpacing(e.target.value).run()}>
+            {LINE_HEIGHTS.map((v) => (
+              <option key={v} value={v}>
+                {`↕ ${lineHeightLabel(v)}`}
               </option>
             ))}
           </select>

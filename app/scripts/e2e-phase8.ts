@@ -262,36 +262,39 @@ async function main(): Promise<void> {
   }, { rel: g, d: gd, paras })
   await page.locator('.page-row', { hasText: 'Alpha' }).click()
   await page.locator('.page-row', { hasText: 'Gamma' }).click()
-  await page.waitForSelector('.canvas .tiptap [data-sheet-break]', { timeout: 10000 })
-  await page.waitForTimeout(400)
-  // Editor: every pushed block, with its extra spacing, and where the first one after the break now starts.
-  const editorBreaks = await page.evaluate(() => {
-    const canvas = document.querySelector('.canvas') as HTMLElement
-    const zoom = Number(canvas.dataset.zoom) || 1
-    const top = canvas.getBoundingClientRect().top
-    return Array.from(document.querySelectorAll<HTMLElement>('.canvas .tiptap [data-sheet-break]')).map((el) => ({
-      text: (el.textContent ?? '').trim(),
-      margin: Math.round(parseFloat(el.style.marginTop)),
-      y: Math.round((el.getBoundingClientRect().top - top) / zoom)
-    }))
-  })
-  // Letter paper at 96 px per inch with one-inch margins: sheet 2's printable area starts at 1056 + 96.
-  assert(editorBreaks.length >= 1 && editorBreaks[0]!.y === 1152, `the first line past the break starts at the top of sheet 2's printable area (${JSON.stringify(editorBreaks)})`)
-  // Print: the same blocks are pushed by the same amounts when page.html paginates.
-  await save(page)
+  // Editor and print must push the same lines by the same amounts at every sheet boundary.
   const htmlPath = join(root, g, 'page.html')
-  const printBreaks = await app.evaluate(async ({ BrowserWindow }, file) => {
-    const w = new BrowserWindow({ show: false })
-    await w.loadFile(file)
-    for (let i = 0; i < 50 && !(await w.webContents.executeJavaScript("document.body.classList.contains('paginated')")); i++) await new Promise((r) => setTimeout(r, 100))
-    const list = await w.webContents.executeJavaScript(
-      "Array.from(document.querySelectorAll('#canvas .tiptap *')).filter((el) => el.style.marginTop).map((el) => ({ text: el.textContent.trim(), margin: Math.round(parseFloat(el.style.marginTop)) }))"
-    )
-    w.destroy()
-    return list as { text: string; margin: number }[]
-  }, htmlPath)
-  const same = printBreaks.length === editorBreaks.length && printBreaks.every((p, i) => p.text === editorBreaks[i]!.text && Math.abs(p.margin - editorBreaks[i]!.margin) <= 1)
-  assert(same, `editor and print push the same lines by the same amounts (editor ${JSON.stringify(editorBreaks)}, print ${JSON.stringify(printBreaks)})`)
+  const compareBreaks = async (label: string): Promise<{ text: string; margin: number; y: number }[]> => {
+    await page.waitForSelector('.canvas .tiptap [data-sheet-break]', { timeout: 10000 })
+    await page.waitForTimeout(400)
+    const editorBreaks = await page.evaluate(() => {
+      const canvas = document.querySelector('.canvas') as HTMLElement
+      const zoom = Number(canvas.dataset.zoom) || 1
+      const top = canvas.getBoundingClientRect().top
+      return Array.from(document.querySelectorAll<HTMLElement>('.canvas .tiptap [data-sheet-break]')).map((el) => ({
+        text: (el.textContent ?? '').trim(),
+        margin: Math.round(parseFloat(el.style.marginTop)),
+        y: Math.round((el.getBoundingClientRect().top - top) / zoom)
+      }))
+    })
+    await save(page)
+    const printBreaks = await app.evaluate(async ({ BrowserWindow }, file) => {
+      const w = new BrowserWindow({ show: false })
+      await w.loadFile(file)
+      for (let i = 0; i < 50 && !(await w.webContents.executeJavaScript("document.body.classList.contains('paginated')")); i++) await new Promise((r) => setTimeout(r, 100))
+      const list = await w.webContents.executeJavaScript(
+        "Array.from(document.querySelectorAll('#canvas .tiptap *')).filter((el) => el.style.marginTop).map((el) => ({ text: el.textContent.trim(), margin: Math.round(parseFloat(el.style.marginTop)) }))"
+      )
+      w.destroy()
+      return list as { text: string; margin: number }[]
+    }, htmlPath)
+    const same = printBreaks.length === editorBreaks.length && printBreaks.every((p, i) => p.text === editorBreaks[i]!.text && Math.abs(p.margin - editorBreaks[i]!.margin) <= 1)
+    assert(same, `${label}: editor and print push the same lines by the same amounts (editor ${JSON.stringify(editorBreaks)}, print ${JSON.stringify(printBreaks)})`)
+    return editorBreaks
+  }
+  const firstBreaks = await compareBreaks('standard spacing')
+  // Letter paper at 96 px per inch with one-inch margins: sheet 2's printable area starts at 1056 + 96.
+  assert(firstBreaks[0]?.y === 1152, `the first line past the break starts at the top of sheet 2's printable area (${JSON.stringify(firstBreaks)})`)
   step('a text box that crosses a page break is laid out in the editor exactly as it prints')
 
   // 9. Any object can be brought to the front or sent to the back, and undo reverses it.
@@ -315,6 +318,50 @@ async function main(): Promise<void> {
   const htmlOrder = await fs.readFile(htmlPath, 'utf8')
   assert(htmlOrder.indexOf('shapebbbb') < htmlOrder.indexOf('breakboxb') && htmlOrder.indexOf('breakboxb') < htmlOrder.indexOf('shapeaaaa'), 'page.html prints in the stacking order')
   step('objects can be brought to the front or sent to the back from the right-click menu, and undo reverses it')
+
+  // 10. Line spacing: from the right-click menu for highlighted text, from the ribbon, and as the default for new boxes.
+  const spacingOf = async (): Promise<(string | null)[]> =>
+    ((await doc(g)).objects.find((o) => o.id === "breakboxbreakboxbreakbox") as unknown as { content: { content: { attrs?: { lineHeight?: string | null } }[] } }).content.content.map((p) => p.attrs?.lineHeight ?? null)
+  await page.locator('.canvas .tiptap p', { hasText: 'Break line 3' }).click()
+  await page.keyboard.press(`${mod}+a`)
+  await page.locator('.canvas .tiptap p', { hasText: 'Break line 3' }).click({ button: 'right' })
+  await page.locator('.context-item', { hasText: /^Line spacing/ }).click()
+  await page.locator('.context-item', { hasText: /^2\.0$/ }).click()
+  await save(page)
+  let spacing = await spacingOf()
+  assert(spacing.length === 24 && spacing.every((v) => v === '2'), `the highlighted paragraphs take double spacing (${spacing.join()})`)
+  const lh = await page.locator('.canvas .tiptap p', { hasText: 'Break line 3' }).evaluate((el) => getComputedStyle(el).lineHeight)
+  assert(lh === '28px', `double spacing on 14 px text is 28 px (${lh})`)
+  const html2 = await fs.readFile(htmlPath, 'utf8')
+  assert(html2.includes('line-height: 2; min-height: 2em'), 'page.html carries the spacing')
+  // Taller lines move the page break; the editor still matches the printout.
+  const doubled = await compareBreaks('double spacing')
+  assert(doubled[0]!.text !== firstBreaks[0]!.text, `double spacing moves the page break to an earlier line (${doubled[0]!.text} vs ${firstBreaks[0]!.text})`)
+  // The ribbon control applies to the same selection.
+  await page.locator('.canvas .tiptap p', { hasText: 'Break line 3' }).click()
+  await page.keyboard.press(`${mod}+a`)
+  await page.locator('.tb-select.spacing').selectOption('1.15')
+  await save(page)
+  spacing = await spacingOf()
+  assert(spacing.every((v) => v === '1.15'), `the ribbon sets 1.15 spacing (${spacing.join()})`)
+  assert((await page.locator('.tb-select.spacing').inputValue()) === '1.15', 'the ribbon shows the current spacing')
+  await compareBreaks('1.15 spacing')
+  // Default for new text boxes: set it from the menu, then a new box and its next paragraph use it.
+  await page.locator('.canvas .tiptap p', { hasText: 'Break line 3' }).click({ button: 'right' })
+  await page.locator('.context-item', { hasText: /^Line spacing/ }).click()
+  await page.locator('.context-item', { hasText: /^Default for new text boxes/ }).click()
+  await page.locator('.context-item', { hasText: /^2\.5$/ }).click()
+  await page.locator('.canvas').click({ button: 'right', position: { x: 560, y: 400 } })
+  await page.locator('.context-item', { hasText: /^Text box$/ }).click()
+  await page.waitForTimeout(300)
+  await page.keyboard.type('Fresh box')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('Second line')
+  await save(page)
+  const fresh = (await doc(g)).objects.find((o) => o.kind === 'text' && JSON.stringify(o.content).includes('Fresh box')) as { content: { content: { attrs?: { lineHeight?: string } }[] } } | undefined
+  const freshSpacing = fresh?.content.content.map((p) => p.attrs?.lineHeight ?? null) ?? []
+  assert(freshSpacing.length === 2 && freshSpacing.every((v) => v === '2.5'), `a new text box and its next paragraph use the default spacing (${freshSpacing.join()})`)
+  step('line spacing is set from the right-click menu or the ribbon, has a default for new text boxes, and page breaks still match the printout')
 
   await app.close()
   process.stdout.write(`\nPASS. Notebook kept at ${root}\n`)
