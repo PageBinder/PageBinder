@@ -11,6 +11,7 @@ What each platform has taught us, so the next machine does not relearn it. Add t
 - **Exported HTML** must link pictures with URL-style forward slashes.
 - **Wording.** The right-click menu says "Show in Explorer" on Windows and "Show in Finder" on macOS.
 - **Installer.** The installer is per-user, with no administrator rights, and covers x64 and ARM. Being unsigned, it triggers SmartScreen's "Run anyway". `build/installer.nsh` records the installation time, which is how a new installation is recognised.
+- **Dropdowns and the text selection.** Choosing from a ribbon dropdown moves focus away from the text, and Chromium on Windows can collapse the text's highlight as it does, so a command then applies only where the cursor was. The ribbon keeps the last selection made while the text had focus and restores it before any dropdown command (`Toolbar.tsx`, `selectChain`). Buttons avoid the problem by not taking focus.
 - **CI runners** start at 1024×768. The workflow sets 1920×1080 before the window tests.
 - **npm 11 on a local Windows machine** may block `electron-winstaller`'s install script. If `npm run dist:win` fails, approve it with `npm install-scripts approve electron-winstaller`, and commit the `allowScripts` change only after checking it.
 
@@ -19,6 +20,7 @@ What each platform has taught us, so the next machine does not relearn it. Add t
 - **Harmless message during development:** `sandbox_extension_issue_file ... Operation not permitted`.
 - **Homebrew PATH.** With Node from Homebrew, non-login shells need `/opt/homebrew/bin` on PATH.
 - **Icons.** `npm run icons` uses `sips` and `iconutil`, so run it on a Mac. Commit the regenerated files in `build/`, `resources/`, and `src/renderer/src/assets/`.
+- **Full screen from a background window.** macOS ignores a full-screen request from a window that is not the active one. When someone uses the Mac while the window tests run, the phase 8 suite checks the single Toggle Full Screen item but skips the toggle itself, rather than pulling the test window to the front.
 - **Small screens.** A 1024×768 screen broke a drag test. The window tests scroll objects into view before dragging.
 - **Electron binary.** If `npx electron --version` fails after `npm ci`, run `node node_modules/electron/install.js`.
 
