@@ -378,13 +378,33 @@ async function main(): Promise<void> {
   // Taller lines move the page break; the editor still matches the printout.
   const doubled = await compareBreaks('double spacing')
   assert(doubled[0]!.text !== firstBreaks[0]!.text, `double spacing moves the page break to an earlier line (${doubled[0]!.text} vs ${firstBreaks[0]!.text})`)
-  // The ribbon control applies to the same selection.
+  // The ribbon control applies to the same selection. The editor's own state is read (TipTap keeps
+  // the editor on its element), so the test waits until Select All has really registered.
+  const boxSelection = async (): Promise<{ from: number; to: number; size: number; focused: boolean; active: string }> =>
+    page.evaluate(() => {
+      type Ed = { state: { selection: { from: number; to: number }; doc: { content: { size: number } } }; isFocused: boolean }
+      const el = Array.from(document.querySelectorAll('.canvas .tiptap')).find((e) => (e.textContent ?? '').includes('Break line 3')) as (Element & { editor?: Ed }) | undefined
+      const ed = el?.editor
+      const a = document.activeElement as HTMLElement | null
+      return { from: ed?.state.selection.from ?? -1, to: ed?.state.selection.to ?? -1, size: ed?.state.doc.content.size ?? -1, focused: !!ed?.isFocused, active: `${a?.tagName ?? ''}.${(a?.className ?? '').toString().split(' ')[0]}` }
+    })
   await page.locator('.canvas .tiptap p', { hasText: 'Break line 3' }).click()
   await page.keyboard.press(`${mod}+a`)
+  const justAfter = await boxSelection()
+  const t0 = Date.now()
+  await page.waitForFunction(() => {
+    type Ed = { state: { selection: { from: number; to: number }; doc: { content: { size: number } } } }
+    const el = Array.from(document.querySelectorAll('.canvas .tiptap')).find((e) => (e.textContent ?? '').includes('Break line 3')) as (Element & { editor?: Ed }) | undefined
+    const ed = el?.editor
+    return !!ed && ed.state.selection.from <= 1 && ed.state.selection.to >= ed.state.doc.content.size - 1
+  })
+  process.stdout.write(`    (Select All: right after the key ${JSON.stringify(justAfter)}; registered after ${Date.now() - t0} ms)\n`)
+  const beforeChoice = await boxSelection()
   await page.locator('.tb-select.spacing').selectOption('1.15')
+  const afterChoice = await boxSelection()
   await save(page)
   spacing = await spacingOf()
-  assert(spacing.every((v) => v === '1.15'), `the ribbon sets 1.15 spacing (${spacing.join()})`)
+  assert(spacing.every((v) => v === '1.15'), `the ribbon sets 1.15 spacing (${spacing.join()}; selection before choosing ${JSON.stringify(beforeChoice)}, after ${JSON.stringify(afterChoice)})`)
   assert((await page.locator('.tb-select.spacing').inputValue()) === '1.15', 'the ribbon shows the current spacing')
   await compareBreaks('1.15 spacing')
   // Default for new text boxes: set it from the menu, then a new box and its next paragraph use it.
