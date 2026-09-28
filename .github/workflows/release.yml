@@ -112,6 +112,12 @@ jobs:
 
           Installation steps are in the [README](https://github.com/${GITHUB_REPOSITORY}#download-and-install). The installers are not yet signed, so macOS and Windows ask for confirmation the first time.
           EOF
+          # The revision log goes with every release, and this version's section is the release notes' "What's new".
+          cp ../docs/REVISION_LOG.txt files/PageBinder-revision-log.txt
+          awk -v v="Version $version " 'index($0, v) == 1 { on = 1; next } on && /^Version [0-9]/ { exit } on && /^-+$/ { next } on && !started && $0 == "" { next } on { started = 1; print }' ../docs/REVISION_LOG.txt > whatsnew.txt
+          if [ -s whatsnew.txt ]; then
+            { echo; echo "## What's new in $version"; echo; sed -e :a -e '/^\n*$/{$d;N;ba' -e '}' whatsnew.txt; echo; echo "Every version is described in PageBinder-revision-log.txt, attached below."; } >> notes.md
+          fi
           ls -la files
           # A rebuild replaces an earlier draft of the same version. Published releases are never touched:
           # the check job has already stopped the run if this version is published.
