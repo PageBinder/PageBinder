@@ -19,6 +19,10 @@ Options set out on 2026-09-26, awaiting a choice:
 2. **Top and bottom wrap around pictures on the canvas.** Where a text box overlaps a picture, the lines that would cover it skip past it, as at a page break. Reuses the sheet-break mechanism. About 1 to 2 days.
 3. **Square wrap around pictures on the canvas.** Text flows down the side of an overlapping picture, as in Word. Needs the picture's shape carved out of each text box it overlaps, in the editor and in page.html alike. About 4 to 6 days, and the hardest to keep identical on screen and paper.
 
+## Editing
+
+- **Document-wide undo** (suggested 2026-09-27). Today undo follows keyboard focus: with the cursor in a text box, Cmd+Z undoes that box's typing and formatting; anywhere else it undoes page actions (creating, moving, deleting objects, page operations). Word and OneNote keep one undo list for the whole document, so Cmd+Z always reverses the most recent change wherever the user last clicked. PageBinder could do the same by keeping one ordered list of undoable steps, where a text step points to the text box whose own history holds it: undo then takes the latest step of either kind, putting the cursor back in that box when it is a text step. Open questions: whether text steps should survive switching pages (each text box's history is lost when its page closes today) and how redo interleaves. Layout and storage are unaffected, so it raises no compatibility concern. About 2 to 3 days.
+
 ## Page breaks
 
 - **Split tall tables between rows.** A table that fits on a sheet moves whole to the next sheet, but one taller than a sheet runs through the margins at the page break. Splitting it between rows, perhaps repeating a header row, would complete line-by-line page breaks. About 1 to 2 days.
