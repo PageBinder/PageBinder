@@ -9,6 +9,12 @@ Local-only, folder-based notebook app in the style of classic desktop OneNote (f
 - The repository is meant to be public. Commit as `PageBinder <4245724+PageBinder@users.noreply.github.com>`. Commit messages carry no `Co-Authored-By` or `Claude-Session` lines, and the owner's personal name and email appear nowhere in the repository. Installers are unsigned (macOS ad-hoc, no Windows certificate).
 - Unverified: the native Outlook email drag-and-drop helper (the user cannot test it yet).
 
+## Backward compatibility (the user's standing rule, 2026-09-27)
+Every revision must open, show, edit, print, and search notebooks written by any earlier revision published on GitHub, from commit `67b4030` (27 September 2026) onward, with no manual conversion and nothing lost.
+- **Stop and ask first.** If a request, or a way of building it, would break this, stop before changing anything and ask the user for explicit permission. Explain what would break and offer a compatible alternative.
+- **What counts as breaking:** removing or renaming anything stored in `notebook.json`, `section.json`, `group.json`, `page.json`, or a template; changing what an existing field means; requiring a field that older files lack; converting or rewriting files on open; moving or renaming files inside a notebook; or changing how existing content lays out or prints.
+- **What is fine:** new optional fields that older files simply lack (as with `printout`, `indent`, and `lineHeight`), new files beside the existing ones, and changes to `.index/`, which is a cache that rebuilds itself.
+
 ## Commands
 All of these run inside `app/` (`cd app` first).
 ```
