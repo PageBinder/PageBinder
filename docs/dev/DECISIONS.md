@@ -25,6 +25,7 @@ Choices that should outlive any one session. Add a line when a decision is made 
 - **Installers are unsigned** for now: macOS ad-hoc signature, no Windows certificate.
 
 ## Repository and workflow
+- **Page breaks move text line by line** (2026-09-27, requested by the user). This changes where existing text breaks across sheets when printed, which the user asked for; nothing stored in a notebook changes. The editor was aligned with page.html where they differed (text wrapping, table gap), rather than the other way round, so existing printouts keep their wrapping.
 - **Backward compatibility is required** (2026-09-27). Every revision must handle notebooks from any revision published on GitHub from `67b4030` onward, with no conversion and nothing lost. Anything that would break this needs the user's explicit permission first. Details are in `CLAUDE.md`.
 - **The repository is public** under the MIT licence, and commits are authored `PageBinder <4245724+PageBinder@users.noreply.github.com>` with no Co-Authored-By or Claude-Session lines. No personal names, emails, or credentials anywhere in the repository.
 - **Git is the shared state** between machines (2026-09-25). Sessions are disposable: start each task in a fresh session, run `/sync` first and `/handoff` last.

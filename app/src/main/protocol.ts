@@ -6,7 +6,9 @@ import { protocol, net } from 'electron'
 import { pathToFileURL } from 'node:url'
 import { resolveInside } from './storage/paths'
 import { currentNotebookRoot, resolveRel } from './ipc'
-import { readSnapshot } from './storage/page'
+import { readSnapshot, readValidPage } from './storage/page'
+import { PAGE_DOC } from './storage/paths'
+import { join } from 'node:path'
 import { renderPageHtml } from '../shared/render/renderPage'
 import { fileResponse, needsNodeRead } from './fileResponse'
 
@@ -46,6 +48,14 @@ export function registerProtocolHandler(): void {
       abs = resolveInside(resolved.root, rel)
     } catch {
       return new Response('Forbidden', { status: 403 })
+    }
+    // A page's rendered copy is rendered afresh from the page itself, so printing, Print Preview,
+    // and PDF export always use this version's layout, even for a page last saved by an older one.
+    // Nothing is written: the stored page.html is brought up to date by the page's next save.
+    const page = /^(.*)\/page\.html$/.exec(rel)
+    if (page) {
+      const doc = await readValidPage(join(abs, '..', PAGE_DOC)).catch(() => undefined)
+      if (doc) return new Response(renderPageHtml(doc), { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } })
     }
     const response = needsNodeRead(abs) ? await fileResponse(abs, request.headers.get('Range')) : await net.fetch(pathToFileURL(abs).toString())
     // Rendered pages must not be cached: they change on every save.

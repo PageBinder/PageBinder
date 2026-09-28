@@ -19,6 +19,11 @@ Options set out on 2026-09-26, awaiting a choice:
 2. **Top and bottom wrap around pictures on the canvas.** Where a text box overlaps a picture, the lines that would cover it skip past it, as at a page break. Reuses the sheet-break mechanism. About 1 to 2 days.
 3. **Square wrap around pictures on the canvas.** Text flows down the side of an overlapping picture, as in Word. Needs the picture's shape carved out of each text box it overlaps, in the editor and in page.html alike. About 4 to 6 days, and the hardest to keep identical on screen and paper.
 
+## Page breaks
+
+- **Split tall tables between rows.** A table that fits on a sheet moves whole to the next sheet, but one taller than a sheet runs through the margins at the page break. Splitting it between rows, perhaps repeating a header row, would complete line-by-line page breaks. About 1 to 2 days.
+- **Widow and orphan control.** Word keeps at least two lines of a paragraph together at a page break. Line-by-line breaks currently allow a single line on either side. Small once wanted.
+
 ## Gaps noted in the feature comparison
 
 From `docs/PageBinder-feature-comparison.xlsx`, features most other note-taking programs have and PageBinder does not. Listed for consideration only; some may not suit a program built around printable documents.

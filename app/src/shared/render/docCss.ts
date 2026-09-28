@@ -30,6 +30,8 @@ export const docCss = `
 .tiptap .selectedCell::after { content: ''; position: absolute; inset: 0; background: rgba(55, 138, 221, 0.15); pointer-events: none; }
 .tiptap .column-resize-handle { position: absolute; right: -2px; top: 0; bottom: 0; width: 4px; background: #378add; pointer-events: none; }
 .tiptap .tableWrapper { overflow-x: visible; }
+/* In the editor a table sits in a wrapper; like the bare table in page.html, it has no gap above it. */
+.tiptap > .tableWrapper { margin-top: 0; }
 
 .tiptap ul[data-type="taskList"] { list-style: none; padding-left: 2px; }
 .tiptap ul[data-type="taskList"] li { display: flex; align-items: flex-start; gap: 6px; }

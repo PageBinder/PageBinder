@@ -1,7 +1,8 @@
 /**
- * Script embedded in page.html. It measures the rendered canvas, pushes any
- * block that would straddle a sheet boundary down to the next sheet, then
- * builds one clipped sheet per page of paper for viewing and printing.
+ * Script embedded in page.html. It measures the rendered canvas, moves any line
+ * of text that would straddle a sheet boundary down to the next sheet (splitting
+ * the paragraph there), then builds one clipped sheet per page of paper for
+ * viewing and printing.
  *
  * Kept as a string so the same code ships inside every page.html.
  */
@@ -15,25 +16,121 @@ export const paginateScript = `
   if (!source) return;
   source.style.width = W + 'px';
 
+  // Sheet breaks, line by line. Keep this in step with app/src/renderer/src/sheetBreaks.ts, which
+  // applies the same rule in the editor so the screen matches the paper.
+  //  - A line of text that would cross the bottom of a sheet's printable area, or that starts in a
+  //    sheet's top margin, moves to the top of the next printable area. The paragraph splits there:
+  //    a spacer is inserted before that line.
+  //  - When it is a block's first line, the whole block moves instead (with its bullet or checkbox).
+  //  - Tables, rules, and empty paragraphs move whole; a table taller than a page is left as it is.
+  var EPS = 0.5;
   function bandTop(i) { return i * H + mt; }
   function bandBottom(i) { return (i + 1) * H - mb; }
   function sheetOf(y) { return Math.max(0, Math.floor(y / H)); }
+  // Measured again before every decision, in case adding space moved the page on screen.
   var canvasTop = source.getBoundingClientRect().top;
+  function remeasure() { canvasTop = source.getBoundingClientRect().top; }
+  function y(v) { return v - canvasTop; }
+  var CANDIDATES = 'p, h1, h2, h3, h4, h5, h6, pre, hr, table';
+  var TEXTBLOCK = /^(P|H[1-6]|PRE)$/;
 
-  // Push blocks that straddle a sheet boundary onto the next sheet.
-  var blocks = source.querySelectorAll('.tiptap > *, .tiptap li, .tiptap table, .tiptap blockquote > *');
-  var guard = 0;
-  for (var k = 0; k < blocks.length && guard < 10000; k++, guard++) {
-    var el = blocks[k];
-    if (el.querySelector && el.querySelector('table') && el.tagName !== 'TABLE') continue;
-    var r = el.getBoundingClientRect();
-    var top = r.top - canvasTop, bottom = r.bottom - canvasTop, h = r.height;
-    if (h <= 0 || h > printableH) continue;
-    var i = sheetOf(top);
-    if (top < bandTop(i)) { el.style.marginTop = (parseFloat(getComputedStyle(el).marginTop) || 0) + (bandTop(i) - top) + 'px'; continue; }
-    if (bottom > bandBottom(i)) {
-      var shift = bandTop(i + 1) - top;
-      el.style.marginTop = (parseFloat(getComputedStyle(el).marginTop) || 0) + shift + 'px';
+  // The lines of a text block: where each starts, and the top and bottom of its characters.
+  function linesOf(block) {
+    var out = [], prev = null, cur = null, range = document.createRange();
+    var walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+    for (var n = walker.nextNode(); n; n = walker.nextNode()) {
+      var text = n.data;
+      for (var k = 0; k < text.length; k++) {
+        var c = text.charAt(k);
+        if (c === '\\n' || c === '\\r') continue;
+        range.setStart(n, k);
+        range.setEnd(n, k + 1);
+        var r = range.getBoundingClientRect();
+        if (r.width === 0 && r.height === 0) continue;
+        if (!prev || r.left < prev.left - EPS || r.top >= prev.bottom - EPS) {
+          cur = { node: n, offset: k, top: y(r.top), bottom: y(r.bottom) };
+          out.push(cur);
+        } else {
+          cur.top = Math.min(cur.top, y(r.top));
+          cur.bottom = Math.max(cur.bottom, y(r.bottom));
+        }
+        prev = r;
+      }
+    }
+    return out;
+  }
+
+  // What moves when a block's first line moves: the list item or quote it opens, if any.
+  function pushTarget(el) {
+    var t = el;
+    for (;;) {
+      var p = t.parentElement;
+      if (!p || p.classList.contains('tiptap')) return t;
+      var first = p.firstElementChild;
+      if (p.tagName === 'LI') {
+        if (first === t || (first && first.tagName === 'LABEL' && first.nextElementSibling === t)) { t = p; continue; }
+        return t;
+      }
+      if ((p.tagName === 'BLOCKQUOTE' || (p.tagName === 'DIV' && p.parentElement && p.parentElement.tagName === 'LI')) && first === t) { t = p; continue; }
+      return t;
+    }
+  }
+
+  function pushBlock(el, dest) {
+    var t = pushTarget(el);
+    var shift = dest - y(t.getBoundingClientRect().top);
+    if (shift <= EPS) return false;
+    t.style.marginTop = ((parseFloat(getComputedStyle(t).marginTop) || 0) + shift) + 'px';
+    t.setAttribute('data-sheet-break', '');
+    return true;
+  }
+
+  function splitBefore(line, dest) {
+    var spacer = document.createElement('span');
+    spacer.setAttribute('data-sheet-spacer', '');
+    spacer.style.display = 'block';
+    spacer.style.height = '0px';
+    var r = document.createRange();
+    r.setStart(line.node, line.offset);
+    r.collapse(true);
+    r.insertNode(spacer);
+    remeasure();
+    var h = dest - y(spacer.getBoundingClientRect().top);
+    if (h <= EPS) { spacer.parentNode.removeChild(spacer); return false; }
+    spacer.style.height = h + 'px';
+    return true;
+  }
+
+  // One change to a block, or false when it needs none.
+  function step(el) {
+    remeasure();
+    var rect = el.getBoundingClientRect();
+    if (rect.height <= 0) return false;
+    var top = y(rect.top), bottom = y(rect.bottom), i = sheetOf(top);
+    if (top >= bandTop(i) - EPS && bottom <= bandBottom(i) + EPS) return false;
+    var ls = TEXTBLOCK.test(el.tagName) ? linesOf(el) : [];
+    if (!ls.length) {
+      if (el.tagName === 'TABLE' && rect.height > printableH) return false;
+      return pushBlock(el, top < bandTop(i) - EPS ? bandTop(i) : bandTop(i + 1));
+    }
+    for (var k = 0; k < ls.length; k++) {
+      var L = ls[k], j = sheetOf(L.top), dest = -1;
+      if (L.top < bandTop(j) - EPS) dest = bandTop(j);
+      else if (L.bottom > bandBottom(j) + EPS) dest = bandTop(j + 1);
+      if (dest < 0) continue;
+      if (k === 0 ? pushBlock(el, dest) : splitBefore(L, dest)) return true;
+    }
+    return false;
+  }
+
+  var roots = source.querySelectorAll('.tiptap');
+  for (var q = 0; q < roots.length; q++) {
+    var blocks = roots[q].querySelectorAll(CANDIDATES);
+    for (var b = 0; b < blocks.length; b++) {
+      var el = blocks[b];
+      // Text inside a table moves with its table.
+      if (el.parentElement && el.parentElement.closest('td, th')) continue;
+      for (var tries = 0; tries < 400 && step(el); tries++) {}
     }
   }
 

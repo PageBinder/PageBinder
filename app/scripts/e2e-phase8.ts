@@ -132,7 +132,10 @@ async function main(): Promise<void> {
   await page.locator('.tiptap table td').first().click()
   await page.keyboard.type('One')
   await page.keyboard.press('Shift+Home')
+  // Bold only formats text once the selection has registered; otherwise it just arms bold at the cursor.
+  await page.waitForFunction(() => window.getSelection()?.toString() === 'One')
   await page.locator('.tb.bold').click()
+  await page.waitForSelector('.tiptap table td strong')
   await page.keyboard.press('End')
   await page.keyboard.press('Tab')
   await page.keyboard.type('Two')
@@ -257,68 +260,102 @@ async function main(): Promise<void> {
   const g = `${sec}/Gamma.page`
   const gd = await doc(g)
   const paras = Array.from({ length: 24 }, (_, i) => ({ type: 'paragraph', content: [{ type: 'text', text: `Break line ${i + 1}` }] }))
-  await page.evaluate(async ({ rel, d, paras }) => {
+  // One paragraph long enough to cross two sheet boundaries, then a list that crosses a third.
+  const longText = Array.from({ length: 330 }, (_, i) => `word${i + 1}`).join(' ')
+  const items = Array.from({ length: 40 }, (_, i) => ({ type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: `Item ${i + 1}` }] }] }))
+  await page.evaluate(async ({ rel, d, paras, longText, items }) => {
     await window.pagebinder.page.save(rel, { ...d, objects: [
       { kind: 'text', id: 'breakboxbreakboxbreakbox', x: 96, y: 800, width: 400, content: { type: 'doc', content: paras } },
       { kind: 'shape', id: 'shapeaaaaaaaaaaaaaaaaaaa', shape: 'rect', x: 520, y: 100, width: 120, height: 80, a: { x: 0, y: 0 }, b: { x: 120, y: 80 }, stroke: '#000000', strokeWidth: 2, fill: '#ff0000' },
-      { kind: 'shape', id: 'shapebbbbbbbbbbbbbbbbbbb', shape: 'rect', x: 560, y: 130, width: 120, height: 80, a: { x: 0, y: 0 }, b: { x: 120, y: 80 }, stroke: '#000000', strokeWidth: 2, fill: '#0000ff' }
+      { kind: 'shape', id: 'shapebbbbbbbbbbbbbbbbbbb', shape: 'rect', x: 560, y: 130, width: 120, height: 80, a: { x: 0, y: 0 }, b: { x: 120, y: 80 }, stroke: '#000000', strokeWidth: 2, fill: '#0000ff' },
+      { kind: 'text', id: 'longparalongparalongpara', x: 520, y: 700, width: 260, content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: longText }] }, { type: 'bulletList', content: items }] } }
     ] })
-  }, { rel: g, d: gd, paras })
+  }, { rel: g, d: gd, paras, longText, items })
   await page.locator('.page-row', { hasText: 'Alpha' }).click()
   await page.locator('.page-row', { hasText: 'Gamma' }).click()
   // Editor and print must push the same lines by the same amounts at every sheet boundary.
   const htmlPath = join(root, g, 'page.html')
-  const compareBreaks = async (label: string): Promise<{ text: string; margin: number; y: number }[]> => {
+  const compareBreaks = async (label: string): Promise<{ kind: string; text: string; margin: number; y: number; tag: string }[]> => {
     await page.waitForSelector('.canvas .tiptap [data-sheet-break]', { timeout: 10000 })
     await page.waitForTimeout(400)
     const editorBreaks = await page.evaluate(() => {
       const canvas = document.querySelector('.canvas') as HTMLElement
       const zoom = Number(canvas.dataset.zoom) || 1
       const top = canvas.getBoundingClientRect().top
-      return Array.from(document.querySelectorAll<HTMLElement>('.canvas .tiptap [data-sheet-break]')).map((el) => ({
-        text: (el.textContent ?? '').trim(),
-        margin: Math.round(parseFloat(el.style.marginTop)),
-        y: Math.round((el.getBoundingClientRect().top - top) / zoom)
-      }))
+      return Array.from(document.querySelectorAll<HTMLElement>('.canvas .tiptap [data-sheet-break], .canvas .tiptap [data-sheet-spacer]')).map((el) => {
+        const spacer = el.hasAttribute('data-sheet-spacer')
+        const r = document.createRange()
+        if (spacer) {
+          r.setStartAfter(el)
+          r.setEndAfter(el.closest('p, h1, h2, h3, h4, h5, h6, pre')!.lastChild!)
+        } else r.selectNodeContents(el)
+        const rect = el.getBoundingClientRect()
+        return {
+          kind: spacer ? 'spacer' : 'margin',
+          text: r.toString().trim().slice(0, 30),
+          margin: Math.round(spacer ? rect.height / zoom : parseFloat(el.style.marginTop)),
+          y: Math.round(((spacer ? rect.bottom : rect.top) - top) / zoom),
+          tag: el.tagName
+        }
+      })
     })
     await save(page)
     const printBreaks = await app.evaluate(async ({ BrowserWindow }, file) => {
       const w = new BrowserWindow({ show: false })
       await w.loadFile(file)
       for (let i = 0; i < 50 && !(await w.webContents.executeJavaScript("document.body.classList.contains('paginated')")); i++) await new Promise((r) => setTimeout(r, 100))
-      const list = await w.webContents.executeJavaScript(
-        "Array.from(document.querySelectorAll('#canvas .tiptap *')).filter((el) => el.style.marginTop).map((el) => ({ text: el.textContent.trim(), margin: Math.round(parseFloat(el.style.marginTop)) }))"
-      )
+      const list = await w.webContents.executeJavaScript(`Array.from(document.querySelectorAll('#canvas .tiptap [data-sheet-break], #canvas .tiptap [data-sheet-spacer]')).map((el) => {
+        const spacer = el.hasAttribute('data-sheet-spacer')
+        const r = document.createRange()
+        if (spacer) { r.setStartAfter(el); r.setEndAfter(el.closest('p, h1, h2, h3, h4, h5, h6, pre').lastChild) } else r.selectNodeContents(el)
+        return { kind: spacer ? 'spacer' : 'margin', text: r.toString().trim().slice(0, 30), margin: Math.round(parseFloat(spacer ? el.style.height : el.style.marginTop)) }
+      })`)
       w.destroy()
-      return list as { text: string; margin: number }[]
+      return list as { kind: string; text: string; margin: number }[]
     }, htmlPath)
-    const same = printBreaks.length === editorBreaks.length && printBreaks.every((p, i) => p.text === editorBreaks[i]!.text && Math.abs(p.margin - editorBreaks[i]!.margin) <= 1)
+    const same = printBreaks.length === editorBreaks.length && printBreaks.every((p, i) => p.kind === editorBreaks[i]!.kind && p.text === editorBreaks[i]!.text && Math.abs(p.margin - editorBreaks[i]!.margin) <= 1)
     assert(same, `${label}: editor and print push the same lines by the same amounts (editor ${JSON.stringify(editorBreaks)}, print ${JSON.stringify(printBreaks)})`)
     return editorBreaks
   }
   const firstBreaks = await compareBreaks('standard spacing')
   // Letter paper at 96 px per inch with one-inch margins: sheet 2's printable area starts at 1056 + 96.
   assert(firstBreaks[0]?.y === 1152, `the first line past the break starts at the top of sheet 2's printable area (${JSON.stringify(firstBreaks)})`)
-  step('a text box that crosses a page break is laid out in the editor exactly as it prints')
+  // The long paragraph splits line by line: it stays one paragraph, fills each sheet, and continues
+  // at the top of the next sheet's printable area, at two boundaries.
+  const splits = firstBreaks.filter((b) => b.kind === 'spacer')
+  assert(splits.length === 2 && splits[0]!.y === 1152 && splits[1]!.y === 2208, `a long paragraph splits at each sheet boundary and continues at the top of the next printable area (${JSON.stringify(splits)})`)
+  const beforeSplit = await page.evaluate(() => {
+    const canvas = document.querySelector('.canvas') as HTMLElement
+    const zoom = Number(canvas.dataset.zoom) || 1
+    return Array.from(document.querySelectorAll<HTMLElement>('.canvas .tiptap [data-sheet-spacer]')).map((el) => Math.round((el.getBoundingClientRect().top - canvas.getBoundingClientRect().top) / zoom))
+  })
+  assert(beforeSplit[0]! > 960 - 30 && beforeSplit[1]! > 2016 - 30, `each sheet is filled to its last line before the split (${beforeSplit.join()})`)
+  const stored = (await doc(g)).objects.find((o) => o.id === 'longparalongparalongpara') as unknown as { content: { content: { type: string; content?: { text?: string }[] }[] } }
+  const firstNode = stored.content.content[0]!
+  const storedText = (firstNode.content ?? []).map((t) => t.text ?? '').join('')
+  assert(firstNode.type === 'paragraph' && storedText === longText && stored.content.content.filter((n) => n.type === 'paragraph' && (n.content ?? []).length).length === 1, 'the page file keeps the paragraph whole: splitting is layout only')
+  // A list crossing a boundary moves whole items, bullet and all.
+  assert(firstBreaks.some((b) => b.kind === 'margin' && b.tag === 'LI'), `a list item crossing a boundary moves as a whole (${JSON.stringify(firstBreaks.filter((b) => b.kind === 'margin'))})`)
+  step('text that crosses a page break moves line by line, and the editor lays it out exactly as it prints')
 
   // 9. Any object can be brought to the front or sent to the back, and undo reverses it.
   const order = async (): Promise<string[]> => (await doc(g)).objects.map((o) => o.id.slice(0, 6))
-  assert((await order()).join() === 'breakb,shapea,shapeb', `starting order (${(await order()).join()})`)
+  assert((await order()).join() === 'breakb,shapea,shapeb,longpa', `starting order (${(await order()).join()})`)
   await page.locator('.shape-object').nth(1).click({ button: 'right', position: { x: 100, y: 60 } })
   await page.locator('.context-item', { hasText: /^Order/ }).click()
   await page.locator('.context-item', { hasText: 'Send to back' }).click()
   await save(page)
-  assert((await order()).join() === 'shapeb,breakb,shapea', `Send to back puts it first in the stacking order (${(await order()).join()})`)
+  assert((await order()).join() === 'shapeb,breakb,shapea,longpa', `Send to back puts it first in the stacking order (${(await order()).join()})`)
   const domOrder = await page.evaluate(() => Array.from(document.querySelectorAll('.canvas [data-object-id]')).map((el) => (el as HTMLElement).dataset.objectId!.slice(0, 6)))
-  assert(domOrder.join() === 'shapeb,breakb,shapea', `the editor stacks objects in the same order (${domOrder.join()})`)
+  assert(domOrder.join() === 'shapeb,breakb,shapea,longpa', `the editor stacks objects in the same order (${domOrder.join()})`)
   await page.locator('.shape-object').nth(0).click({ button: 'right', position: { x: 100, y: 60 } })
   await page.locator('.context-item', { hasText: /^Order/ }).click()
   await page.locator('.context-item', { hasText: 'Bring to front' }).click()
   await save(page)
-  assert((await order()).join() === 'breakb,shapea,shapeb', `Bring to front puts it last in the stacking order (${(await order()).join()})`)
+  assert((await order()).join() === 'breakb,shapea,longpa,shapeb', `Bring to front puts it last in the stacking order (${(await order()).join()})`)
   await page.keyboard.press(`${mod}+z`)
   await save(page)
-  assert((await order()).join() === 'shapeb,breakb,shapea', `undo restores the previous order (${(await order()).join()})`)
+  assert((await order()).join() === 'shapeb,breakb,shapea,longpa', `undo restores the previous order (${(await order()).join()})`)
   const htmlOrder = await fs.readFile(htmlPath, 'utf8')
   assert(htmlOrder.indexOf('shapebbbb') < htmlOrder.indexOf('breakboxb') && htmlOrder.indexOf('breakboxb') < htmlOrder.indexOf('shapeaaaa'), 'page.html prints in the stacking order')
   step('objects can be brought to the front or sent to the back from the right-click menu, and undo reverses it')
