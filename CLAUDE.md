@@ -4,7 +4,7 @@ Local-only, folder-based notebook app in the style of classic desktop OneNote (f
 
 ## Status
 - rev1 = version 1.0.1 (git tag `rev1`), the version the user tested by hand.
-- Phases 1 to 8 are built; version 1.1.0 adds phase 8 (Windows build, installers, long paths, first run). `.github/workflows/platforms.yml` tests on real macOS and Windows runners, builds both installers, and runs `scripts/cross-platform.ts` across the two. It runs on every push to `main` and `fix/**`, except pushes that change only Markdown, `docs/`, or `.claude/`, and can also be started by hand. This is free only while the repository is public; if it ever becomes private, return the workflow to start-by-hand first (private macOS minutes count ten times against 2,000 a month). `release.yml` builds a draft release from a `v*` tag, and refuses any version that is already published (see "Published releases").
+- Phases 1 to 8 are built; version 1.1.0 adds phase 8 (Windows build, installers, long paths, first run), and 1.1.1 adds line-by-line page breaks, line spacing, and the Order menu. `docs/REVISION_LOG.txt` describes every version for users; add a section for each new version before its release, because `release.yml` puts that section in the release notes and attaches the whole log. `.github/workflows/platforms.yml` tests on real macOS and Windows runners, builds both installers, and runs `scripts/cross-platform.ts` across the two. It runs on every push to `main` and `fix/**`, except pushes that change only Markdown, `docs/`, or `.claude/`, and can also be started by hand. This is free only while the repository is public; if it ever becomes private, return the workflow to start-by-hand first (private macOS minutes count ten times against 2,000 a month). `release.yml` builds a draft release from a `v*` tag, and refuses any version that is already published (see "Published releases").
 - Branches: the lead Mac works on `main`; every other machine and cloud session works on a short-lived `fix/<platform>-<topic>` branch, merged back into `main` within the task and then deleted. See "Working across machines".
 - The repository is meant to be public. Commit as `PageBinder <4245724+PageBinder@users.noreply.github.com>`. Commit messages carry no `Co-Authored-By` or `Claude-Session` lines, and the owner's personal name and email appear nowhere in the repository. Installers are unsigned (macOS ad-hoc, no Windows certificate).
 - Unverified: the native Outlook email drag-and-drop helper (the user cannot test it yet).
@@ -19,7 +19,7 @@ Every revision must open, show, edit, print, and search notebooks written by any
 - **Drafts may be replaced.** Rebuilding a draft release, as `release.yml` does for a draft of the same version, is fine.
 - **Anything public is never overwritten.** A published release or pre-release, its installers and notes, and its tag are never replaced, edited, re-uploaded, or deleted unless the user specifically says so, and even then confirm with the user before doing it.
 - **New changes get a new version.** Once a version is published, raise the version in `app/package.json` and build a new draft. `release.yml` stops by itself for a published version: quietly when publishing a draft created the tag, with an error when started by hand.
-- v1.1.0 was published as a pre-release on 27 September 2026 from commit `e88dbee`.
+- v1.1.0 was published as a pre-release on 27 September 2026 from commit `e88dbee`, and v1.1.1 on 28 September 2026.
 
 ## Commands
 All of these run inside `app/` (`cd app` first).

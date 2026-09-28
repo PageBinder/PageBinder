@@ -92,6 +92,7 @@ The [Getting Started guide](docs/GETTING_STARTED.md) covers the first five minut
 - [Recovery guide](docs/RECOVERY.md): what to do if a page or file is damaged or missing
 - [Uninstalling](docs/UNINSTALL.md)
 - [What PageBinder is](docs/PROGRAM_OVERVIEW.md): everything it does, in one page
+- [Revision log](docs/REVISION_LOG.txt): what changed in each version, in plain text (also attached to every release)
 - [Program description](docs/dev/PROGRAM_DESCRIPTION.md): the full design for developers, including the folder format
 - [Feature comparison](docs/PageBinder-feature-comparison.xlsx): PageBinder beside eleven other note-taking programs, feature by feature, with a quick-reference sheet of where it differs
 

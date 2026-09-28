@@ -1,0 +1,140 @@
+PageBinder revision log
+=======================
+
+What changed in each version of PageBinder, newest first.
+
+Every version opens, shows, edits, prints, and searches notebooks made by the
+earlier ones. Nothing ever needs converting.
+
+
+Version 1.1.1 - 28 September 2026 (pre-release)
+-----------------------------------------------
+
+Page breaks and printing
+- Text that runs past the bottom of a page now carries on line by line at the
+  top of the next page's printable area. A long paragraph fills the page to
+  its last line and continues over the page break, instead of the whole
+  paragraph jumping to the next page.
+- A list item, to-do item, heading, or quote whose first line would cross the
+  page break moves to the next page whole, with its bullet or checkbox. A
+  table moves over whole when it fits on one page.
+- The page on screen now matches the printout exactly. Long paragraphs used to
+  wrap a word or two differently on screen than on paper, and a table sat a
+  little lower on screen than it printed.
+- Print, Print Preview, and Save as PDF always use the current layout, even for
+  a page last saved by an earlier version.
+
+Editing
+- Line spacing: choose 1.0, 1.15, 1.5 (standard), 2.0, 2.5, or 3.0 from the
+  new control beside the font size, or highlight text, right-click, and choose
+  Line spacing. It applies to every paragraph the highlight touches, and
+  pressing Enter carries it into the next paragraph.
+- Right-click > Line spacing > Default for new text boxes sets the spacing every
+  new text box starts with on this computer.
+- Stacking order: right-click any object (text box, picture, shape, line, or
+  attachment card), or several selected objects, and choose Order to bring it
+  to the front, bring it forward, send it backward, or send it to the back.
+  Printing follows the same order, and Undo reverses it.
+
+
+Version 1.1.0 - 25 September 2026 (pre-release, published 27 September 2026)
+-----------------------------------------------------------------------------
+
+Installers
+- Installers for macOS (Apple silicon and Intel) and for Windows 10 and 11
+  (x64 and ARM). The Windows installer needs no administrator rights.
+- The installers are not yet signed, so macOS and Windows ask for confirmation
+  the first time PageBinder is opened.
+- Each new installation, including an update or a reinstall, that finds
+  settings from an earlier one asks whether to keep them or start fresh.
+  Starting fresh keeps the earlier settings in a backup folder. Notebooks are
+  never affected either way.
+
+Windows
+- Saving waits and tries again when a virus scanner, the search indexer, or a
+  backup program briefly holds a file open.
+- Very deep folders and long file names (paths over 260 characters) work.
+  Verify Notebook warns about paths that are getting close to the limit, for
+  older backup tools.
+- The right-click item for a file says Show in Explorer.
+- Pictures in an exported HTML file now show when the file is saved outside the
+  notebook.
+
+Everywhere
+- A notebook copied from another computer while it was open, for example in a
+  network drive backup, now opens normally.
+- Verify Notebook no longer reports the files Windows and macOS add to folders
+  by themselves (Thumbs.db, desktop.ini, Icon).
+- The page list shows a new page title straight away after saving, renaming,
+  restoring a version, or creating a page from a template.
+- The first time PageBinder starts, the Welcome screen shows a short Getting
+  started note, and Create notebook suggests the Documents folder.
+
+Search
+- The text of PDF printouts is searchable. When a PDF is inserted as a printout,
+  the text on its pages can be found by search, under In printouts, and the
+  matching page of the printout is outlined. A document that is only attached,
+  not printed out, is found by its name alone.
+
+Help
+- Help > Program description now explains what PageBinder does in plain terms,
+  without development history.
+- Getting started no longer repeats the installation steps: it starts from
+  using the program.
+
+
+Version 1.0.1 - 24 September 2026 (tested by hand; no installers)
+-----------------------------------------------------------------
+
+- The program is named PageBinder, with its own icon and logo. It was
+  previously called DigiNote. Settings, the list of recent notebooks, and the
+  global templates carry over by themselves.
+- Tab with several list items highlighted moves them all to the right together,
+  keeping their bullets or numbers, instead of erasing them. Shift+Tab moves
+  them back.
+- Lines and arrows have no fill colour, so their menus no longer offer one.
+- The View menu has a single Toggle Full Screen item.
+
+
+Version 1.0.0 - 24 September 2026 (first complete version; no installers)
+-------------------------------------------------------------------------
+
+Notebooks
+- Notebooks in the style of the classic desktop OneNote: notebooks, section
+  groups, coloured section tabs, and pages. Every notebook is an ordinary
+  folder on your own disk or network drive, and nothing is sent anywhere.
+- Every page also keeps a copy that opens in any web browser, so notes stay
+  readable without PageBinder.
+- A notebook of 50,000 pages opens in a few seconds, and search answers as you
+  type.
+
+Pages
+- Each page is a free canvas: click to start a text box, and place text,
+  tables, pictures, shapes, and attached files wherever you like.
+- Pages are laid out on real sheets of paper (Letter, Legal, Tabloid, A4, A3,
+  portrait or landscape) with margin presets, and print exactly as shown.
+  Print Preview, printing, and export to one PDF or HTML file for a page, a
+  section, or a whole notebook.
+- Text: fonts, sizes, colours, highlighting, alignment, headings, and bulleted,
+  numbered, and to-do lists. Tab works as in a word processor.
+- Tables with row heights, column widths, cell colours, and borders like a
+  spreadsheet, all from the cell's right-click menu. Copying cells into another
+  table brings the content and keeps that table's look.
+- Pictures, lines, arrows, rectangles, and ellipses.
+- Any file can be attached, with no size limit. Saved emails show their
+  subject, sender, and date, and their text can be searched. An attached PDF
+  can be inserted as a printout of its pages.
+- Copy and paste objects and whole pages, Insert signature, and Undo and Redo.
+
+Safety
+- Pages save themselves as you type, and every saved version of a page is
+  kept: preview, restore, or copy any of them.
+- Deleted pages, sections, and groups stay in Recycled Pages for 30 days.
+- A damaged page is restored from its last good version automatically, and
+  Verify Notebook checks a whole notebook and repairs what it safely can.
+- The same notebook cannot be opened twice at once.
+
+Templates
+- Save any page as a template for one notebook or for every notebook, and give
+  a section a default template. The Templates entry on the switch screen shows
+  every template as a page you can edit.

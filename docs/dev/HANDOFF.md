@@ -18,6 +18,13 @@ Entry format:
 ---
 
 ## 2026-09-28 · lead (macOS, Apple silicon) · main
+**Changed:** Version 1.1.1 (line-by-line page breaks, line spacing, the Order menu, editor and print alignment), to be published as a pre-release. Added `docs/REVISION_LOG.txt`, a plain-text description of every version for users; `release.yml` now attaches it to every release as `PageBinder-revision-log.txt` and puts the version's own section in the release notes. The development plan has a Version 1.1.1 section. The user asked for exactly two published pre-releases (1.1.0 and 1.1.1) and nothing else, so the duplicate v1.1.0 draft is deleted.
+**Found:** GitHub's "latest release" link skips pre-releases; with only pre-releases, the README's download link lands on the Releases page, which lists them, so it still works.
+**Checked:** The notes extraction was run locally against the log for 1.1.1 and 1.0.1. See the commit's workflow run, the 1.1.1 release run, and the final release list.
+**Next platform must check:** Windows: install PageBinder-Setup-1.1.1.exe over 1.1.0 and confirm the Keep or Start fresh question and that notebooks open unchanged.
+**Open:** Word wrap choice; tall tables across page breaks; document-wide undo (all in FUTURE_FEATURES.md).
+
+## 2026-09-28 · lead (macOS, Apple silicon) · main
 **Changed:** New standing rule: a published release is never overwritten (see `CLAUDE.md`, "Published releases"). `release.yml` gained a first job that checks for a published release of the version: when publishing a draft created the tag, the run stops quietly; when started by hand for a published version, it fails and asks for a new version number. Builds no longer run in either case.
 **Found:** v1.1.0 was published as a pre-release on 27 September from `e88dbee` (printout search). Publishing created the `v1.1.0` tag, which started `release.yml` and produced a second, identical v1.1.0 draft. Nothing public was replaced; the extra draft is still there.
 **Checked:** The workflow parses; its release query, run against the repository, finds one published v1.1.0 release and none for v1.2.0. The first run of the changed workflow will be the proof.
