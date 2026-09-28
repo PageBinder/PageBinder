@@ -275,6 +275,11 @@ input { font: inherit; color: inherit; }
 .marquee { position: absolute; border: 1px dashed var(--accent); background: rgba(55, 138, 221, 0.08); pointer-events: none; z-index: 6; }
 .canvas { user-select: none; }
 .canvas .tiptap { user-select: text; }
+/* Text in the editor wraps exactly as it prints. ProseMirror's own stylesheet uses break-spaces, which
+   gives the space at the end of a wrapped line a width, and turns ligatures off; page.html uses
+   pre-wrap with normal ligatures. Either difference moves where long lines wrap, so the editor
+   follows the printout. */
+.canvas .tiptap.ProseMirror { white-space: pre-wrap; font-variant-ligatures: normal; font-feature-settings: normal; }
 
 .notebook-button.templates { background: #eeedfe; border-color: #cecbf6; color: #3c3489; }
 

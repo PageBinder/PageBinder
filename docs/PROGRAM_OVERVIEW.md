@@ -14,7 +14,7 @@ A page is a blank canvas. Click anywhere to start a text box, and place text box
 
 ## Pages that print
 
-A page is laid out on sheets of paper from the moment you start. The page border and a dashed line for the margins show what will print, and a page can run over as many sheets as it needs. Anything placed outside the printable area stays on the page but does not print, and print preview shows it dimmed so nothing goes missing unnoticed. A text box that runs past the bottom of a sheet continues at the top of the next sheet's printable area, on screen exactly as on paper; a paragraph never splits across two sheets.
+A page is laid out on sheets of paper from the moment you start. The page border and a dashed line for the margins show what will print, and a page can run over as many sheets as it needs. Anything placed outside the printable area stays on the page but does not print, and print preview shows it dimmed so nothing goes missing unnoticed. A text box that runs past the bottom of a sheet continues at the top of the next sheet's printable area, line by line, on screen exactly as on paper: a long paragraph fills the sheet and carries on over the page break. A list item or heading whose first line would cross the break moves over whole, and a table moves over whole when it fits on one sheet.
 
 - **Paper.** Letter is the default. Tabloid (11 × 17), Legal, A4, and A3 are available, portrait or landscape, with margin presets. The choice can be made for one page or for the whole notebook, and page numbers can be printed in the footer.
 - **Printing.** File > Print Preview shows exactly what will print. Print a page, a section, a section group, or a whole notebook.
