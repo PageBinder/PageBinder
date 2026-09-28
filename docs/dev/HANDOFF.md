@@ -17,6 +17,13 @@ Entry format:
 
 ---
 
+## 2026-09-28 · lead (macOS, Apple silicon) · main
+**Changed:** Removed the ribbon's "restore the last selection" workaround (`Toolbar.tsx`); the dropdowns apply straight to the editor's selection again. Phase 8's line-spacing step clicks into the text box, waits until the editor has registered the click, and only then presses Select All.
+**Found:** The Windows failures of the ribbon line-spacing check were a test race, not a Windows or ribbon bug. Reproduced on this Mac by slowing the browser to CI speed and logging every editor transaction: an earlier Select All left the editor holding "everything selected"; the test clicked and pressed Select All within milliseconds, before the editor had read the click; Select All was then a no-op, and the late report of the click collapsed the selection. With the wait, 12 of 12 slowed runs pass. The earlier note blaming Windows dropdown focus was wrong and is corrected in `docs/dev/PLATFORM_NOTES.md`.
+**Checked:** Type check; phase 8 suite; see the commit's workflow run for macOS and Windows.
+**Next platform must check:** Nothing new.
+**Open:** Unchanged.
+
 ## 2026-09-27 · lead (macOS, Apple silicon) · main
 **Changed:** Page breaks now move text line by line (`app/src/shared/render/paginate.ts` for print, `app/src/renderer/src/sheetBreaks.ts` for the editor, kept in step). A long paragraph fills the sheet and continues at the top of the next printable area; a block whose first line would cross moves whole with its bullet, checkbox, or quote; tables, rules, and empty paragraphs move whole. The editor now wraps text exactly as page.html does (ProseMirror's `break-spaces` and disabled ligatures are overridden) and no longer adds a gap above tables. The in-app server renders page.html fresh for Print, Print Preview, and PDF export.
 **Found:** (1) The editor had always wrapped long paragraphs slightly differently from the printout because of ProseMirror's stylesheet; fixed on the editor side so printed wrapping is unchanged. (2) Adding space can make the browser adjust the scroll position, so both implementations measure the canvas again before every decision; without that, a scrolled editor pushed a paragraph far down the page. (3) Printing loaded the stored page.html, so a page saved by an older version would print with its old layout. (4) The phase 8 table-paste step could click Bold before the selection registered; it now waits.

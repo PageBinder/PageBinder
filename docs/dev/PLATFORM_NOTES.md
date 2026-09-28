@@ -11,7 +11,6 @@ What each platform has taught us, so the next machine does not relearn it. Add t
 - **Exported HTML** must link pictures with URL-style forward slashes.
 - **Wording.** The right-click menu says "Show in Explorer" on Windows and "Show in Finder" on macOS.
 - **Installer.** The installer is per-user, with no administrator rights, and covers x64 and ARM. Being unsigned, it triggers SmartScreen's "Run anyway". `build/installer.nsh` records the installation time, which is how a new installation is recognised.
-- **Dropdowns and the text selection.** Choosing from a ribbon dropdown moves focus away from the text, and Chromium on Windows can collapse the text's highlight as it does, so a command then applies only where the cursor was. The ribbon keeps the last selection made while the text had focus and restores it before any dropdown command (`Toolbar.tsx`, `selectChain`). Buttons avoid the problem by not taking focus.
 - **CI runners** start at 1024×768. The workflow sets 1920×1080 before the window tests.
 - **npm 11 on a local Windows machine** may block `electron-winstaller`'s install script. If `npm run dist:win` fails, approve it with `npm install-scripts approve electron-winstaller`, and commit the `allowScripts` change only after checking it.
 
@@ -27,6 +26,7 @@ What each platform has taught us, so the next machine does not relearn it. Add t
 ## Everywhere
 - **Declare every runtime library** in `dependencies`. The installer leaves out anything undeclared. `happy-dom` was missing once and the installed app crashed on launch.
 - **Playwright `app.evaluate`:** use no named inner functions, because tsx's `__name` helper does not exist inside the app.
+- **A key pressed right after a click (tests only).** For a plain click, the editor lets the browser place the cursor and reads it a moment later. If a key arrives first, and the editor still holds an older selection that the key would not change (for example Select All while everything is still selected from before), the late report of the click then collapses the selection. It takes a few milliseconds and shows only on slow machines such as the GitHub runners, on Mac and Windows alike; no person types that fast. Tests wait until the editor has registered the click (its selection is empty) before pressing a key. This, not the ribbon, explains the Windows line-spacing failures of 27 September.
 - **Timing.** Tests must wait for a condition, not for a fixed delay. The crash test and a restored-title check failed on slow machines until they did.
 - **Linux (cloud sessions and CI):** window suites need a display, so run them with `xvfb-run -a npm run e2e`.
 - **Every npm and npx command runs inside `app/`.** The repository root holds only the README, the licence, `CLAUDE.md`, and the `docs/` folder.
