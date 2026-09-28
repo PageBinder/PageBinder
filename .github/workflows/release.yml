@@ -3,7 +3,11 @@
 #   git tag v1.1.0 && git push origin v1.1.0     (or run this workflow by hand from the Actions tab)
 #
 # The release is created as a draft: check it on the Releases page, then press Publish.
-# One release run uses about 60 of the free plan's 2,000 monthly minutes (macOS minutes count ten times).
+#
+# A published release (including a pre-release) is public and is never replaced (the user's rule,
+# 2026-09-28). The first job checks for one: when publishing a draft created this tag, the run stops
+# quietly; when started by hand for a version that is already published, it fails and asks for a new
+# version number. Only drafts are ever replaced.
 name: Release
 
 on:
@@ -20,8 +24,37 @@ permissions:
   contents: write
 
 jobs:
+  check:
+    name: Check the version is not already published
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      proceed: ${{ steps.decide.outputs.proceed }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(node -p "require('./package.json').version")
+          tag="${GITHUB_REF_NAME}"
+          case "$tag" in v*) ;; *) tag="v$version" ;; esac
+          published=$(gh api "repos/${GITHUB_REPOSITORY}/releases" --paginate --jq "[.[] | select((.draft | not) and .tag_name == \"$tag\")] | length")
+          if [ "$published" != "0" ]; then
+            if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+              echo "Release $tag is already published; publishing it created this tag. Nothing to build."
+              echo "proceed=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "::error::Release $tag is already published and is never replaced. Raise the version in app/package.json and build a new draft."
+            exit 1
+          fi
+          echo "proceed=true" >> "$GITHUB_OUTPUT"
+
   build:
     name: Build (${{ matrix.os }})
+    needs: check
+    if: needs.check.outputs.proceed == 'true'
     strategy:
       fail-fast: true
       matrix:
@@ -54,7 +87,8 @@ jobs:
 
   release:
     name: Draft release
-    needs: build
+    needs: [check, build]
+    if: needs.check.outputs.proceed == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -79,7 +113,8 @@ jobs:
           Installation steps are in the [README](https://github.com/${GITHUB_REPOSITORY}#download-and-install). The installers are not yet signed, so macOS and Windows ask for confirmation the first time.
           EOF
           ls -la files
-          # A rebuild replaces an earlier draft of the same version. Published releases are never touched.
+          # A rebuild replaces an earlier draft of the same version. Published releases are never touched:
+          # the check job has already stopped the run if this version is published.
           for id in $(gh api "repos/${GITHUB_REPOSITORY}/releases" --jq ".[] | select(.draft and .tag_name == \"$tag\") | .id"); do
             echo "Replacing earlier draft $id"
             gh api -X DELETE "repos/${GITHUB_REPOSITORY}/releases/$id"

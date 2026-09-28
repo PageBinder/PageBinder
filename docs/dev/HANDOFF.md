@@ -18,6 +18,13 @@ Entry format:
 ---
 
 ## 2026-09-28 · lead (macOS, Apple silicon) · main
+**Changed:** New standing rule: a published release is never overwritten (see `CLAUDE.md`, "Published releases"). `release.yml` gained a first job that checks for a published release of the version: when publishing a draft created the tag, the run stops quietly; when started by hand for a published version, it fails and asks for a new version number. Builds no longer run in either case.
+**Found:** v1.1.0 was published as a pre-release on 27 September from `e88dbee` (printout search). Publishing created the `v1.1.0` tag, which started `release.yml` and produced a second, identical v1.1.0 draft. Nothing public was replaced; the extra draft is still there.
+**Checked:** The workflow parses; its release query, run against the repository, finds one published v1.1.0 release and none for v1.2.0. The first run of the changed workflow will be the proof.
+**Next platform must check:** Nothing.
+**Open:** The changes since `e88dbee` (line-by-line page breaks, line spacing, the Order menu, editor/print alignment) need a new version number (for example 1.1.1 or 1.2.0) to reach a new draft. The duplicate v1.1.0 draft can be deleted if the user wants.
+
+## 2026-09-28 · lead (macOS, Apple silicon) · main
 **Changed:** Removed the ribbon's "restore the last selection" workaround (`Toolbar.tsx`); the dropdowns apply straight to the editor's selection again. Phase 8's line-spacing step clicks into the text box, waits until the editor has registered the click, and only then presses Select All.
 **Found:** The Windows failures of the ribbon line-spacing check were a test race, not a Windows or ribbon bug. Reproduced on this Mac by slowing the browser to CI speed and logging every editor transaction: an earlier Select All left the editor holding "everything selected"; the test clicked and pressed Select All within milliseconds, before the editor had read the click; Select All was then a no-op, and the late report of the click collapsed the selection. With the wait, 12 of 12 slowed runs pass. The earlier note blaming Windows dropdown focus was wrong and is corrected in `docs/dev/PLATFORM_NOTES.md`.
 **Checked:** Type check; phase 8 suite; see the commit's workflow run for macOS and Windows.
