@@ -363,8 +363,27 @@ async function main(): Promise<void> {
   // 10. Line spacing: from the right-click menu for highlighted text, from the ribbon, and as the default for new boxes.
   const spacingOf = async (): Promise<(string | null)[]> =>
     ((await doc(g)).objects.find((o) => o.id === "breakboxbreakboxbreakbox") as unknown as { content: { content: { attrs?: { lineHeight?: string | null } }[] } }).content.content.map((p) => p.attrs?.lineHeight ?? null)
-  await page.locator('.canvas .tiptap p', { hasText: 'Break line 3' }).click()
-  await page.keyboard.press(`${mod}+a`)
+  // Click into the box, wait until the editor has registered the click, then select everything.
+  // A key pressed within milliseconds of a click can race the browser's report of the new cursor
+  // (see docs/dev/PLATFORM_NOTES.md); no person is that fast, so the test waits as a person would.
+  const selectAllInBreakBox = async (): Promise<void> => {
+    await page.locator('.canvas .tiptap p', { hasText: 'Break line 3' }).click()
+    await page.waitForFunction(() => {
+      const el = Array.from(document.querySelectorAll('.canvas .tiptap')).find((e) => (e.textContent ?? '').includes('Break line 3')) as (Element & { editor?: { state: { selection: { empty: boolean } } } }) | undefined
+      return !!el?.editor?.state.selection.empty
+    })
+    await page.keyboard.press(`${mod}+a`)
+    await page.waitForFunction(
+      () => {
+        const el = Array.from(document.querySelectorAll('.canvas .tiptap')).find((e) => (e.textContent ?? '').includes('Break line 3')) as (Element & { editor?: { state: { selection: { from: number; to: number }; doc: { content: { size: number } } } } }) | undefined
+        const st = el?.editor?.state
+        return !!st && st.selection.from <= 1 && st.selection.to >= st.doc.content.size - 1
+      },
+      undefined,
+      { timeout: 5000 }
+    )
+  }
+  await selectAllInBreakBox()
   await page.locator('.canvas .tiptap p', { hasText: 'Break line 3' }).click({ button: 'right' })
   await page.locator('.context-item', { hasText: /^Line spacing/ }).click()
   await page.locator('.context-item', { hasText: /^2\.0$/ }).click()
@@ -378,54 +397,14 @@ async function main(): Promise<void> {
   // Taller lines move the page break; the editor still matches the printout.
   const doubled = await compareBreaks('double spacing')
   assert(doubled[0]!.text !== firstBreaks[0]!.text, `double spacing moves the page break to an earlier line (${doubled[0]!.text} vs ${firstBreaks[0]!.text})`)
-  // The ribbon control applies to the same selection. The editor's own state is read (TipTap keeps
-  // the editor on its element), so the test waits until Select All has really registered.
-  const boxSelection = async (): Promise<{ from: number; to: number; size: number; focused: boolean; active: string }> =>
+  // The ribbon control applies to the same selection.
+  const boxSelection = async (): Promise<{ from: number; to: number; size: number }> =>
     page.evaluate(() => {
-      type Ed = { state: { selection: { from: number; to: number }; doc: { content: { size: number } } }; isFocused: boolean }
-      const el = Array.from(document.querySelectorAll('.canvas .tiptap')).find((e) => (e.textContent ?? '').includes('Break line 3')) as (Element & { editor?: Ed }) | undefined
-      const ed = el?.editor
-      const a = document.activeElement as HTMLElement | null
-      return { from: ed?.state.selection.from ?? -1, to: ed?.state.selection.to ?? -1, size: ed?.state.doc.content.size ?? -1, focused: !!ed?.isFocused, active: `${a?.tagName ?? ''}.${(a?.className ?? '').toString().split(' ')[0]}` }
+      const el = Array.from(document.querySelectorAll('.canvas .tiptap')).find((e) => (e.textContent ?? '').includes('Break line 3')) as (Element & { editor?: { state: { selection: { from: number; to: number }; doc: { content: { size: number } } } } }) | undefined
+      const st = el?.editor?.state
+      return { from: st?.selection.from ?? -1, to: st?.selection.to ?? -1, size: st?.doc.content.size ?? -1 }
     })
-  // Diagnostics for Windows, where this Select All once never registered: which window has focus,
-  // whether the key reaches the page, and whether giving the window focus back helps.
-  const focusInfo = async (): Promise<unknown> =>
-    app.evaluate(({ BrowserWindow }) => ({ focusedWindow: BrowserWindow.getFocusedWindow()?.id ?? null, windows: BrowserWindow.getAllWindows().map((w) => ({ id: w.id, focused: w.isFocused(), visible: w.isVisible() })) }))
-  await page.evaluate(() => {
-    const w = window as unknown as { __keys: string[] }
-    w.__keys = []
-    window.addEventListener('keydown', (e) => w.__keys.push(`down ${e.ctrlKey ? 'Ctrl+' : ''}${e.metaKey ? 'Meta+' : ''}${e.key}`), true)
-    window.addEventListener('keydown', (e) => w.__keys.push(`after ${e.key}${e.defaultPrevented ? ' handled' : ''}`))
-  })
-  const allSelected = async (): Promise<boolean> => {
-    const s = await boxSelection()
-    return s.from <= 1 && s.to >= s.size - 1
-  }
-  const selectAllIn = async (): Promise<boolean> => {
-    await page.locator('.canvas .tiptap p', { hasText: 'Break line 3' }).click()
-    await page.keyboard.press(`${mod}+a`)
-    for (let i = 0; i < 50; i++) {
-      if (await allSelected()) return true
-      await page.waitForTimeout(100)
-    }
-    return false
-  }
-  const focusBefore = await focusInfo()
-  const t0 = Date.now()
-  if (!(await selectAllIn())) {
-    const diag = {
-      focusBefore,
-      focusAfter: await focusInfo(),
-      selection: await boxSelection(),
-      page: await page.evaluate(() => ({ hasFocus: document.hasFocus(), domSelection: (window.getSelection()?.toString() ?? '').length, keys: (window as unknown as { __keys: string[] }).__keys }))
-    }
-    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.focus())
-    await page.waitForTimeout(300)
-    const retried = await selectAllIn()
-    throw new Error(`ASSERT: Select All did not register in the text box (${JSON.stringify(diag)}; after focusing the window again it ${retried ? 'worked' : 'still failed'})`)
-  }
-  process.stdout.write(`    (Select All registered after ${Date.now() - t0} ms; focus before ${JSON.stringify(focusBefore)})\n`)
+  await selectAllInBreakBox()
   const beforeChoice = await boxSelection()
   await page.locator('.tb-select.spacing').selectOption('1.15')
   const afterChoice = await boxSelection()

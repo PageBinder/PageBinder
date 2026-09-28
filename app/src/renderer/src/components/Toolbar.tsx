@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { useEffect, useRef, useState, type MouseEvent } from 'react'
+import { useState, type MouseEvent } from 'react'
 import { useActiveEditor } from '../editorContext'
 import { ContextMenu, type MenuItem } from './ContextMenu'
 import { FONT_FAMILIES, FONT_SIZES } from '@shared/render/extensions'
@@ -45,31 +45,6 @@ export function Toolbar({
   const keep = (e: MouseEvent): void => e.preventDefault()
   const can = !!editor
   const chain = () => editor!.chain().focus()
-  // The ribbon's dropdowns take focus from the text, and on Windows Chromium can collapse the text's
-  // selection as they do. So the last selection made while the text had focus is kept, and put back
-  // before a dropdown's command runs, so font, size, and spacing apply to everything highlighted.
-  const lastSelection = useRef<{ from: number; to: number } | null>(null)
-  useEffect(() => {
-    lastSelection.current = null
-    if (!editor) return
-    const remember = (): void => {
-      if (editor.isFocused) lastSelection.current = { from: editor.state.selection.from, to: editor.state.selection.to }
-    }
-    remember()
-    editor.on('selectionUpdate', remember)
-    editor.on('focus', remember)
-    editor.on('update', remember)
-    return () => {
-      editor.off('selectionUpdate', remember)
-      editor.off('focus', remember)
-      editor.off('update', remember)
-    }
-  }, [editor])
-  const selectChain = () => {
-    const c = editor!.chain().focus()
-    const s = lastSelection.current
-    return s && s.to <= editor!.state.doc.content.size ? c.setTextSelection(s) : c
-  }
   const b = (label: string, active: boolean, run: () => void, title: string, enabled = can, className = ''): JSX.Element => (
     <button type="button" className={`tb${active ? ' active' : ''}${className ? ` ${className}` : ''}`} disabled={!enabled} onMouseDown={keep} onClick={run} title={title}>
       {label}
@@ -99,14 +74,14 @@ export function Toolbar({
           </button>
         </G>
         <G>
-          <select className="tb-select font" disabled={!can} value={fontFamily} title="Font" onChange={(e) => (e.target.value ? selectChain().setFontFamily(e.target.value).run() : selectChain().unsetFontFamily().run())}>
+          <select className="tb-select font" disabled={!can} value={fontFamily} title="Font" onChange={(e) => (e.target.value ? chain().setFontFamily(e.target.value).run() : chain().unsetFontFamily().run())}>
             {FONT_FAMILIES.map((f) => (
               <option key={f.label} value={f.value} style={{ fontFamily: f.value || undefined }}>
                 {f.label}
               </option>
             ))}
           </select>
-          <select className="tb-select size" disabled={!can} value={fontSize} title="Font size" onChange={(e) => (e.target.value ? selectChain().setFontSize(`${e.target.value}px`).run() : selectChain().unsetFontSize().run())}>
+          <select className="tb-select size" disabled={!can} value={fontSize} title="Font size" onChange={(e) => (e.target.value ? chain().setFontSize(`${e.target.value}px`).run() : chain().unsetFontSize().run())}>
             <option value="">14</option>
             {FONT_SIZES.map((n) => (
               <option key={n} value={String(n)}>
@@ -114,7 +89,7 @@ export function Toolbar({
               </option>
             ))}
           </select>
-          <select className="tb-select spacing" disabled={!can} value={lineHeight} title="Line spacing" onChange={(e) => selectChain().setParagraphSpacing(e.target.value).run()}>
+          <select className="tb-select spacing" disabled={!can} value={lineHeight} title="Line spacing" onChange={(e) => chain().setParagraphSpacing(e.target.value).run()}>
             {LINE_HEIGHTS.map((v) => (
               <option key={v} value={v}>
                 {`↕ ${lineHeightLabel(v)}`}
