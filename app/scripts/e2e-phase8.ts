@@ -388,17 +388,44 @@ async function main(): Promise<void> {
       const a = document.activeElement as HTMLElement | null
       return { from: ed?.state.selection.from ?? -1, to: ed?.state.selection.to ?? -1, size: ed?.state.doc.content.size ?? -1, focused: !!ed?.isFocused, active: `${a?.tagName ?? ''}.${(a?.className ?? '').toString().split(' ')[0]}` }
     })
-  await page.locator('.canvas .tiptap p', { hasText: 'Break line 3' }).click()
-  await page.keyboard.press(`${mod}+a`)
-  const justAfter = await boxSelection()
-  const t0 = Date.now()
-  await page.waitForFunction(() => {
-    type Ed = { state: { selection: { from: number; to: number }; doc: { content: { size: number } } } }
-    const el = Array.from(document.querySelectorAll('.canvas .tiptap')).find((e) => (e.textContent ?? '').includes('Break line 3')) as (Element & { editor?: Ed }) | undefined
-    const ed = el?.editor
-    return !!ed && ed.state.selection.from <= 1 && ed.state.selection.to >= ed.state.doc.content.size - 1
+  // Diagnostics for Windows, where this Select All once never registered: which window has focus,
+  // whether the key reaches the page, and whether giving the window focus back helps.
+  const focusInfo = async (): Promise<unknown> =>
+    app.evaluate(({ BrowserWindow }) => ({ focusedWindow: BrowserWindow.getFocusedWindow()?.id ?? null, windows: BrowserWindow.getAllWindows().map((w) => ({ id: w.id, focused: w.isFocused(), visible: w.isVisible() })) }))
+  await page.evaluate(() => {
+    const w = window as unknown as { __keys: string[] }
+    w.__keys = []
+    window.addEventListener('keydown', (e) => w.__keys.push(`down ${e.ctrlKey ? 'Ctrl+' : ''}${e.metaKey ? 'Meta+' : ''}${e.key}`), true)
+    window.addEventListener('keydown', (e) => w.__keys.push(`after ${e.key}${e.defaultPrevented ? ' handled' : ''}`))
   })
-  process.stdout.write(`    (Select All: right after the key ${JSON.stringify(justAfter)}; registered after ${Date.now() - t0} ms)\n`)
+  const allSelected = async (): Promise<boolean> => {
+    const s = await boxSelection()
+    return s.from <= 1 && s.to >= s.size - 1
+  }
+  const selectAllIn = async (): Promise<boolean> => {
+    await page.locator('.canvas .tiptap p', { hasText: 'Break line 3' }).click()
+    await page.keyboard.press(`${mod}+a`)
+    for (let i = 0; i < 50; i++) {
+      if (await allSelected()) return true
+      await page.waitForTimeout(100)
+    }
+    return false
+  }
+  const focusBefore = await focusInfo()
+  const t0 = Date.now()
+  if (!(await selectAllIn())) {
+    const diag = {
+      focusBefore,
+      focusAfter: await focusInfo(),
+      selection: await boxSelection(),
+      page: await page.evaluate(() => ({ hasFocus: document.hasFocus(), domSelection: (window.getSelection()?.toString() ?? '').length, keys: (window as unknown as { __keys: string[] }).__keys }))
+    }
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.focus())
+    await page.waitForTimeout(300)
+    const retried = await selectAllIn()
+    throw new Error(`ASSERT: Select All did not register in the text box (${JSON.stringify(diag)}; after focusing the window again it ${retried ? 'worked' : 'still failed'})`)
+  }
+  process.stdout.write(`    (Select All registered after ${Date.now() - t0} ms; focus before ${JSON.stringify(focusBefore)})\n`)
   const beforeChoice = await boxSelection()
   await page.locator('.tb-select.spacing').selectOption('1.15')
   const afterChoice = await boxSelection()
