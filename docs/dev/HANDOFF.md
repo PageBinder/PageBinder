@@ -18,6 +18,13 @@ Entry format:
 ---
 
 ## 2026-09-28 · lead (macOS, Apple silicon) · main
+**Changed:** New rule: once a version is released, development moves to the next number immediately. The version is now 1.1.2 (in development); the revision log and development plan sections for pictures in text are headed 1.1.2.
+**Found:** Nothing new.
+**Checked:** Version fields in `package.json` and `package-lock.json`.
+**Next platform must check:** Nothing.
+**Open:** Unchanged.
+
+## 2026-09-28 · lead (macOS, Apple silicon) · main
 **Changed:** Pictures inside text (word wrap option 1): Insert picture… in a text box's right-click menu; Wrap (in line, left, right), Size (25, 50, 75, 100 per cent), and Remove picture on a picture's right-click menu. Stored as a `textImage` node naming a file in the page's images folder, listed in the manifest. Page breaks count an in-line picture as part of its line. The app keeps its own manifest when the canvas reports a change. Recorded under "Next version" in the revision log and development plan; the version number is unchanged until the next release.
 **Found:** Inserting a picture into text lost its manifest entry, because the canvas's change carried a file list a moment old; fixed in `onPageChange`. Versions 1.1.1 and earlier do not know the new content: they show such a text box empty, and typing in that box there replaces its stored text (checked in TipTap 3.31's content loading; noted in FUTURE_FEATURES.md).
 **Checked:** Type check; 77 unit tests (new: picture rendering, name listing and renaming); phase 8's new step (insert, stored and listed, loads, prints, wraps with text beside it, sizes to a quarter, copies with its text box to another page, removes); every other window suite rerun. Screenshots of the editor and page.html match.
