@@ -729,6 +729,19 @@ export function Canvas({
         data-zoom={zoom}
         style={{ width: canvasWidth, height: canvasHeight, transform: `scale(${zoom})`, transformOrigin: '0 0' }}
         onClick={onCanvasClick}
+        onMouseDownCapture={(e) => {
+          // A press anywhere outside the text box holding highlighted text (clear space, another
+          // object, or another text box) clears the highlight and leaves that box. The canvas
+          // cannot be selected, so the browser would otherwise leave the highlight showing.
+          if (e.button !== 0) return
+          const sel = window.getSelection()
+          const anchor = sel?.anchorNode
+          const holder = (anchor instanceof Element ? anchor : anchor?.parentElement)?.closest('.text-container') ?? null
+          if (!holder || holder.contains(e.target as Node)) return
+          if (sel && !sel.isCollapsed) sel.removeAllRanges()
+          const active = document.activeElement as HTMLElement | null
+          if (active && holder.contains(active)) active.blur()
+        }}
         onContextMenu={(e) => {
           e.preventDefault()
           setCanvasMenu({ x: e.clientX, y: e.clientY, at: canvasPoint(e) })

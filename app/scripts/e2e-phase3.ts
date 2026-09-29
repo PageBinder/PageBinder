@@ -107,6 +107,39 @@ async function main(): Promise<void> {
   }
   step('Align left, Center, Align right, and Justify each save and print, with no highlight')
 
+  // Highlighted text is unhighlighted by a click anywhere outside its text box: clear space, or
+  // another object (here a second text box's frame).
+  const highlightFirstBox = async (): Promise<void> => {
+    await page.locator('.canvas .tiptap p').first().click()
+    await page.waitForFunction(() => {
+      const ed = (document.querySelector('.canvas .tiptap') as HTMLElement & { editor?: { state: { selection: { empty: boolean } } } }).editor
+      return !!ed && ed.state.selection.empty
+    })
+    await page.keyboard.press(`${mod}+a`)
+    await page.waitForFunction(() => (window.getSelection()?.toString() ?? '') !== '')
+  }
+  const leftOver = async (): Promise<string> => {
+    await page.waitForTimeout(150)
+    return page.evaluate(() => window.getSelection()?.toString() ?? '')
+  }
+  await highlightFirstBox()
+  await page.locator('.canvas').click({ position: { x: 900, y: 900 } })
+  const afterSpace = await leftOver()
+  assert(afterSpace === '', `a click in clear space clears the text highlight (still: ${JSON.stringify(afterSpace.slice(0, 40))})`)
+  await newBox(page, 700, 950)
+  await page.keyboard.type('Other box')
+  await highlightFirstBox()
+  await page.locator('.text-container', { hasText: 'Other box' }).click({ position: { x: 3, y: 3 } })
+  const afterObject = await leftOver()
+  assert(afterObject === '', `a click on another object clears the text highlight (still: ${JSON.stringify(afterObject.slice(0, 40))})`)
+  await page.locator('.text-container', { hasText: 'Other box' }).locator('.tiptap').click()
+  await page.keyboard.press(`${mod}+a`)
+  await page.keyboard.press('Backspace')
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Delete')
+  await page.waitForFunction(() => !Array.from(document.querySelectorAll('.text-container')).some((b) => b.textContent?.includes('Other box')))
+  step('a click in clear space or on another object clears highlighted text')
+
   // 3. Table tools: insert, add a row, fill a cell.
   await page.keyboard.press('End')
   await page.keyboard.press('Enter')
