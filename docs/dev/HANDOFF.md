@@ -22,7 +22,7 @@ Entry format:
 **Found:** A copy of the old 1.1.1 (28 September build) may exist on some machines under the same number. It does not know pictures in text boxes: do not edit such pages with it.
 **Checked:** Type check; unit tests; every end-to-end suite after the highlight fix. The heading removal was checked by the user in the running app; its phase 2 test change has not been run yet.
 **Next platform must check:** Windows: install the new PageBinder-Setup-1.1.1.exe; check the alignment buttons, that no heading buttons show, and that a page with pictures in a text box prints as shown.
-**Open:** Run `npm run e2e` once to cover the phase 2 heading test change.
+**Open:** Nothing. Afterwards the phase 8 picture step failed on the GitHub macOS runner only: its smaller screen left the text box's move bar under the toolbar, so the drag missed it. The test now hovers the bar into view, checks it is uncovered, and measures the picture relative to the box (commits `a2e70b8`, `17b4227`). CI passes on macOS and Windows, and phase 2 passes locally with the heading change.
 
 ## 2026-09-28 · lead (macOS, Apple silicon) · main
 **Changed:** Word wrap reworked after the user's testing: pictures are now anchored in a text box (the box's `pictures` list) at a spot the user chooses, a fixed pixel size, text flowing down beside them. Drag to move, corner to resize, Delete to remove, Insert picture at the right-clicked spot. Shared float layout in `app/src/shared/render/anchoredPictures.ts`, editor widgets in `app/src/renderer/src/anchoredPicturesView.ts`. New standing rule: the user tests new features before anything is pushed (`CLAUDE.md`).

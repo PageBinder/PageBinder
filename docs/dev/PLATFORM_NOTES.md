@@ -30,3 +30,5 @@ What each platform has taught us, so the next machine does not relearn it. Add t
 - **Timing.** Tests must wait for a condition, not for a fixed delay. The crash test and a restored-title check failed on slow machines until they did.
 - **Linux (cloud sessions and CI):** window suites need a display, so run them with `xvfb-run -a npm run e2e`.
 - **Every npm and npx command runs inside `app/`.** The repository root holds only the README, the licence, `CLAUDE.md`, and the `docs/` folder.
+
+- **GitHub macOS runner screens are small.** An element near the top of a text box can sit under the toolbar there, so a mouse press at its coordinates hits the toolbar instead. Bring it into view with Playwright's `hover()` (which scrolls and checks what is on top) before a raw `mouse.down()`, and compare positions relative to a moved element rather than to the screen, since that scroll moves everything.
