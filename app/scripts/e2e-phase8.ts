@@ -459,17 +459,16 @@ async function main(): Promise<void> {
   let box = (await boxOf(dRel))!
   const manifest = (await doc(dRel)).manifest.images.map((e) => e.name)
   assert(box.pictures?.length === 1 && Math.abs(box.pictures[0]!.x - 20) <= 2 && manifest.includes(box.pictures[0]!.name), `the picture is anchored where the box was right-clicked and its file is listed with the page (${JSON.stringify(box.pictures)})`)
-  // Corner handle: resize to 96 px (the test picture starts at its 16 px minimum).
-  await frame.click()
-  const handle = page.locator('.anchored-picture-frame.selected .anchored-resize')
-  const hb = (await handle.boundingBox())!
-  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2)
+  // Drag the picture's own bottom-right corner, without selecting it first: resize to 96 px (the
+  // test picture starts at its 16 px minimum).
+  const hb = (await frame.boundingBox())!
+  await page.mouse.move(hb.x + hb.width - 2, hb.y + hb.height - 2)
   await page.mouse.down()
-  await page.mouse.move(hb.x + hb.width / 2 + 80, hb.y + hb.height / 2, { steps: 6 })
+  await page.mouse.move(hb.x + hb.width - 2 + 80, hb.y + hb.height - 2 + 80, { steps: 6 })
   await page.mouse.up()
   await save(page)
   box = (await boxOf(dRel))!
-  assert(box.pictures[0]!.width === 96 && box.pictures[0]!.height === 96, `dragging the corner resizes the picture, keeping its shape (${JSON.stringify(box.pictures[0])})`)
+  assert(box.pictures[0]!.width === 96 && box.pictures[0]!.height === 96, `dragging a corner of the picture resizes it, keeping its shape (${JSON.stringify(box.pictures[0])})`)
   // Several lines of text sit beside the picture before the text runs underneath it.
   const beside = await page.evaluate(() => {
     const f = document.querySelector('.anchored-picture-frame') as HTMLElement
