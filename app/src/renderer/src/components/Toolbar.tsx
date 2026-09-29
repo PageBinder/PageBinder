@@ -45,7 +45,7 @@ export function Toolbar({
   const keep = (e: MouseEvent): void => e.preventDefault()
   const can = !!editor
   const chain = () => editor!.chain().focus()
-  const b = (label: string, active: boolean, run: () => void, title: string, enabled = can, className = ''): JSX.Element => (
+  const b = (label: React.ReactNode, active: boolean, run: () => void, title: string, enabled = can, className = ''): JSX.Element => (
     <button type="button" className={`tb${active ? ' active' : ''}${className ? ` ${className}` : ''}`} disabled={!enabled} onMouseDown={keep} onClick={run} title={title}>
       {label}
     </button>
@@ -60,6 +60,7 @@ export function Toolbar({
   const attrs = editor?.getAttributes('textStyle') ?? {}
   const fontFamily = (attrs['fontFamily'] as string | undefined) ?? ''
   const fontSize = ((attrs['fontSize'] as string | undefined) ?? '').replace('px', '')
+  const align = ((editor ? (editor.isActive('heading') ? editor.getAttributes('heading') : editor.getAttributes('paragraph'))['textAlign'] : null) as string | null) ?? null
   const lineHeight = ((editor ? (editor.isActive('heading') ? editor.getAttributes('heading') : editor.getAttributes('paragraph'))['lineHeight'] : null) as string | null) ?? STANDARD_LINE_HEIGHT
 
   const G = ({ children }: { children: React.ReactNode }): JSX.Element => <span className="tb-group">{children}</span>
@@ -131,9 +132,10 @@ export function Toolbar({
           </button>
         </G>
         <G>
-          {b('≡', !!editor?.isActive({ textAlign: 'left' }), () => chain().setTextAlign('left').run(), 'Align left')}
-          {b('☰', !!editor?.isActive({ textAlign: 'center' }), () => chain().setTextAlign('center').run(), 'Align centre')}
-          {b('≡', !!editor?.isActive({ textAlign: 'right' }), () => chain().setTextAlign('right').run(), 'Align right', can, 'flip')}
+          {b(<AlignIcon kind="left" />, !!editor && (align === 'left' || !align), () => chain().setTextAlign('left').run(), 'Align left', can, 'tb-icon')}
+          {b(<AlignIcon kind="center" />, align === 'center', () => chain().setTextAlign('center').run(), 'Center', can, 'tb-icon')}
+          {b(<AlignIcon kind="right" />, align === 'right', () => chain().setTextAlign('right').run(), 'Align right', can, 'tb-icon')}
+          {b(<AlignIcon kind="justify" />, align === 'justify', () => chain().setTextAlign('justify').run(), 'Justify', can, 'tb-icon')}
         </G>
         <G>
           {b('H1', !!editor?.isActive('heading', { level: 1 }), () => chain().toggleHeading({ level: 1 }).run(), 'Heading 1')}
@@ -174,5 +176,19 @@ export function Toolbar({
       </div>
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menu.items} onClose={() => setMenu(null)} />}
     </div>
+  )
+}
+
+/** Alignment symbols: four lines, long and short, lined up the way the button aligns text. */
+function AlignIcon({ kind }: { kind: 'left' | 'center' | 'right' | 'justify' }): JSX.Element {
+  const shortX = kind === 'center' ? 3.5 : kind === 'right' ? 6 : 1
+  const short = kind === 'justify' ? { x: 1, width: 14 } : { x: shortX, width: 9 }
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor">
+      <rect x="1" y="2" width="14" height="1.6" rx="0.4" />
+      <rect {...short} y="5.5" height="1.6" rx="0.4" />
+      <rect x="1" y="9" width="14" height="1.6" rx="0.4" />
+      <rect {...short} y="12.5" height="1.6" rx="0.4" />
+    </svg>
   )
 }
