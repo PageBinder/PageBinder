@@ -453,7 +453,7 @@ async function main(): Promise<void> {
   const frame = page.locator('.anchored-picture-frame')
   await frame.waitFor()
   await save(page)
-  type Pic = { id: string; name: string; x: number; y: number; width: number; height: number }
+  type Pic = { id: string; name: string; originalName: string; x: number; y: number; width: number; height: number }
   const boxOf = async (rel: string): Promise<{ id: string; x: number; y: number; width: number; pictures: Pic[] } | undefined> =>
     (await doc(rel)).objects.find((o) => o.kind === 'text' && JSON.stringify(o.content).includes('Words that flow')) as unknown as { id: string; x: number; y: number; width: number; pictures: Pic[] } | undefined
   let box = (await boxOf(dRel))!
@@ -572,6 +572,33 @@ async function main(): Promise<void> {
   const afterDelete = (await boxOf(dRel))!
   assert((afterDelete.pictures ?? []).length === 0 && JSON.stringify(afterDelete).includes('Words that flow'), 'Delete removes the selected picture and leaves the text')
   step('pictures anchored in a text box: text flows beside them, fixed size, dragged anywhere, moved with the box, printed as shown, copied, deleted')
+
+  // 12. Other ways in: Insert > Picture with the cursor in a text box, and a picture file dropped
+  //     on a text box, both anchor the picture in the box instead of placing it on the page.
+  const imagesOnPage = async (): Promise<number> => (await doc(dRel)).objects.filter((o) => o.kind === 'image').length
+  const pageImagesBefore = await imagesOnPage()
+  await para.click({ position: { x: 40, y: 8 } })
+  await page.waitForFunction(() => document.activeElement?.closest('.text-container .tiptap') !== null)
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.webContents.send('menu:insertImage'))
+  await page.waitForFunction(() => document.querySelectorAll('.anchored-picture-frame').length === 1)
+  await save(page)
+  const viaMenu = (await boxOf(dRel))!
+  assert((viaMenu.pictures ?? []).length === 1 && (await imagesOnPage()) === pageImagesBefore, `Insert > Picture with the cursor in a text box anchors the picture in it (${JSON.stringify(viaMenu.pictures)})`)
+  const pngBytes = Array.from(tealPng())
+  await para.evaluate((el, bytes) => {
+    const r = el.getBoundingClientRect()
+    const dt = new DataTransfer()
+    dt.items.add(new File([new Uint8Array(bytes)], 'dropped.png', { type: 'image/png' }))
+    const opts = { bubbles: true, cancelable: true, dataTransfer: dt, clientX: r.left + 200, clientY: r.top + 40 }
+    el.dispatchEvent(new DragEvent('dragover', opts))
+    el.dispatchEvent(new DragEvent('drop', opts))
+  }, pngBytes)
+  await page.waitForFunction(() => document.querySelectorAll('.anchored-picture-frame').length === 2)
+  await save(page)
+  const viaDrop = (await boxOf(dRel))!
+  const dropped = (viaDrop.pictures ?? []).find((q) => q.originalName === 'dropped.png')
+  assert(!!dropped && Math.abs(dropped.x - 200) <= 2 && (await imagesOnPage()) === pageImagesBefore && !JSON.stringify(viaDrop).includes('textImage'), `a picture dropped on a text box is anchored where it was dropped (${JSON.stringify(viaDrop.pictures)})`)
+  step('Insert > Picture in a text box and pictures dropped on a text box go into the box')
 
   await app.close()
   process.stdout.write(`\nPASS. Notebook kept at ${root}\n`)

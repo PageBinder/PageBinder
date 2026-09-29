@@ -47,6 +47,27 @@ type SaveStatus = 'saved' | 'unsaved' | 'saving'
 const DRAFT_DELAY_MS = 1500
 const IDLE_SAVE_MS = 20000
 
+
+/**
+ * The text box whose text has the cursor (outside a table), and where the cursor sits in its text
+ * area in canvas pixels: pictures inserted, pasted, or chosen from the menu go there.
+ */
+function textBoxAtCursor(): { id: string; at: { x: number; y: number } } | null {
+  const active = document.activeElement as HTMLElement | null
+  const text = active?.closest?.('.text-container .tiptap') as HTMLElement | null
+  const box = text?.closest('.text-container[data-object-id]') as HTMLElement | null
+  const sel = window.getSelection()
+  if (!text || !box || !sel || !sel.rangeCount) return null
+  const range = sel.getRangeAt(0)
+  const start = range.startContainer instanceof Element ? range.startContainer : range.startContainer.parentElement
+  if (start?.closest('td, th')) return null
+  let r = range.getBoundingClientRect()
+  if (!r.height && start) r = start.getBoundingClientRect()
+  const area = text.getBoundingClientRect()
+  const zoom = Number((text.closest('.canvas') as HTMLElement | null)?.dataset['zoom']) || 1
+  return { id: box.dataset['objectId']!, at: { x: Math.max(0, (r.left - area.left) / zoom), y: Math.max(0, (r.top - area.top) / zoom) } }
+}
+
 export function App(): JSX.Element {
   const [tree, setTree] = useState<NotebookTree | null>(null)
   const [groupRel, setGroupRel] = useState('')
@@ -1069,15 +1090,13 @@ export function App(): JSX.Element {
   )
 
   /**
-   * Pictures chosen from disk go into the page's images folder and are anchored in the text box at
-   * the spot that was right-clicked, at their natural size up to half the box's text width.
+   * Pictures already in the page's images folder are anchored in a text box at `at` (relative to its
+   * text area), at their natural size up to half the box's text width.
    */
-  const insertTextPicture = useCallback(async (objectId: string, at: { x: number; y: number }): Promise<void> => {
+  const anchorPictures = useCallback(async (objectId: string, entries: FileEntry[], at: { x: number; y: number }): Promise<void> => {
     const p = pageRef.current
-    if (!p) return
+    if (!p || !entries.length) return
     try {
-      const entries = await window.pagebinder.page.pickImages(p.relPath)
-      if (!entries.length) return
       const sizes = await Promise.all(
         entries.map(
           (e) =>
@@ -1106,7 +1125,9 @@ export function App(): JSX.Element {
           })
           return { ...o, pictures: [...(o.pictures ?? []), ...added] }
         })
-        return { ...cur, doc: { ...cur.doc, objects, manifest: { ...cur.doc.manifest, images: [...cur.doc.manifest.images, ...entries] } }, dirty: true, version: cur.version + 1 }
+        const known = new Set(cur.doc.manifest.images.map((m) => m.name))
+        const images = [...cur.doc.manifest.images, ...entries.filter((e) => !known.has(e.name))]
+        return { ...cur, doc: { ...cur.doc, objects, manifest: { ...cur.doc.manifest, images } }, dirty: true, version: cur.version + 1 }
       })
       setSaveStatus('unsaved')
       window.clearTimeout(saveTimer.current)
@@ -1116,6 +1137,17 @@ export function App(): JSX.Element {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savePage])
+
+  /** Pictures chosen from disk, anchored in a text box at `at`. */
+  const insertTextPicture = useCallback(async (objectId: string, at: { x: number; y: number }): Promise<void> => {
+    const p = pageRef.current
+    if (!p) return
+    try {
+      await anchorPictures(objectId, await window.pagebinder.page.pickImages(p.relPath), at)
+    } catch (err) {
+      fail(err)
+    }
+  }, [anchorPictures])
 
   const placeFiles = useCallback(
     (results: { entry: FileEntry; mail?: MailMeta }[], at?: { x: number; y: number }) => {
@@ -1232,7 +1264,8 @@ export function App(): JSX.Element {
     }
   }, [savePage])
 
-  // Pasted images anywhere in the window go into the page as picture objects.
+  // Pasted images go into the text box being typed in, at the cursor, or else onto the page as
+  // picture objects.
   useEffect(() => {
     const onPaste = (e: ClipboardEvent): void => {
       if (!pageRef.current || !e.clipboardData) return
@@ -1240,19 +1273,21 @@ export function App(): JSX.Element {
       if (!files.length) return
       e.preventDefault()
       e.stopPropagation()
+      const box = textBoxAtCursor()
       const withPath = files.map((f) => ({ file: f, path: window.pagebinder.file.pathFor(f) }))
       const imagePaths = withPath.filter((f) => f.path && isImageFile(f.file)).map((f) => f.path)
       const otherPaths = withPath.filter((f) => f.path && !isImageFile(f.file)).map((f) => f.path)
       const memoryImages = withPath.filter((f) => !f.path && isImageFile(f.file)).map((f) => f.file)
+      const place = (entries: FileEntry[]): void => (box ? void anchorPictures(box.id, entries, box.at) : placeImages(entries))
       void (async () => {
-        if (imagePaths.length) placeImages(await addImagePaths(imagePaths))
-        if (memoryImages.length) placeImages(await addImageFiles(memoryImages))
+        if (imagePaths.length) place(await addImagePaths(imagePaths))
+        if (memoryImages.length) place(await addImageFiles(memoryImages))
         if (otherPaths.length) placeFiles(await addFilePaths(otherPaths))
       })()
     }
     document.addEventListener('paste', onPaste, true)
     return () => document.removeEventListener('paste', onPaste, true)
-  }, [addImageFiles, addImagePaths, addFilePaths, placeImages, placeFiles])
+  }, [addImageFiles, addImagePaths, addFilePaths, placeImages, placeFiles, anchorPictures])
 
   // The background folder check may find changes made outside the app; refresh the tree when it does.
   useEffect(() => {
@@ -1282,7 +1317,11 @@ export function App(): JSX.Element {
       window.pagebinder.onMenu('menu:save', () => void savePage()),
       window.pagebinder.onMenu('menu:togglePageBorder', () => setShowBorder((v) => !v)),
       window.pagebinder.onMenu('menu:toggleGrid', () => setShowGrid((v) => !v)),
-      window.pagebinder.onMenu('menu:insertImage', () => void insertImage()),
+      window.pagebinder.onMenu('menu:insertImage', () => {
+        // Typing in a text box: the pictures go into it, at the cursor.
+        const box = textBoxAtCursor()
+        void (box ? insertTextPicture(box.id, box.at) : insertImage())
+      }),
       window.pagebinder.onMenu('menu:insertFile', () => void insertFile()),
       window.pagebinder.onMenu('menu:deleteObject', () => canvasCommands.current.deleteSelected()),
       window.pagebinder.onMenu('menu:undo', () => undo()),
@@ -1474,6 +1513,7 @@ export function App(): JSX.Element {
               onInsertTextPicture={(id, at) => void insertTextPicture(id, at)}
               onChange={onPageChange}
               onAddImages={addImageFiles}
+              onAnchorPictures={(id, entries, at) => void anchorPictures(id, entries, at)}
               onAddImagePaths={addImagePaths}
               onAddFiles={addFilePaths}
             />
