@@ -83,7 +83,7 @@ async function main(): Promise<void> {
   await page.locator('.tb.color[title="Highlight"]').click()
   await page.locator('.context-swatches.grid button[aria-label="Colour #fac775"]').click()
   await page.locator('.tb.underline').click()
-  await page.locator('.tb[title="Align centre"]').click()
+  await page.locator('.tb[title="Center"]').click()
   await save(page)
   const j = JSON.stringify((await doc()).objects)
   assert(j.includes('"fontFamily":"Georgia, serif"'), `font family saved: ${j.slice(0, 700)}`)
@@ -95,6 +95,19 @@ async function main(): Promise<void> {
   const h = await html()
   assert(h.includes('font-family: Georgia, serif') && h.includes('background-color: #fac775') && h.includes('text-align: center'), 'formatting rendered in page.html')
   step('font, size, colour, highlight, underline, and alignment are saved and rendered')
+
+  // The four alignment buttons: each one saves, prints, and is the only one shown as selected.
+  const alignButtons = ['Align left', 'Center', 'Align right', 'Justify']
+  assert((await page.locator('.tb.tb-icon svg').count()) === 4, 'four alignment buttons, each with a drawn symbol')
+  for (const [title, value] of [['Justify', 'justify'], ['Align right', 'right'], ['Align left', 'left'], ['Center', 'center']] as const) {
+    await page.locator(`.tb[title="${title}"]`).click()
+    await save(page)
+    assert(JSON.stringify((await doc()).objects).includes(`"textAlign":"${value}"`) && (await html()).includes(`text-align: ${value}`), `${title} is saved and rendered in page.html`)
+    const on: string[] = []
+    for (const t of alignButtons) if (await page.locator(`.tb.active[title="${t}"]`).count()) on.push(t)
+    assert(on.length === 1 && on[0] === title, `only ${title} is shown as selected (${on.join(', ')})`)
+  }
+  step('Align left, Center, Align right, and Justify each save, print, and show which is selected')
 
   // 3. Table tools: insert, add a row, fill a cell.
   await page.keyboard.press('End')
