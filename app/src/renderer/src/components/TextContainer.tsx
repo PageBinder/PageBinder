@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import { Placeholder } from '@tiptap/extensions'
 import { documentExtensions } from '@shared/render/extensions'
@@ -7,6 +7,9 @@ import type { TextContainer as TextContainerModel, EditorJSON } from '@shared/ty
 import type { Editor } from '@tiptap/react'
 import { useActiveEditor } from '../editorContext'
 import { SheetBreaks, layoutSheetBreaks, type SheetGeometry } from '../sheetBreaks'
+import { AnchoredPictures, drawAnchoredPictures } from '../anchoredPicturesView'
+import { MIN_PICTURE_SIZE, textAreaWidth } from '@shared/render/anchoredPictures'
+import type { AnchoredPicture } from '@shared/types'
 
 const MIN_WIDTH = 160
 
@@ -24,7 +27,8 @@ export function TextContainer({
   onContextMenu,
   onMeasure,
   sheet,
-  imageBase
+  imageBase,
+  onPicturesChange
 }: {
   obj: TextContainerModel
   autoFocus: false | 'start' | 'end'
@@ -36,16 +40,18 @@ export function TextContainer({
   onDelete: (id: string) => void
   onDragStart: () => void
   zoom: number
-  onContextMenu: (id: string, x: number, y: number, tableEditor: Editor | null, textEditor: Editor | null) => void
+  onContextMenu: (id: string, x: number, y: number, tableEditor: Editor | null, textEditor: Editor | null, extra?: { pictureId?: string; at?: { x: number; y: number } }) => void
   onMeasure: (id: string, height: number) => void
   /** Paper geometry, so text crossing a sheet boundary is laid out as it will print. */
   sheet: SheetGeometry
   /** Where pictures inside the text are loaded from: this page's images folder. */
   imageBase: string
+  /** Pictures anchored in the box were moved, resized, or removed. */
+  onPicturesChange: (id: string, pictures: AnchoredPicture[]) => void
 }): JSX.Element {
   const { setEditor, editor: active } = useActiveEditor()
   const editor = useEditor({
-    extensions: [...documentExtensions({ imageBase }), Placeholder.configure({ placeholder: 'Type here' }), SheetBreaks],
+    extensions: [...documentExtensions({ imageBase }), Placeholder.configure({ placeholder: 'Type here' }), SheetBreaks, AnchoredPictures],
     content: obj.content,
     autofocus: autoFocus || false,
     onUpdate: ({ editor }) => onChange(obj.id, editor.getJSON() as EditorJSON),
@@ -126,7 +132,85 @@ export function TextContainer({
       editor.off('update', run)
       window.clearTimeout(timer)
     }
-  }, [editor, obj.x, obj.y, obj.width, sheet.height, sheet.marginTop, sheet.marginBottom, zoom])
+  }, [editor, obj.x, obj.y, obj.width, sheet.height, sheet.marginTop, sheet.marginBottom, zoom, JSON.stringify(obj.pictures ?? [])])
+
+  // Pictures anchored in the box: drawn as floats at the start of the text, moved and resized by
+  // dragging, selected by clicking, removed with Delete. They keep their size when the box is
+  // resized and move with the box.
+  const [selectedPicture, setSelectedPicture] = useState<string | null>(null)
+  const picturesRef = useRef(obj.pictures ?? [])
+  picturesRef.current = obj.pictures ?? []
+  const pictureDrag = useRef<{ id: string; mode: 'move' | 'resize'; startX: number; startY: number; orig: AnchoredPicture } | null>(null)
+  const picturesKey = JSON.stringify(obj.pictures ?? [])
+  useEffect(() => {
+    if (!editor) return
+    const draw = (): void =>
+      drawAnchoredPictures(editor, picturesRef.current, obj.width, {
+        selectedId: selectedPicture,
+        imageBase,
+        onPress: (id, e, mode) => {
+          e.preventDefault()
+          e.stopPropagation()
+          const orig = picturesRef.current.find((p) => p.id === id)
+          if (!orig) return
+          setSelectedPicture(id)
+          onDragStart()
+          pictureDrag.current = { id, mode, startX: e.clientX, startY: e.clientY, orig }
+          document.body.classList.add('dragging')
+        }
+      })
+    draw()
+    editor.on('update', draw)
+    return () => {
+      editor.off('update', draw)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor, picturesKey, obj.width, selectedPicture, imageBase])
+  useEffect(() => {
+    const move = (e: MouseEvent): void => {
+      const d = pictureDrag.current
+      if (!d) return
+      const z = zoomRef.current
+      const dx = (e.clientX - d.startX) / z
+      const dy = (e.clientY - d.startY) / z
+      const area = textAreaWidth(obj.width)
+      const next = picturesRef.current.map((p) => {
+        if (p.id !== d.id) return p
+        if (d.mode === 'move') {
+          return { ...p, x: Math.round(Math.max(0, Math.min(area - p.width, d.orig.x + dx))), y: Math.round(Math.max(0, d.orig.y + dy)) }
+        }
+        const width = Math.round(Math.max(MIN_PICTURE_SIZE, Math.min(area - d.orig.x, d.orig.width + dx)))
+        return { ...p, width, height: Math.round((d.orig.height * width) / Math.max(1, d.orig.width)) }
+      })
+      onPicturesChange(obj.id, next)
+    }
+    const up = (): void => {
+      if (!pictureDrag.current) return
+      pictureDrag.current = null
+      document.body.classList.remove('dragging')
+    }
+    // Clicking anywhere else deselects the picture; Delete or Backspace removes a selected one.
+    const down = (e: MouseEvent): void => {
+      if (!(e.target as HTMLElement | null)?.closest?.(`.anchored-picture-frame[data-id]`)) setSelectedPicture(null)
+    }
+    const key = (e: KeyboardEvent): void => {
+      if (!selectedPicture || (e.key !== 'Delete' && e.key !== 'Backspace')) return
+      e.preventDefault()
+      e.stopPropagation()
+      onPicturesChange(obj.id, picturesRef.current.filter((p) => p.id !== selectedPicture))
+      setSelectedPicture(null)
+    }
+    window.addEventListener('mousemove', move)
+    window.addEventListener('mouseup', up)
+    window.addEventListener('mousedown', down, true)
+    window.addEventListener('keydown', key, true)
+    return () => {
+      window.removeEventListener('mousemove', move)
+      window.removeEventListener('mouseup', up)
+      window.removeEventListener('mousedown', down, true)
+      window.removeEventListener('keydown', key, true)
+    }
+  }, [obj.id, obj.width, onPicturesChange, selectedPicture])
   useEffect(() => {
     const move = (e: MouseEvent): void => {
       const z = zoomRef.current
@@ -167,6 +251,14 @@ export function TextContainer({
         editor.commands.focus()
       }
     }
+    // A picture anchored in the box: select it, and offer its menu.
+    const anchored = target.closest('.anchored-picture-frame[data-id]') as HTMLElement | null
+    if (anchored && editor) {
+      const id = anchored.dataset['id']!
+      setSelectedPicture(id)
+      onContextMenu(obj.id, x, y, null, editor, { pictureId: id })
+      return
+    }
     // A picture inside the text: select it, so the menu offers its wrap and size.
     const picture = target.closest('img.text-image')
     if (!inTable && editor && picture && editor.view.dom.contains(picture) && picture.parentNode) {
@@ -181,7 +273,10 @@ export function TextContainer({
       const pos = editor.view.posAtCoords({ left: x, top: y })
       if (pos && !editor.isFocused) editor.chain().focus().setTextSelection(pos.pos).run()
     }
-    onContextMenu(obj.id, x, y, inTable && editor ? editor : null, editor ?? null)
+    // Where the click landed in the text area, for Insert picture.
+    const area = editor ? (editor.view.dom as HTMLElement).getBoundingClientRect() : null
+    const at = area ? { x: Math.max(0, (x - area.left) / zoomRef.current), y: Math.max(0, (y - area.top) / zoomRef.current) } : undefined
+    onContextMenu(obj.id, x, y, inTable && editor ? editor : null, editor ?? null, { at })
   }
 
   const focused = !!editor && active === editor && editor.isFocused

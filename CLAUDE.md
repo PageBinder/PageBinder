@@ -21,6 +21,9 @@ Every revision must open, show, edit, print, and search notebooks written by any
 - **New changes get a new version, straight away.** As soon as a version is published, raise `app/package.json` (and `package-lock.json`) to the next number, for example 1.1.1 to 1.1.2, and start its section in `docs/REVISION_LOG.txt` as "Version X - in development (not yet released)"; a published number is never used again, not even for a draft. At release, give that section its date. `release.yml` stops by itself for a published version: quietly when publishing a draft created the tag, with an error when started by hand.
 - v1.1.0 was published as a pre-release on 27 September 2026 from commit `e88dbee`, and v1.1.1 on 28 September 2026.
 
+## New features are tested by the user first (the user's standing rule, 2026-09-28)
+After a new feature passes the automated checks, the user tries it in the running app before anything is pushed. Commit locally; push, tag, or release only after the user approves.
+
 ## Commands
 All of these run inside `app/` (`cd app` first).
 ```

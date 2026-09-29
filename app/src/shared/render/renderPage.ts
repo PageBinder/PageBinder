@@ -9,6 +9,7 @@ import { docCss, DOC_FONT } from './docCss'
 import { paginateScript } from './paginate'
 import { formatSize, fileKind, fileExt } from '../format'
 import { shapeSvg } from './shapeSvg'
+import { floatsHtml, withFloats } from './anchoredPictures'
 
 const DPI = 96
 
@@ -53,6 +54,7 @@ export function renderObjectsHtml(doc: PageDoc, imageBase = 'images/', attachmen
           const why = err instanceof Error ? err.message : String(err)
           inner = `<p><em>This container could not be rendered.</em></p><!-- ${esc(why).replace(/--/g, '- -')} -->`
         }
+        inner = withFloats(inner, floatsHtml(obj.pictures, obj.width, imageBase))
         return `<div class="text-container" data-id="${attr(obj.id)}" style="left:${obj.x}px;top:${obj.y}px;width:${obj.width}px"><div class="editor"><div class="tiptap">${inner}</div></div></div>`
       }
       if (obj.kind === 'shape') {
