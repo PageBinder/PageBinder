@@ -517,7 +517,12 @@ async function main(): Promise<void> {
   assert(Math.abs(moved.x - before.x - 60) <= 1 && Math.abs(moved.y - before.y - 40) <= 1 && Math.abs(fb2.x - fb.x - 60) <= 2 && Math.abs(fb2.y - fb.y - 40) <= 2, `the picture stays where it is dropped (${JSON.stringify(before)} to ${JSON.stringify(moved)}; on screen ${fb.x},${fb.y} to ${fb2.x},${fb2.y})`)
   // Move the whole text box: the picture goes with it and keeps its place in the box.
   const moveBar = page.locator('.text-container', { has: frame }).locator('.container-handle')
+  // Bring the bar into view and make sure the press reaches it (on a small screen it can sit
+  // under the toolbar, where a press at its coordinates would miss it).
+  await moveBar.hover({ position: { x: 30, y: 4 } })
   const bb = (await moveBar.boundingBox())!
+  const onBar = await page.evaluate(({ x, y }) => !!document.elementFromPoint(x, y)?.classList.contains('container-handle'), { x: bb.x + 30, y: bb.y + bb.height / 2 })
+  assert(onBar, 'the text box\'s move bar is uncovered for the drag')
   await page.mouse.move(bb.x + 30, bb.y + bb.height / 2)
   await page.mouse.down()
   await page.mouse.move(bb.x + 30 + 50, bb.y + bb.height / 2 + 30, { steps: 8 })
