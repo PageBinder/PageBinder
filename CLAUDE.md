@@ -23,6 +23,7 @@ Every revision must open, show, edit, print, and search notebooks written by any
 
 ## New features are tested by the user first (the user's standing rule, 2026-09-28)
 After a new feature passes the automated checks, the user tries it in the running app before anything is pushed. Commit locally; push, tag, or release only after the user approves.
+- **Have the app running for every test (2026-09-28).** Whenever work is ready for the user to test, start the program with the updated version first (`npm run dev` in `app/`, restarted after main-process, preload, or config changes), check that its window is actually up, then hand over. Never assume a running copy picked up the change.
 
 ## Commands
 All of these run inside `app/` (`cd app` first).
