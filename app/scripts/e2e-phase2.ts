@@ -130,9 +130,11 @@ async function main(): Promise<void> {
   assert((await html()).includes('data-type="taskList"'), 'to-do list rendered in page.html')
   step('to-do list is rendered')
 
-  // 4. Paste an image: goes through the real paste handler.
+  // 4. Paste an image: goes through the real paste handler. With no text box being typed in, it
+  //    lands on the page as a picture object (inside a text box it would go into the box).
   const png = makePng(160, 100, [216, 90, 48])
   await page.evaluate(async (b64: string) => {
+    ;(document.activeElement as HTMLElement | null)?.blur()
     const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
     const dt = new DataTransfer()
     dt.items.add(new File([bytes], 'orange block.png', { type: 'image/png' }))

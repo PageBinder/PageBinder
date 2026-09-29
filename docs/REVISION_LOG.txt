@@ -12,7 +12,9 @@ Version 1.1.2 - in development (not yet released)
 
 Editing
 - Pictures in text boxes: right-click in a text box and choose Insert picture
-  to place a picture at that spot. Lines of text flow down beside the picture
+  to place a picture at that spot. Dropping a picture file on a text box,
+  pasting one while typing in it, or choosing Insert > Picture with the cursor
+  in it puts the picture in the box too. Lines of text flow down beside the picture
   and continue underneath it. Drag the picture anywhere in the box, and drag
   any corner to resize it. It keeps its size when the text box is resized,
   moves with the text box, and prints exactly as shown. Select it and press

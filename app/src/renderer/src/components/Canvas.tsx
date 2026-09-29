@@ -80,6 +80,7 @@ export function Canvas({
   onInsertTextPicture,
   onChange,
   onAddImages,
+  onAnchorPictures,
   onAddImagePaths,
   onAddFiles
 }: {
@@ -115,6 +116,8 @@ export function Canvas({
   onChange: (next: PageDoc, opts?: ChangeOpts) => void
   /** In-memory image files (paste, or drops without a path). */
   onAddImages: (files: File[]) => Promise<FileEntry[]>
+  /** Pictures already added to the page, anchored in a text box at a point in its text area. */
+  onAnchorPictures: (objectId: string, entries: FileEntry[], at: { x: number; y: number }) => void
   /** Image files on disk, copied by path. */
   onAddImagePaths: (paths: string[]) => Promise<FileEntry[]>
   /** Any other files on disk, copied into attachments. */
@@ -528,6 +531,18 @@ export function Canvas({
     const at = canvasPoint(e)
     const asCard = e.altKey
     const withPath = files.map((f) => ({ file: f, path: window.pagebinder.file.pathFor(f) }))
+    // Pictures dropped on a text box's text go into the box, where they were dropped.
+    const text = (e.target as HTMLElement).closest?.('.text-container .tiptap') as HTMLElement | null
+    const box = text?.closest('.text-container[data-object-id]') as HTMLElement | null
+    if (text && box && !asCard && !(e.target as HTMLElement).closest('td, th') && files.every((f) => isImageFile(f))) {
+      const area = text.getBoundingClientRect()
+      const where = { x: Math.max(0, (e.clientX - area.left) / zoom), y: Math.max(0, (e.clientY - area.top) / zoom) }
+      const paths = withPath.filter((f) => f.path).map((f) => f.path)
+      const memory = withPath.filter((f) => !f.path).map((f) => f.file)
+      const entries = [...(paths.length ? await onAddImagePaths(paths) : []), ...(memory.length ? await onAddImages(memory) : [])]
+      onAnchorPictures(box.dataset['objectId']!, entries, where)
+      return
+    }
     const imagePaths = withPath.filter((f) => f.path && isImageFile(f.file) && !asCard).map((f) => f.path)
     const otherPaths = withPath.filter((f) => f.path && (!isImageFile(f.file) || asCard)).map((f) => f.path)
     const memoryImages = withPath.filter((f) => !f.path && isImageFile(f.file)).map((f) => f.file)
