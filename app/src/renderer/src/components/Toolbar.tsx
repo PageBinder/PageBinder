@@ -137,11 +137,6 @@ export function Toolbar({
           {b(<AlignIcon kind="justify" />, false, () => chain().setTextAlign('justify').run(), 'Justify', can, 'tb-icon')}
         </G>
         <G>
-          {b('H1', !!editor?.isActive('heading', { level: 1 }), () => chain().toggleHeading({ level: 1 }).run(), 'Heading 1')}
-          {b('H2', !!editor?.isActive('heading', { level: 2 }), () => chain().toggleHeading({ level: 2 }).run(), 'Heading 2')}
-          {b('H3', !!editor?.isActive('heading', { level: 3 }), () => chain().toggleHeading({ level: 3 }).run(), 'Heading 3')}
-        </G>
-        <G>
           {b('• List', !!editor?.isActive('bulletList'), () => chain().toggleBulletList().run(), 'Bulleted list')}
           {b('1. List', !!editor?.isActive('orderedList'), () => chain().toggleOrderedList().run(), 'Numbered list')}
           {b('☑ To do', !!editor?.isActive('taskList'), () => chain().toggleTaskList().run(), 'To do list')}
