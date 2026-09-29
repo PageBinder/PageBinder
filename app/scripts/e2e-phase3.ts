@@ -96,18 +96,16 @@ async function main(): Promise<void> {
   assert(h.includes('font-family: Georgia, serif') && h.includes('background-color: #fac775') && h.includes('text-align: center'), 'formatting rendered in page.html')
   step('font, size, colour, highlight, underline, and alignment are saved and rendered')
 
-  // The four alignment buttons: each one saves, prints, and is the only one shown as selected.
-  const alignButtons = ['Align left', 'Center', 'Align right', 'Justify']
+  // The four alignment buttons: each one saves and prints. None is shown as selected (the user
+  // asked for no highlight on these buttons).
   assert((await page.locator('.tb.tb-icon svg').count()) === 4, 'four alignment buttons, each with a drawn symbol')
   for (const [title, value] of [['Justify', 'justify'], ['Align right', 'right'], ['Align left', 'left'], ['Center', 'center']] as const) {
     await page.locator(`.tb[title="${title}"]`).click()
     await save(page)
     assert(JSON.stringify((await doc()).objects).includes(`"textAlign":"${value}"`) && (await html()).includes(`text-align: ${value}`), `${title} is saved and rendered in page.html`)
-    const on: string[] = []
-    for (const t of alignButtons) if (await page.locator(`.tb.active[title="${t}"]`).count()) on.push(t)
-    assert(on.length === 1 && on[0] === title, `only ${title} is shown as selected (${on.join(', ')})`)
+    assert((await page.locator('.tb.tb-icon.active').count()) === 0, `no alignment button is highlighted after ${title}`)
   }
-  step('Align left, Center, Align right, and Justify each save, print, and show which is selected')
+  step('Align left, Center, Align right, and Justify each save and print, with no highlight')
 
   // 3. Table tools: insert, add a row, fill a cell.
   await page.keyboard.press('End')

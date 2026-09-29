@@ -60,7 +60,6 @@ export function Toolbar({
   const attrs = editor?.getAttributes('textStyle') ?? {}
   const fontFamily = (attrs['fontFamily'] as string | undefined) ?? ''
   const fontSize = ((attrs['fontSize'] as string | undefined) ?? '').replace('px', '')
-  const align = ((editor ? (editor.isActive('heading') ? editor.getAttributes('heading') : editor.getAttributes('paragraph'))['textAlign'] : null) as string | null) ?? null
   const lineHeight = ((editor ? (editor.isActive('heading') ? editor.getAttributes('heading') : editor.getAttributes('paragraph'))['lineHeight'] : null) as string | null) ?? STANDARD_LINE_HEIGHT
 
   const G = ({ children }: { children: React.ReactNode }): JSX.Element => <span className="tb-group">{children}</span>
@@ -132,10 +131,10 @@ export function Toolbar({
           </button>
         </G>
         <G>
-          {b(<AlignIcon kind="left" />, !!editor && (align === 'left' || !align), () => chain().setTextAlign('left').run(), 'Align left', can, 'tb-icon')}
-          {b(<AlignIcon kind="center" />, align === 'center', () => chain().setTextAlign('center').run(), 'Center', can, 'tb-icon')}
-          {b(<AlignIcon kind="right" />, align === 'right', () => chain().setTextAlign('right').run(), 'Align right', can, 'tb-icon')}
-          {b(<AlignIcon kind="justify" />, align === 'justify', () => chain().setTextAlign('justify').run(), 'Justify', can, 'tb-icon')}
+          {b(<AlignIcon kind="left" />, false, () => chain().setTextAlign('left').run(), 'Align left', can, 'tb-icon')}
+          {b(<AlignIcon kind="center" />, false, () => chain().setTextAlign('center').run(), 'Center', can, 'tb-icon')}
+          {b(<AlignIcon kind="right" />, false, () => chain().setTextAlign('right').run(), 'Align right', can, 'tb-icon')}
+          {b(<AlignIcon kind="justify" />, false, () => chain().setTextAlign('justify').run(), 'Justify', can, 'tb-icon')}
         </G>
         <G>
           {b('H1', !!editor?.isActive('heading', { level: 1 }), () => chain().toggleHeading({ level: 1 }).run(), 'Heading 1')}
