@@ -23,7 +23,8 @@ export function TextContainer({
   zoom,
   onContextMenu,
   onMeasure,
-  sheet
+  sheet,
+  imageBase
 }: {
   obj: TextContainerModel
   autoFocus: false | 'start' | 'end'
@@ -39,10 +40,12 @@ export function TextContainer({
   onMeasure: (id: string, height: number) => void
   /** Paper geometry, so text crossing a sheet boundary is laid out as it will print. */
   sheet: SheetGeometry
+  /** Where pictures inside the text are loaded from: this page's images folder. */
+  imageBase: string
 }): JSX.Element {
   const { setEditor, editor: active } = useActiveEditor()
   const editor = useEditor({
-    extensions: [...documentExtensions(), Placeholder.configure({ placeholder: 'Type here' }), SheetBreaks],
+    extensions: [...documentExtensions({ imageBase }), Placeholder.configure({ placeholder: 'Type here' }), SheetBreaks],
     content: obj.content,
     autofocus: autoFocus || false,
     onUpdate: ({ editor }) => onChange(obj.id, editor.getJSON() as EditorJSON),
@@ -163,6 +166,15 @@ export function TextContainer({
       } else {
         editor.commands.focus()
       }
+    }
+    // A picture inside the text: select it, so the menu offers its wrap and size.
+    const picture = target.closest('img.text-image')
+    if (!inTable && editor && picture && editor.view.dom.contains(picture) && picture.parentNode) {
+      const index = Array.prototype.indexOf.call(picture.parentNode.childNodes, picture) as number
+      const pos = editor.view.posAtDOM(picture.parentNode, index)
+      editor.chain().focus().setNodeSelection(pos).run()
+      onContextMenu(obj.id, x, y, null, editor)
+      return
     }
     // Menus that insert text need the editor focused where the user clicked.
     if (!inTable && editor) {

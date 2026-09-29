@@ -30,6 +30,13 @@ export const docCss = `
 .tiptap .selectedCell::after { content: ''; position: absolute; inset: 0; background: rgba(55, 138, 221, 0.15); pointer-events: none; }
 .tiptap .column-resize-handle { position: absolute; right: -2px; top: 0; bottom: 0; width: 4px; background: #378add; pointer-events: none; }
 .tiptap .tableWrapper { overflow-x: visible; }
+/* Pictures inside text: in line with the text, or floated with the text wrapping beside them. */
+.tiptap img.text-image { max-width: 100%; height: auto; box-sizing: border-box; }
+.tiptap img.text-image.wrap-inline { vertical-align: bottom; }
+.tiptap img.text-image.wrap-left { float: left; margin: 3px 12px 6px 0; }
+.tiptap img.text-image.wrap-right { float: right; margin: 3px 0 6px 12px; }
+/* A text box grows to hold a floated picture that is taller than its text. */
+.tiptap::after { content: ''; display: block; clear: both; }
 /* In the editor a table sits in a wrapper; like the bare table in page.html, it has no gap above it. */
 .tiptap > .tableWrapper { margin-top: 0; }
 

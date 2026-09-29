@@ -54,6 +54,15 @@ describe('search index', () => {
     index.close()
   })
 
+  it('finds and renames the pictures inside text content', async () => {
+    const { textImageNames, renameTextImages } = await import('../src/shared/render/textImage')
+    const content = { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'x' }, { type: 'textImage', attrs: { name: 'one.png' } }] }, { type: 'bulletList', content: [{ type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'textImage', attrs: { name: 'two.png' } }] }] }] }] }
+    expect(textImageNames(content)).toEqual(['one.png', 'two.png'])
+    const renamed = renameTextImages(content, (n) => (n === 'one.png' ? 'one-2.png' : undefined))
+    expect(textImageNames(renamed)).toEqual(['one-2.png', 'two.png'])
+    expect(textImageNames(content)).toEqual(['one.png', 'two.png'])
+  })
+
   it('builds prefix queries safely', () => {
     expect(buildMatch('body', 'lid')).toBe('body:("lid"*)')
     expect(buildMatch('title', 'north "field" OR x')).toBe('title:("north"* "field"* "OR"* "x"*)')

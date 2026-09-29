@@ -13,11 +13,14 @@ Printout text capture for PDFs with a text layer shipped in 1.1.0: each printout
 
 ## Text flowing around pictures (word wrap)
 
-Options set out on 2026-09-26, awaiting a choice:
+Option 1, pictures inside a text box, was built on 2026-09-28. The other two remain:
 
-1. **Pictures inside a text box.** A picture becomes part of the text: in line with a line of text, or floated left or right with the text wrapping beside it. Moves with its paragraph and prints identically, because the same HTML and CSS lay it out in both places. About 2 to 3 days.
-2. **Top and bottom wrap around pictures on the canvas.** Where a text box overlaps a picture, the lines that would cover it skip past it, as at a page break. Reuses the sheet-break mechanism. About 1 to 2 days.
-3. **Square wrap around pictures on the canvas.** Text flows down the side of an overlapping picture, as in Word. Needs the picture's shape carved out of each text box it overlaps, in the editor and in page.html alike. About 4 to 6 days, and the hardest to keep identical on screen and paper.
+- **Top and bottom wrap for pictures on the canvas.** Where a text box overlaps a free-standing picture, the lines that would cover it skip past it, as at a page break. Reuses the page-break mechanism. About 1 to 2 days.
+- **Square wrap for pictures on the canvas.** Text flows down the side of an overlapping free-standing picture, as in Word. The hardest to keep identical on screen and paper. About 4 to 6 days.
+
+## Protecting pages from older versions
+
+- **An older version must not erase content it does not understand** (noted 2026-09-28). A text box holding a picture inside text uses a kind of content versions 1.1.1 and earlier do not know: their editor (TipTap 3.31) replaces unknown content with an empty text box, and typing in that box there replaces its stored text. Saving other parts of the page keeps it, and their page.html shows a "could not be rendered" note for it. From now on, a version meeting unknown content could show the text box read-only with a note to update, and never save over it. Versions already published cannot be changed, so until the next version is installed everywhere, pages with pictures in text should be edited only in the newest version. About 1 day.
 
 ## Editing
 

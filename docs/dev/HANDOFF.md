@@ -18,6 +18,13 @@ Entry format:
 ---
 
 ## 2026-09-28 · lead (macOS, Apple silicon) · main
+**Changed:** Pictures inside text (word wrap option 1): Insert picture… in a text box's right-click menu; Wrap (in line, left, right), Size (25, 50, 75, 100 per cent), and Remove picture on a picture's right-click menu. Stored as a `textImage` node naming a file in the page's images folder, listed in the manifest. Page breaks count an in-line picture as part of its line. The app keeps its own manifest when the canvas reports a change. Recorded under "Next version" in the revision log and development plan; the version number is unchanged until the next release.
+**Found:** Inserting a picture into text lost its manifest entry, because the canvas's change carried a file list a moment old; fixed in `onPageChange`. Versions 1.1.1 and earlier do not know the new content: they show such a text box empty, and typing in that box there replaces its stored text (checked in TipTap 3.31's content loading; noted in FUTURE_FEATURES.md).
+**Checked:** Type check; 77 unit tests (new: picture rendering, name listing and renaming); phase 8's new step (insert, stored and listed, loads, prints, wraps with text beside it, sizes to a quarter, copies with its text box to another page, removes); every other window suite rerun. Screenshots of the editor and page.html match.
+**Next platform must check:** Windows: insert a picture into text, wrap it left, and check the screen against Print Preview.
+**Open:** Release the next version when the user asks; until it is installed everywhere, do not edit pages with pictures in text in 1.1.1 or 1.1.0.
+
+## 2026-09-28 · lead (macOS, Apple silicon) · main
 **Changed:** Version 1.1.1 (line-by-line page breaks, line spacing, the Order menu, editor and print alignment), to be published as a pre-release. Added `docs/REVISION_LOG.txt`, a plain-text description of every version for users; `release.yml` now attaches it to every release as `PageBinder-revision-log.txt` and puts the version's own section in the release notes. The development plan has a Version 1.1.1 section. The user asked for exactly two published pre-releases (1.1.0 and 1.1.1) and nothing else, so the duplicate v1.1.0 draft is deleted.
 **Found:** GitHub's "latest release" link skips pre-releases; with only pre-releases, the README's download link lands on the Releases page, which lists them, so it still works.
 **Checked:** The notes extraction was run locally against the log for 1.1.1 and 1.0.1. See the commit's workflow run, the 1.1.1 release run, and the final release list.

@@ -11,6 +11,7 @@ import { createNotebook } from '../src/main/storage/notebook'
 import { createSection } from '../src/main/storage/section'
 import { createPage } from '../src/main/storage/page'
 import type { PageDoc } from '../src/shared/types'
+import { tealPng } from './png'
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(`ASSERT: ${msg}`)
@@ -47,7 +48,10 @@ async function main(): Promise<void> {
   const doc = async (r: string): Promise<PageDoc> => JSON.parse(await fs.readFile(join(root, r, 'page.json'), 'utf8')) as PageDoc
   const exportOut = join(base, 'section.pdf')
 
-  const app = await electron.launch({ args: [resolve(process.env['E2E_OUT'] ?? 'out-e2e', 'main/index.js'), `--user-data-dir=${userData}`], cwd: resolve('.'), env: { ...process.env, PAGEBINDER_OPEN: root, PAGEBINDER_TEST_SAVE_PATH: exportOut } })
+  // The picture the Insert picture… step chooses (the file dialog is answered by a test seam).
+  const picturePath = join(base, 'teal square.png')
+  await fs.writeFile(picturePath, tealPng())
+  const app = await electron.launch({ args: [resolve(process.env['E2E_OUT'] ?? 'out-e2e', 'main/index.js'), `--user-data-dir=${userData}`], cwd: resolve('.'), env: { ...process.env, PAGEBINDER_OPEN: root, PAGEBINDER_TEST_SAVE_PATH: exportOut, PAGEBINDER_TEST_PICK_IMAGES: picturePath } })
   const page = await app.firstWindow()
   await page.waitForSelector('.section-tabs')
 
@@ -429,6 +433,93 @@ async function main(): Promise<void> {
   const freshSpacing = fresh?.content.content.map((p) => p.attrs?.lineHeight ?? null) ?? []
   assert(freshSpacing.length === 2 && freshSpacing.every((v) => v === '2.5'), `a new text box and its next paragraph use the default spacing (${freshSpacing.join()})`)
   step('line spacing is set from the right-click menu or the ribbon, has a default for new text boxes, and page breaks still match the printout')
+
+  // 11. Pictures inside a text box: inserted at the cursor, in line or with the text wrapping beside
+  //     them, sized, printed, copied with the text box, and removed.
+  await page.locator('.page-row.add').click()
+  await page.waitForSelector('.page-row.renaming input')
+  await page.locator('.page-row.renaming input').fill('Delta')
+  await page.keyboard.press('Enter')
+  await page.waitForSelector('.page-row.on:has-text("Delta")')
+  const dRel = `${sec}/Delta.page`
+  await page.locator('.canvas').click({ button: 'right', position: { x: 140, y: 160 } })
+  await page.locator('.context-item', { hasText: /^Text box$/ }).click()
+  await page.waitForTimeout(300)
+  await page.keyboard.type(Array.from({ length: 12 }, () => 'Words that wrap beside the picture.').join(' '))
+  await page.keyboard.press(mod === 'Meta' ? 'Meta+ArrowUp' : 'Control+Home')
+  const para = page.locator('.canvas .tiptap p', { hasText: 'Words that wrap' })
+  await para.click({ button: 'right', position: { x: 5, y: 5 } })
+  await page.locator('.context-item', { hasText: /^Insert picture/ }).click()
+  const img = page.locator('.canvas .tiptap img.text-image')
+  await img.waitFor()
+  await page.waitForFunction(() => { const i = document.querySelector('.canvas .tiptap img.text-image') as HTMLImageElement | null; return !!i && i.complete && i.naturalWidth > 0 })
+  await save(page)
+  type PicAttrs = { name: string; width: number; wrap: string }
+  const picturesIn = async (rel: string): Promise<{ attrs: PicAttrs[]; manifest: string[] }> => {
+    const d = await doc(rel)
+    const attrs: PicAttrs[] = []
+    const walk = (n: { type?: string; attrs?: PicAttrs; content?: unknown[] }): void => {
+      if (n.type === 'textImage' && n.attrs) attrs.push(n.attrs)
+      for (const c of n.content ?? []) walk(c as { type?: string; attrs?: PicAttrs; content?: unknown[] })
+    }
+    for (const o of d.objects) if (o.kind === 'text') walk(o.content as { type?: string; content?: unknown[] })
+    return { attrs, manifest: d.manifest.images.map((e) => e.name) }
+  }
+  const pics = await picturesIn(dRel)
+  assert(pics.attrs.length === 1 && pics.attrs[0]!.wrap === 'inline' && pics.attrs[0]!.width === 50 && pics.manifest.includes(pics.attrs[0]!.name), `the picture is stored in the text and listed with the page's files (${JSON.stringify(pics)})`)
+  const picName = pics.attrs[0]!.name
+  let dHtml = await fs.readFile(join(root, dRel, 'page.html'), 'utf8')
+  assert(dHtml.includes(`src="images/${encodeURIComponent(picName)}"`) && dHtml.includes('text-image wrap-inline'), 'page.html shows the picture from the page\'s images folder')
+  // Wrap: picture on the left, text beside it.
+  await img.click({ button: 'right' })
+  await page.locator('.context-item', { hasText: /^Wrap/ }).click()
+  await page.locator('.context-item', { hasText: 'Picture on the left' }).click()
+  await page.waitForFunction(() => getComputedStyle(document.querySelector('.canvas .tiptap img.text-image')!).float === 'left')
+  // Size: a quarter of the text box.
+  await img.click({ button: 'right' })
+  await page.locator('.context-item', { hasText: /^Size/ }).click()
+  await page.locator('.context-item', { hasText: /^25%/ }).click()
+  await page.waitForTimeout(300)
+  await save(page)
+  const sized = await picturesIn(dRel)
+  assert(sized.attrs[0]!.wrap === 'left' && sized.attrs[0]!.width === 25, `wrap and size are stored (${JSON.stringify(sized.attrs)})`)
+  const layout = await page.evaluate(() => {
+    const i = document.querySelector('.canvas .tiptap img.text-image') as HTMLImageElement
+    const p = i.closest('p')!
+    const walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT)
+    const t = walker.nextNode() as Text
+    const r = document.createRange()
+    r.setStart(t, 0)
+    r.setEnd(t, 1)
+    const ir = i.getBoundingClientRect()
+    const tr = r.getBoundingClientRect()
+    return { imgRight: ir.right, imgTop: ir.top, imgBottom: ir.bottom, textLeft: tr.left, textTop: tr.top, share: ir.width / p.getBoundingClientRect().width }
+  })
+  assert(layout.textLeft >= layout.imgRight - 1 && layout.textTop < layout.imgBottom, `the text wraps beside the picture (${JSON.stringify(layout)})`)
+  assert(Math.abs(layout.share - 0.25) < 0.02, `the picture takes a quarter of the text box (${layout.share})`)
+  dHtml = await fs.readFile(join(root, dRel, 'page.html'), 'utf8')
+  assert(dHtml.includes('class="text-image wrap-left"') && dHtml.includes('width: 25%'), 'page.html prints the picture wrapped and sized as on screen')
+  // Copied with its text box to another page, the picture's file is copied too.
+  await para.click({ button: 'right', position: { x: 300, y: 5 } })
+  await page.locator('.context-item', { hasText: /^Copy$/ }).click()
+  await page.locator('.page-row', { hasText: 'Gamma' }).click()
+  await page.locator('.canvas').click({ button: 'right', position: { x: 120, y: 60 } })
+  await page.locator('.context-item', { hasText: /^Paste$/ }).click()
+  await page.waitForTimeout(400)
+  await save(page)
+  const gPics = await picturesIn(g)
+  const copiedName = gPics.attrs[0]?.name
+  const copiedFile = copiedName ? await fs.stat(join(root, g, 'images', copiedName)).then(() => true, () => false) : false
+  assert(gPics.attrs.length === 1 && !!copiedName && gPics.manifest.includes(copiedName) && copiedFile, `the pasted text box brings its picture into the other page (${JSON.stringify(gPics)})`)
+  // Remove picture.
+  await page.locator('.page-row', { hasText: 'Delta' }).click()
+  await page.locator('.canvas .tiptap img.text-image').click({ button: 'right' })
+  await page.locator('.context-item', { hasText: /^Remove picture$/ }).click()
+  await page.waitForTimeout(300)
+  await save(page)
+  const removed = await picturesIn(dRel)
+  assert(removed.attrs.length === 0 && removed.manifest.includes(picName), 'Remove picture takes it out of the text; the file stays with the page, as every picture file does')
+  step('pictures sit inside text, in line or with text wrapping beside them, sized, printed as shown, and copied with their text box')
 
   await app.close()
   process.stdout.write(`\nPASS. Notebook kept at ${root}\n`)

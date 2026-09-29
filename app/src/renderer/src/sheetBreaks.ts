@@ -52,7 +52,8 @@ const CANDIDATES = 'p, h1, h2, h3, h4, h5, h6, pre, hr, table'
 const TEXTBLOCK = /^(P|H[1-6]|PRE)$/
 
 interface Line {
-  node: Text
+  /** Where the line starts, as a DOM position: a text node and character, or a picture's parent and index. */
+  container: Node
   offset: number
   top: number
   bottom: number
@@ -133,30 +134,41 @@ export function layoutSheetBreaks(editor: Editor, canvas: HTMLElement, zoom: num
     return positions.get(el) ?? (el.parentElement ? positions.get(el.parentElement) : undefined)
   }
 
-  // The lines of a text block: where each starts, and the top and bottom of its characters.
+  // The lines of a text block: where each starts, and the top and bottom of its characters and of
+  // any picture sitting in the line. Floated pictures are not part of a line and are left out.
   const linesOf = (block: HTMLElement): Line[] => {
     const out: Line[] = []
     let prev: DOMRect | null = null
     let cur: Line | null = null
     const range = document.createRange()
-    const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT)
-    for (let n = walker.nextNode() as Text | null; n; n = walker.nextNode() as Text | null) {
-      const text = n.data
+    const take = (r: DOMRect, container: Node, offset: number): void => {
+      if (r.width === 0 && r.height === 0) return
+      if (!prev || !cur || r.left < prev.left - EPS || r.top >= prev.bottom - EPS) {
+        cur = { container, offset, top: y(r.top), bottom: y(r.bottom) }
+        out.push(cur)
+      } else {
+        cur.top = Math.min(cur.top, y(r.top))
+        cur.bottom = Math.max(cur.bottom, y(r.bottom))
+      }
+      prev = r
+    }
+    const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT)
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      if (n.nodeType === Node.ELEMENT_NODE) {
+        const el = n as HTMLElement
+        if (el.tagName === 'IMG' && el.classList.contains('text-image') && el.classList.contains('wrap-inline') && el.parentNode) {
+          take(el.getBoundingClientRect(), el.parentNode, Array.prototype.indexOf.call(el.parentNode.childNodes, el) as number)
+        }
+        continue
+      }
+      const t = n as Text
+      const text = t.data
       for (let k = 0; k < text.length; k++) {
         const c = text.charAt(k)
         if (c === '\n' || c === '\r') continue
-        range.setStart(n, k)
-        range.setEnd(n, k + 1)
-        const r = range.getBoundingClientRect()
-        if (r.width === 0 && r.height === 0) continue
-        if (!prev || !cur || r.left < prev.left - EPS || r.top >= prev.bottom - EPS) {
-          cur = { node: n, offset: k, top: y(r.top), bottom: y(r.bottom) }
-          out.push(cur)
-        } else {
-          cur.top = Math.min(cur.top, y(r.top))
-          cur.bottom = Math.max(cur.bottom, y(r.bottom))
-        }
-        prev = r
+        range.setStart(t, k)
+        range.setEnd(t, k + 1)
+        take(range.getBoundingClientRect(), t, k)
       }
     }
     return out
@@ -178,7 +190,7 @@ export function layoutSheetBreaks(editor: Editor, canvas: HTMLElement, zoom: num
   }
 
   const splitBefore = (line: Line, dest: number): boolean => {
-    const pos = view.posAtDOM(line.node, line.offset)
+    const pos = view.posAtDOM(line.container, line.offset)
     const spacer = document.createElement('span')
     spacer.setAttribute('data-sheet-spacer', '')
     spacer.style.display = 'block'

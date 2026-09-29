@@ -65,6 +65,17 @@ describe('renderPageHtml', () => {
     expect(html).toContain('<p>Odd</p>')
   })
 
+  it('renders pictures inside text with their wrap and width, loaded from the images folder', () => {
+    const pic = (name: string, wrap: string, width: number) => ({ type: 'textImage', attrs: { name, originalName: `${name} original`, width, wrap } })
+    const html = renderPageHtml(docWith([{ kind: 'text', id: 't', x: 0, y: 0, width: 300, content: { type: 'doc', content: [{ type: 'paragraph', content: [pic('a b.png', 'left', 25), { type: 'text', text: 'Beside' }, pic('c.png', 'inline', 50)] }] } }]))
+    expect(html).toContain('src="images/a%20b.png"')
+    expect(html).toContain('class="text-image wrap-left"')
+    expect(html).toContain('style="width: 25%;"')
+    expect(html).toContain('class="text-image wrap-inline"')
+    const preview = renderPageHtml(docWith([{ kind: 'text', id: 't', x: 0, y: 0, width: 300, content: { type: 'doc', content: [{ type: 'paragraph', content: [pic('c.png', 'right', 100)] }] } }]), { imageBase: '../images/' })
+    expect(preview).toContain('src="../images/c.png"')
+  })
+
   it('escapes the title', () => {
     const doc = docWith([])
     doc.title = '<script>x</script>'
