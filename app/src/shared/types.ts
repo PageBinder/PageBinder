@@ -95,6 +95,24 @@ export interface TextContainer {
   y: number
   width: number
   content: EditorJSON
+  /** Pictures anchored in the text box, with the text flowing beside them. Optional: older pages have none. */
+  pictures?: AnchoredPicture[]
+}
+
+/**
+ * A picture anchored inside a text box at a spot the user chose. It keeps its size when the box is
+ * resized and moves with the box. Text flows down the side with more room and continues below it.
+ */
+export interface AnchoredPicture {
+  id: string
+  /** File name inside the page's images folder (also listed in the manifest). */
+  name: string
+  originalName: string
+  /** Pixels from the top-left of the text box's text area. */
+  x: number
+  y: number
+  width: number
+  height: number
 }
 
 export interface ImageObject {

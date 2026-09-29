@@ -29,6 +29,8 @@ import type { DocName } from '../../preload/api'
 import type { SearchHit } from '../../preload/api'
 import { isImageFile, clampZoom, type CanvasCommands, type ChangeOpts } from './components/Canvas'
 import { textImageNames, renameTextImages } from '@shared/render/textImage'
+import type { AnchoredPicture } from '@shared/types'
+import { textAreaWidth } from '@shared/render/anchoredPictures'
 
 interface PageState {
   relPath: string
@@ -650,7 +652,10 @@ export function App(): JSX.Element {
         if (clip.fromRel !== p.relPath) {
           for (const o of clip.objects) {
             if (o.kind === 'image') needed.push({ sub: 'images', name: o.name, originalName: o.originalName })
-            else if (o.kind === 'text') for (const name of textImageNames(o.content)) needed.push({ sub: 'images', name })
+            else if (o.kind === 'text') {
+              for (const name of textImageNames(o.content)) needed.push({ sub: 'images', name })
+              for (const pic of o.pictures ?? []) needed.push({ sub: 'images', name: pic.name, originalName: pic.originalName })
+            }
             else if (o.kind === 'file') needed.push({ sub: 'attachments', name: o.name, originalName: o.originalName })
           }
         }
@@ -677,7 +682,10 @@ export function App(): JSX.Element {
             const e = rename.get(`attachments/${moved.name}`)
             if (e) moved.name = e.name
           }
-          if (moved.kind === 'text') moved.content = renameTextImages(moved.content, (name) => rename.get(`images/${name}`)?.name)
+          if (moved.kind === 'text') {
+            moved.content = renameTextImages(moved.content, (name) => rename.get(`images/${name}`)?.name)
+            if (moved.pictures) moved.pictures = moved.pictures.map((pic) => ({ ...pic, id: newId(), name: rename.get(`images/${pic.name}`)?.name ?? pic.name }))
+          }
           return moved
         })
         pushHistory({ kind: 'objects', pageRel: p.relPath, doc: p.doc })
@@ -1060,20 +1068,54 @@ export function App(): JSX.Element {
     [placeImages]
   )
 
-  /** Pictures chosen from disk go into the page's images folder and into the text box at its cursor. */
-  const insertTextPicture = useCallback(async (editor: Editor): Promise<void> => {
+  /**
+   * Pictures chosen from disk go into the page's images folder and are anchored in the text box at
+   * the spot that was right-clicked, at their natural size up to half the box's text width.
+   */
+  const insertTextPicture = useCallback(async (objectId: string, at: { x: number; y: number }): Promise<void> => {
     const p = pageRef.current
     if (!p) return
     try {
       const entries = await window.pagebinder.page.pickImages(p.relPath)
       if (!entries.length) return
-      setPage((cur) => (cur ? { ...cur, doc: { ...cur.doc, manifest: { ...cur.doc.manifest, images: [...cur.doc.manifest.images, ...entries] } }, dirty: true, version: cur.version + 1 } : cur))
-      editor.chain().focus().insertTextImages(entries.map((e) => ({ name: e.name, originalName: e.originalName }))).run()
+      const sizes = await Promise.all(
+        entries.map(
+          (e) =>
+            new Promise<{ w: number; h: number }>((resolve) => {
+              const img = new Image()
+              img.onload = () => resolve({ w: img.naturalWidth || 200, h: img.naturalHeight || 150 })
+              img.onerror = () => resolve({ w: 200, h: 150 })
+              img.src = window.pagebinder.fileUrl(`${p.relPath}/images/${e.name}`)
+            })
+        )
+      )
+      pushHistory({ kind: 'objects', pageRel: p.relPath, doc: p.doc })
+      setPage((cur) => {
+        if (!cur) return cur
+        const objects = cur.doc.objects.map((o) => {
+          if (o.id !== objectId || o.kind !== 'text') return o
+          const area = textAreaWidth(o.width)
+          let y = Math.round(at.y)
+          const added: AnchoredPicture[] = entries.map((e, i) => {
+            const s = sizes[i]!
+            const width = Math.max(16, Math.min(s.w, Math.round(area / 2)))
+            const height = Math.max(16, Math.round((s.h * width) / Math.max(1, s.w)))
+            const picture = { id: newId(), name: e.name, originalName: e.originalName, x: Math.round(Math.max(0, Math.min(area - width, at.x))), y, width, height }
+            y += height + 8
+            return picture
+          })
+          return { ...o, pictures: [...(o.pictures ?? []), ...added] }
+        })
+        return { ...cur, doc: { ...cur.doc, objects, manifest: { ...cur.doc.manifest, images: [...cur.doc.manifest.images, ...entries] } }, dirty: true, version: cur.version + 1 }
+      })
+      setSaveStatus('unsaved')
+      window.clearTimeout(saveTimer.current)
+      saveTimer.current = window.setTimeout(() => void savePage(), 500)
     } catch (err) {
       fail(err)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [savePage])
 
   const placeFiles = useCallback(
     (results: { entry: FileEntry; mail?: MailMeta }[], at?: { x: number; y: number }) => {
@@ -1429,7 +1471,7 @@ export function App(): JSX.Element {
               canPaste={canPaste}
               onSignature={(ed) => void insertSignature(ed)}
               onPrintout={(o) => void insertPrintout(o)}
-              onInsertTextPicture={(ed) => void insertTextPicture(ed)}
+              onInsertTextPicture={(id, at) => void insertTextPicture(id, at)}
               onChange={onPageChange}
               onAddImages={addImageFiles}
               onAddImagePaths={addImagePaths}

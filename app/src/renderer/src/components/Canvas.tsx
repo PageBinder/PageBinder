@@ -17,6 +17,7 @@ import { LINE_HEIGHTS, STANDARD_LINE_HEIGHT, lineHeightLabel } from '@shared/ren
 import { defaultLineHeight, newParagraphAttrs, setDefaultLineHeight } from '../textDefaults'
 import { TEXT_IMAGE_WIDTHS } from '@shared/render/textImage'
 import { NodeSelection } from '@tiptap/pm/state'
+import type { AnchoredPicture } from '@shared/types'
 
 function newId(): string {
   const bytes = new Uint8Array(12)
@@ -110,7 +111,7 @@ export function Canvas({
   /** Render a PDF attachment as pictures below the card. */
   onPrintout: (obj: CanvasObject) => void
   /** Insert a picture into a text box, at its cursor. */
-  onInsertTextPicture: (editor: Editor) => void
+  onInsertTextPicture: (objectId: string, at: { x: number; y: number }) => void
   onChange: (next: PageDoc, opts?: ChangeOpts) => void
   /** In-memory image files (paste, or drops without a path). */
   onAddImages: (files: File[]) => Promise<FileEntry[]>
@@ -128,7 +129,7 @@ export function Canvas({
   const suppressClickRef = useRef(false)
   const [heights, setHeights] = useState<Record<string, number>>({})
   const [guides, setGuides] = useState<{ x?: number; y?: number }>({})
-  const [objectMenu, setObjectMenu] = useState<{ id: string; x: number; y: number; tableEditor?: Editor | null; textEditor?: Editor | null } | null>(null)
+  const [objectMenu, setObjectMenu] = useState<{ id: string; x: number; y: number; tableEditor?: Editor | null; textEditor?: Editor | null; extra?: { pictureId?: string; at?: { x: number; y: number } } } | null>(null)
 
   // A new text box takes focus once; the id is cleared so undo or redo cannot re-focus it.
   useEffect(() => {
@@ -187,6 +188,14 @@ export function Canvas({
       onChange({ ...current, objects: mutate(current.objects) }, opts)
     },
     [onChange]
+  )
+
+  /** Pictures anchored in a text box changed; a whole drag or resize undoes as one step. */
+  const onPicturesChange = useCallback(
+    (id: string, pictures: AnchoredPicture[]) => {
+      update((objs) => objs.map((o) => (o.id === id && o.kind === 'text' ? { ...o, pictures } : o)), { history: 'coalesce', key: `pictures:${id}:${sessionRef.current}` })
+    },
+    [update]
   )
 
   /**
@@ -540,7 +549,7 @@ export function Canvas({
   const relFor = (o: CanvasObject): string => (o.kind === 'file' ? `${pageRel}/attachments/${o.name}` : `${pageRel}/images/${(o as { name: string }).name}`)
 
   const [borderWeight, setBorderWeight] = useState<BorderWeight>('thin')
-  const menuItems = (id: string, tableEditor: Editor | null = null, textEditor: Editor | null = null): MenuItem[] => {
+  const menuItems = (id: string, tableEditor: Editor | null = null, textEditor: Editor | null = null, extra?: { pictureId?: string; at?: { x: number; y: number } }): MenuItem[] => {
     const obj = doc.objects.find((o) => o.id === id)
     if (!obj) return []
     const orderIds = selectedIds.has(id) && selectedIds.size > 1 ? new Set(selectedIds) : new Set([id])
@@ -598,7 +607,13 @@ export function Canvas({
             { separator: true }
           )
         }
-        items.push({ label: 'Insert picture…', onClick: () => onInsertTextPicture(ed) }, { separator: true })
+        // A picture anchored in the box.
+        const anchored = extra?.pictureId && obj.kind === 'text' ? (obj.pictures ?? []).find((p) => p.id === extra.pictureId) : undefined
+        if (anchored && obj.kind === 'text') {
+          items.push({ label: 'Remove picture', onClick: () => onPicturesChange(obj.id, (obj.pictures ?? []).filter((p) => p.id !== anchored.id)) }, { separator: true })
+        } else {
+          items.push({ label: 'Insert picture…', onClick: () => onInsertTextPicture(obj.id, extra?.at ?? { x: 0, y: 0 }) }, { separator: true })
+        }
         // Line spacing for the paragraphs the selection touches, and the default for new text boxes.
         const current = ((ed.isActive('heading') ? ed.getAttributes('heading') : ed.getAttributes('paragraph'))['lineHeight'] as string | null) ?? STANDARD_LINE_HEIGHT
         const byDefault = defaultLineHeight()
@@ -746,7 +761,8 @@ export function Canvas({
               onDelete={removeObject}
               onDragStart={onDragStart}
               zoom={zoom}
-              onContextMenu={(id, x, y, tableEditor, textEditor) => setObjectMenu({ id, x, y, tableEditor, textEditor })}
+              onContextMenu={(id, x, y, tableEditor, textEditor, extra) => setObjectMenu({ id, x, y, tableEditor, textEditor, extra })}
+              onPicturesChange={onPicturesChange}
               onMeasure={onMeasure}
               sheet={{ height: paper.height, marginTop: paper.margins.top, marginBottom: paper.margins.bottom }}
               imageBase={window.pagebinder.fileUrl(`${pageRel}/images/`)}
@@ -797,7 +813,7 @@ export function Canvas({
         )}
       </div>
       </div>
-      {objectMenu && <ContextMenu x={objectMenu.x} y={objectMenu.y} items={menuItems(objectMenu.id, objectMenu.tableEditor, objectMenu.textEditor)} onClose={() => setObjectMenu(null)} />}
+      {objectMenu && <ContextMenu x={objectMenu.x} y={objectMenu.y} items={menuItems(objectMenu.id, objectMenu.tableEditor, objectMenu.textEditor, objectMenu.extra)} onClose={() => setObjectMenu(null)} />}
       {canvasMenu && (
         <ContextMenu
           x={canvasMenu.x}

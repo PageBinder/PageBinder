@@ -13,14 +13,15 @@ Printout text capture for PDFs with a text layer shipped in 1.1.0: each printout
 
 ## Text flowing around pictures (word wrap)
 
-Option 1, pictures inside a text box, was built on 2026-09-28. The other two remain:
+Pictures anchored in text boxes, with text flowing beside them, were built on 2026-09-28 after the user's testing of a first, in-line version. Still possible:
 
-- **Top and bottom wrap for pictures on the canvas.** Where a text box overlaps a free-standing picture, the lines that would cover it skip past it, as at a page break. Reuses the page-break mechanism. About 1 to 2 days.
-- **Square wrap for pictures on the canvas.** Text flows down the side of an overlapping free-standing picture, as in Word. The hardest to keep identical on screen and paper. About 4 to 6 days.
+- **Text on both sides of a picture.** Text now flows down the side with more room; flowing down both sides of a picture in the middle of a box needs a different layout technique than CSS floats. About 2 to 3 days.
+- **Top and bottom wrap for pictures on the canvas.** Where a text box overlaps a free-standing picture, the lines that would cover it skip past it, as at a page break. About 1 to 2 days.
+- **Square wrap for free-standing pictures on the canvas.** As above but with text beside the picture. Probably best done by moving the picture into the text box as an anchored picture. About 2 days.
 
 ## Protecting pages from older versions
 
-- **An older version must not erase content it does not understand** (noted 2026-09-28). A text box holding a picture inside text uses a kind of content versions 1.1.1 and earlier do not know: their editor (TipTap 3.31) replaces unknown content with an empty text box, and typing in that box there replaces its stored text. Saving other parts of the page keeps it, and their page.html shows a "could not be rendered" note for it. From now on, a version meeting unknown content could show the text box read-only with a note to update, and never save over it. Versions already published cannot be changed, so until the next version is installed everywhere, pages with pictures in text should be edited only in the newest version. About 1 day.
+- **An older version must not erase content it does not understand** (noted 2026-09-28). Anchored pictures are an optional list that versions 1.1.1 and earlier simply ignore: those versions show the text without its pictures and, if the page is saved there, drop the list. Content types they do not know at all (the in-line pictures made while testing) are worse: their editor (TipTap 3.31) shows the text box empty, and typing in it there replaces its stored text. From now on, a version meeting unknown content could show the text box read-only with a note to update, and never save over it. Versions already published cannot be changed, so until the next version is installed everywhere, pages with pictures in text should be edited only in the newest version. About 1 day.
 
 ## Editing
 

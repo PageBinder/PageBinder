@@ -18,6 +18,13 @@ Entry format:
 ---
 
 ## 2026-09-28 · lead (macOS, Apple silicon) · main
+**Changed:** Word wrap reworked after the user's testing: pictures are now anchored in a text box (the box's `pictures` list) at a spot the user chooses, a fixed pixel size, text flowing down beside them. Drag to move, corner to resize, Delete to remove, Insert picture at the right-clicked spot. Shared float layout in `app/src/shared/render/anchoredPictures.ts`, editor widgets in `app/src/renderer/src/anchoredPicturesView.ts`. New standing rule: the user tests new features before anything is pushed (`CLAUDE.md`).
+**Found:** The first version (a picture inside a line) resized with the box, could not be placed freely, and wrapped in line rather than beside the text.
+**Checked:** Type check; 78 unit tests (new: float layout); phase 8's rewritten picture step (placed at the click, three or more lines beside it, corner resize keeps shape, box resize keeps its size, drag lands exactly, moves with the box, same spot in page.html, copied to another page with its file, Delete) and every other suite. Waiting for the user's hands-on test before pushing.
+**Next platform must check:** After approval: Windows, insert and drag a picture in a text box and compare with Print Preview.
+**Open:** Text flows down one side of a picture only.
+
+## 2026-09-28 · lead (macOS, Apple silicon) · main
 **Changed:** New rule: once a version is released, development moves to the next number immediately. The version is now 1.1.2 (in development); the revision log and development plan sections for pictures in text are headed 1.1.2.
 **Found:** Nothing new.
 **Checked:** Version fields in `package.json` and `package-lock.json`.

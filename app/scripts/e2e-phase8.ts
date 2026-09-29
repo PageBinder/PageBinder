@@ -434,8 +434,9 @@ async function main(): Promise<void> {
   assert(freshSpacing.length === 2 && freshSpacing.every((v) => v === '2.5'), `a new text box and its next paragraph use the default spacing (${freshSpacing.join()})`)
   step('line spacing is set from the right-click menu or the ribbon, has a default for new text boxes, and page breaks still match the printout')
 
-  // 11. Pictures inside a text box: inserted at the cursor, in line or with the text wrapping beside
-  //     them, sized, printed, copied with the text box, and removed.
+  // 11. Pictures anchored in a text box: placed where the box was right-clicked, text flowing down
+  //     beside them, a fixed size that resizing the box leaves alone, dragged anywhere, carried
+  //     along when the box moves, printed as shown, copied with the box, and deleted.
   await page.locator('.page-row.add').click()
   await page.waitForSelector('.page-row.renaming input')
   await page.locator('.page-row.renaming input').fill('Delta')
@@ -445,81 +446,133 @@ async function main(): Promise<void> {
   await page.locator('.canvas').click({ button: 'right', position: { x: 140, y: 160 } })
   await page.locator('.context-item', { hasText: /^Text box$/ }).click()
   await page.waitForTimeout(300)
-  await page.keyboard.type(Array.from({ length: 12 }, () => 'Words that wrap beside the picture.').join(' '))
-  await page.keyboard.press(mod === 'Meta' ? 'Meta+ArrowUp' : 'Control+Home')
-  const para = page.locator('.canvas .tiptap p', { hasText: 'Words that wrap' })
-  await para.click({ button: 'right', position: { x: 5, y: 5 } })
+  await page.keyboard.type(Array.from({ length: 12 }, () => 'Words that flow beside the picture and then below it.').join(' '))
+  const para = page.locator('.canvas .tiptap p', { hasText: 'Words that flow' })
+  await para.click({ button: 'right', position: { x: 20, y: 30 } })
   await page.locator('.context-item', { hasText: /^Insert picture/ }).click()
-  const img = page.locator('.canvas .tiptap img.text-image')
-  await img.waitFor()
-  await page.waitForFunction(() => { const i = document.querySelector('.canvas .tiptap img.text-image') as HTMLImageElement | null; return !!i && i.complete && i.naturalWidth > 0 })
+  const frame = page.locator('.anchored-picture-frame')
+  await frame.waitFor()
   await save(page)
-  type PicAttrs = { name: string; width: number; wrap: string }
-  const picturesIn = async (rel: string): Promise<{ attrs: PicAttrs[]; manifest: string[] }> => {
-    const d = await doc(rel)
-    const attrs: PicAttrs[] = []
-    const walk = (n: { type?: string; attrs?: PicAttrs; content?: unknown[] }): void => {
-      if (n.type === 'textImage' && n.attrs) attrs.push(n.attrs)
-      for (const c of n.content ?? []) walk(c as { type?: string; attrs?: PicAttrs; content?: unknown[] })
-    }
-    for (const o of d.objects) if (o.kind === 'text') walk(o.content as { type?: string; content?: unknown[] })
-    return { attrs, manifest: d.manifest.images.map((e) => e.name) }
-  }
-  const pics = await picturesIn(dRel)
-  assert(pics.attrs.length === 1 && pics.attrs[0]!.wrap === 'inline' && pics.attrs[0]!.width === 50 && pics.manifest.includes(pics.attrs[0]!.name), `the picture is stored in the text and listed with the page's files (${JSON.stringify(pics)})`)
-  const picName = pics.attrs[0]!.name
-  let dHtml = await fs.readFile(join(root, dRel, 'page.html'), 'utf8')
-  assert(dHtml.includes(`src="images/${encodeURIComponent(picName)}"`) && dHtml.includes('text-image wrap-inline'), 'page.html shows the picture from the page\'s images folder')
-  // Wrap: picture on the left, text beside it.
-  await img.click({ button: 'right' })
-  await page.locator('.context-item', { hasText: /^Wrap/ }).click()
-  await page.locator('.context-item', { hasText: 'Picture on the left' }).click()
-  await page.waitForFunction(() => getComputedStyle(document.querySelector('.canvas .tiptap img.text-image')!).float === 'left')
-  // Size: a quarter of the text box.
-  await img.click({ button: 'right' })
-  await page.locator('.context-item', { hasText: /^Size/ }).click()
-  await page.locator('.context-item', { hasText: /^25%/ }).click()
-  await page.waitForTimeout(300)
+  type Pic = { id: string; name: string; x: number; y: number; width: number; height: number }
+  const boxOf = async (rel: string): Promise<{ id: string; x: number; y: number; width: number; pictures: Pic[] } | undefined> =>
+    (await doc(rel)).objects.find((o) => o.kind === 'text' && JSON.stringify(o.content).includes('Words that flow')) as unknown as { id: string; x: number; y: number; width: number; pictures: Pic[] } | undefined
+  let box = (await boxOf(dRel))!
+  const manifest = (await doc(dRel)).manifest.images.map((e) => e.name)
+  assert(box.pictures?.length === 1 && Math.abs(box.pictures[0]!.x - 20) <= 2 && manifest.includes(box.pictures[0]!.name), `the picture is anchored where the box was right-clicked and its file is listed with the page (${JSON.stringify(box.pictures)})`)
+  // Corner handle: resize to 96 px (the test picture starts at its 16 px minimum).
+  await frame.click()
+  const handle = page.locator('.anchored-picture-frame.selected .anchored-resize')
+  const hb = (await handle.boundingBox())!
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(hb.x + hb.width / 2 + 80, hb.y + hb.height / 2, { steps: 6 })
+  await page.mouse.up()
   await save(page)
-  const sized = await picturesIn(dRel)
-  assert(sized.attrs[0]!.wrap === 'left' && sized.attrs[0]!.width === 25, `wrap and size are stored (${JSON.stringify(sized.attrs)})`)
-  const layout = await page.evaluate(() => {
-    const i = document.querySelector('.canvas .tiptap img.text-image') as HTMLImageElement
-    const p = i.closest('p')!
+  box = (await boxOf(dRel))!
+  assert(box.pictures[0]!.width === 96 && box.pictures[0]!.height === 96, `dragging the corner resizes the picture, keeping its shape (${JSON.stringify(box.pictures[0])})`)
+  // Several lines of text sit beside the picture before the text runs underneath it.
+  const beside = await page.evaluate(() => {
+    const f = document.querySelector('.anchored-picture-frame') as HTMLElement
+    const fr = f.getBoundingClientRect()
+    const p = f.closest('p')!
     const walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT)
-    const t = walker.nextNode() as Text
     const r = document.createRange()
-    r.setStart(t, 0)
-    r.setEnd(t, 1)
-    const ir = i.getBoundingClientRect()
-    const tr = r.getBoundingClientRect()
-    return { imgRight: ir.right, imgTop: ir.top, imgBottom: ir.bottom, textLeft: tr.left, textTop: tr.top, share: ir.width / p.getBoundingClientRect().width }
+    const lines = new Map<number, number>()
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      const t = n as Text
+      for (let k = 0; k < t.data.length; k++) {
+        r.setStart(t, k)
+        r.setEnd(t, k + 1)
+        const b = r.getBoundingClientRect()
+        if (!b.width) continue
+        const top = Math.round(b.top)
+        lines.set(top, Math.min(lines.get(top) ?? Infinity, b.left))
+      }
+    }
+    const besideLines = [...lines.entries()].filter(([top]) => top >= fr.top - 2 && top < fr.bottom).filter(([, left]) => left >= fr.right - 1)
+    return besideLines.length
   })
-  assert(layout.textLeft >= layout.imgRight - 1 && layout.textTop < layout.imgBottom, `the text wraps beside the picture (${JSON.stringify(layout)})`)
-  assert(Math.abs(layout.share - 0.25) < 0.02, `the picture takes a quarter of the text box (${layout.share})`)
-  dHtml = await fs.readFile(join(root, dRel, 'page.html'), 'utf8')
-  assert(dHtml.includes('class="text-image wrap-left"') && dHtml.includes('width: 25%'), 'page.html prints the picture wrapped and sized as on screen')
+  assert(beside >= 3, `several lines of text flow beside the picture (${beside})`)
+  // Resizing the text box leaves the picture's size alone.
+  const resizer = page.locator('.text-container', { has: frame }).locator('.container-resize')
+  const rb = (await resizer.boundingBox())!
+  await page.mouse.move(rb.x + rb.width / 2, rb.y + 40)
+  await page.mouse.down()
+  await page.mouse.move(rb.x + rb.width / 2 - 90, rb.y + 40, { steps: 6 })
+  await page.mouse.up()
+  await save(page)
+  box = (await boxOf(dRel))!
+  const shown = (await frame.boundingBox())!
+  assert(box.pictures[0]!.width === 96 && Math.round(shown.width) === 96, `resizing the text box keeps the picture's size (${box.width} px box, ${JSON.stringify(box.pictures[0])}, shown ${shown.width})`)
+  // Drag the picture: it stays exactly where it is dropped.
+  const before = { ...box.pictures[0]! }
+  const fb = (await frame.boundingBox())!
+  await page.mouse.move(fb.x + fb.width / 2, fb.y + fb.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(fb.x + fb.width / 2 + 60, fb.y + fb.height / 2 + 40, { steps: 8 })
+  await page.mouse.up()
+  await save(page)
+  box = (await boxOf(dRel))!
+  const moved = box.pictures[0]!
+  const fb2 = (await frame.boundingBox())!
+  assert(Math.abs(moved.x - before.x - 60) <= 1 && Math.abs(moved.y - before.y - 40) <= 1 && Math.abs(fb2.x - fb.x - 60) <= 2 && Math.abs(fb2.y - fb.y - 40) <= 2, `the picture stays where it is dropped (${JSON.stringify(before)} to ${JSON.stringify(moved)}; on screen ${fb.x},${fb.y} to ${fb2.x},${fb2.y})`)
+  // Move the whole text box: the picture goes with it and keeps its place in the box.
+  const moveBar = page.locator('.text-container', { has: frame }).locator('.container-handle')
+  const bb = (await moveBar.boundingBox())!
+  await page.mouse.move(bb.x + 30, bb.y + bb.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(bb.x + 30 + 50, bb.y + bb.height / 2 + 30, { steps: 8 })
+  await page.mouse.up()
+  await save(page)
+  const boxMoved = (await boxOf(dRel))!
+  const fb3 = (await frame.boundingBox())!
+  assert(Math.abs(boxMoved.x - box.x - 50) <= 1 && Math.abs(boxMoved.y - box.y - 30) <= 1, `the text box moved (${box.x},${box.y} to ${boxMoved.x},${boxMoved.y})`)
+  assert(boxMoved.pictures[0]!.x === moved.x && boxMoved.pictures[0]!.y === moved.y && Math.abs(fb3.x - fb2.x - 50) <= 2 && Math.abs(fb3.y - fb2.y - 30) <= 2, `the picture moves with its text box (${fb2.x},${fb2.y} to ${fb3.x},${fb3.y})`)
+  // Printed exactly as on screen: the picture sits at the same spot in the text box's text area.
+  const editorSpot = await page.evaluate(() => {
+    const f = document.querySelector('.anchored-picture-frame') as HTMLElement
+    const area = f.closest('.tiptap') as HTMLElement
+    const z = Number((document.querySelector('.canvas') as HTMLElement).dataset.zoom) || 1
+    const a = area.getBoundingClientRect(), r = f.getBoundingClientRect()
+    return { x: Math.round((r.left - a.left) / z), y: Math.round((r.top - a.top) / z), w: Math.round(r.width / z) }
+  })
+  const printSpot = await app.evaluate(async ({ BrowserWindow }, file) => {
+    const w = new BrowserWindow({ show: false })
+    await w.loadFile(file)
+    for (let i = 0; i < 50 && !(await w.webContents.executeJavaScript("document.body.classList.contains('paginated')")); i++) await new Promise((r) => setTimeout(r, 100))
+    // The source canvas is hidden after pagination; show it briefly to measure.
+    const spot = await w.webContents.executeJavaScript(`(() => {
+      const src = document.getElementById('canvas'); src.parentNode.style.display = ''
+      const img = src.querySelector('img.anchored-picture'); const area = img.closest('.tiptap')
+      const a = area.getBoundingClientRect(), r = img.getBoundingClientRect()
+      return { x: Math.round(r.left - a.left), y: Math.round(r.top - a.top), w: Math.round(r.width) }
+    })()`)
+    w.destroy()
+    return spot as { x: number; y: number; w: number }
+  }, join(root, dRel, 'page.html'))
+  assert(Math.abs(editorSpot.x - printSpot.x) <= 1 && Math.abs(editorSpot.y - printSpot.y) <= 1 && editorSpot.w === printSpot.w, `the printout places the picture exactly as the editor does (editor ${JSON.stringify(editorSpot)}, print ${JSON.stringify(printSpot)})`)
   // Copied with its text box to another page, the picture's file is copied too.
-  await para.click({ button: 'right', position: { x: 300, y: 5 } })
+  await para.click({ button: "right", position: { x: 10, y: 5 } })
   await page.locator('.context-item', { hasText: /^Copy$/ }).click()
   await page.locator('.page-row', { hasText: 'Gamma' }).click()
   await page.locator('.canvas').click({ button: 'right', position: { x: 120, y: 60 } })
   await page.locator('.context-item', { hasText: /^Paste$/ }).click()
   await page.waitForTimeout(400)
   await save(page)
-  const gPics = await picturesIn(g)
-  const copiedName = gPics.attrs[0]?.name
+  const gDoc = await doc(g)
+  const gBox = gDoc.objects.find((o) => o.kind === 'text' && JSON.stringify(o.content).includes('Words that flow')) as unknown as { pictures?: Pic[] } | undefined
+  const copiedName = gBox?.pictures?.[0]?.name
   const copiedFile = copiedName ? await fs.stat(join(root, g, 'images', copiedName)).then(() => true, () => false) : false
-  assert(gPics.attrs.length === 1 && !!copiedName && gPics.manifest.includes(copiedName) && copiedFile, `the pasted text box brings its picture into the other page (${JSON.stringify(gPics)})`)
-  // Remove picture.
+  assert(!!copiedName && gDoc.manifest.images.some((e) => e.name === copiedName) && copiedFile, `the pasted text box brings its picture into the other page (${JSON.stringify(gBox?.pictures)})`)
+  // Delete: select the picture and press Delete.
   await page.locator('.page-row', { hasText: 'Delta' }).click()
-  await page.locator('.canvas .tiptap img.text-image').click({ button: 'right' })
-  await page.locator('.context-item', { hasText: /^Remove picture$/ }).click()
+  await page.locator('.anchored-picture-frame').click()
+  await page.keyboard.press('Delete')
   await page.waitForTimeout(300)
   await save(page)
-  const removed = await picturesIn(dRel)
-  assert(removed.attrs.length === 0 && removed.manifest.includes(picName), 'Remove picture takes it out of the text; the file stays with the page, as every picture file does')
-  step('pictures sit inside text, in line or with text wrapping beside them, sized, printed as shown, and copied with their text box')
+  const afterDelete = (await boxOf(dRel))!
+  assert((afterDelete.pictures ?? []).length === 0 && JSON.stringify(afterDelete).includes('Words that flow'), 'Delete removes the selected picture and leaves the text')
+  step('pictures anchored in a text box: text flows beside them, fixed size, dragged anywhere, moved with the box, printed as shown, copied, deleted')
 
   await app.close()
   process.stdout.write(`\nPASS. Notebook kept at ${root}\n`)

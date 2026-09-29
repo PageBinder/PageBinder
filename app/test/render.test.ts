@@ -76,6 +76,24 @@ describe('renderPageHtml', () => {
     expect(preview).toContain('src="../images/c.png"')
   })
 
+  it('lays anchored pictures out as floats: side by position, pushed down to their spot, kept inside the text area', async () => {
+    const { floatLayout, floatsHtml, withFloats } = await import('../src/shared/render/anchoredPictures')
+    const pic = (id: string, x: number, y: number, w = 100, h = 50) => ({ id, name: `${id}.png`, originalName: `${id}.png`, x, y, width: w, height: h })
+    // A 400 px box has a 378 px text area.
+    const f = floatLayout([pic('a', 10, 40), pic('b', 250, 20)], 400)
+    expect(f.map((b) => `${b.kind}:${b.side}`)).toEqual(['pusher:right', 'picture:right', 'pusher:left', 'picture:left'])
+    expect(f[0]!.style).toContain('height: 20px')
+    expect(f[1]!.style).toContain('margin: 0 28px 0 10px')
+    // The left picture cannot sit above the right one's top (20), so its pusher is 40 - 20.
+    expect(f[2]!.style).toContain('height: 20px')
+    expect(f[3]!.style).toContain('margin: 0 10px 0 10px')
+    // Too wide for the box: shrunk to the text area, keeping its shape.
+    expect(floatLayout([pic('w', 0, 0, 800, 400)], 400)[1]!.style).toContain('width: 378px; height: 189px')
+    const html = withFloats('<ul><li><p>Hi</p></li></ul>', floatsHtml([pic('a', 0, 0)], 400, 'images/'))
+    expect(html.startsWith('<ul><li><p><span class="anchored-pusher"')).toBe(true)
+    expect(html).toContain('<img class="anchored-picture" data-id="a" src="images/a.png"')
+  })
+
   it('escapes the title', () => {
     const doc = docWith([])
     doc.title = '<script>x</script>'

@@ -35,6 +35,8 @@ export const docCss = `
 .tiptap img.text-image.wrap-inline { vertical-align: bottom; }
 .tiptap img.text-image.wrap-left { float: left; margin: 3px 12px 6px 0; }
 .tiptap img.text-image.wrap-right { float: right; margin: 3px 0 6px 12px; }
+/* Pictures anchored in a text box (anchoredPictures.ts): floats with the text beside them. */
+.tiptap .anchored-picture { box-sizing: border-box; object-fit: fill; max-width: none; }
 /* A text box grows to hold a floated picture that is taller than its text. */
 .tiptap::after { content: ''; display: block; clear: both; }
 /* In the editor a table sits in a wrapper; like the bare table in page.html, it has no gap above it. */
