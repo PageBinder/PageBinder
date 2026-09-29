@@ -283,8 +283,12 @@ input { font: inherit; color: inherit; }
 .canvas .anchored-picture-frame { cursor: move; user-select: none; }
 .canvas .anchored-picture-frame:hover { outline: 1px solid var(--border); }
 .canvas .anchored-picture-frame.selected { outline: 2px solid var(--accent); outline-offset: 1px; }
-.canvas .anchored-resize { display: none; position: absolute; right: -6px; bottom: -6px; width: 11px; height: 11px; border-radius: 2px; background: var(--accent); border: 1px solid #fff; cursor: nwse-resize; }
-.canvas .anchored-picture-frame.selected .anchored-resize { display: block; }
+.canvas .anchored-corner { display: none; position: absolute; width: 8px; height: 8px; background: var(--accent); border: 1px solid #fff; border-radius: 1px; pointer-events: none; }
+.canvas .anchored-corner.tl { left: -4px; top: -4px; }
+.canvas .anchored-corner.tr { right: -4px; top: -4px; }
+.canvas .anchored-corner.bl { left: -4px; bottom: -4px; }
+.canvas .anchored-corner.br { right: -4px; bottom: -4px; }
+.canvas .anchored-picture-frame:hover .anchored-corner, .canvas .anchored-picture-frame.selected .anchored-corner { display: block; }
 /* A picture inside text, selected: outlined, like a selected object. */
 .canvas .tiptap img.text-image.ProseMirror-selectednode { outline: 2px solid var(--accent); outline-offset: 1px; }
 .canvas .tiptap.ProseMirror { white-space: pre-wrap; font-variant-ligatures: normal; font-feature-settings: normal; }

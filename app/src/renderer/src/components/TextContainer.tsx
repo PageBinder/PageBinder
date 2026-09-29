@@ -7,7 +7,7 @@ import type { TextContainer as TextContainerModel, EditorJSON } from '@shared/ty
 import type { Editor } from '@tiptap/react'
 import { useActiveEditor } from '../editorContext'
 import { SheetBreaks, layoutSheetBreaks, type SheetGeometry } from '../sheetBreaks'
-import { AnchoredPictures, drawAnchoredPictures } from '../anchoredPicturesView'
+import { AnchoredPictures, drawAnchoredPictures, type Corner } from '../anchoredPicturesView'
 import { MIN_PICTURE_SIZE, textAreaWidth } from '@shared/render/anchoredPictures'
 import type { AnchoredPicture } from '@shared/types'
 
@@ -140,7 +140,7 @@ export function TextContainer({
   const [selectedPicture, setSelectedPicture] = useState<string | null>(null)
   const picturesRef = useRef(obj.pictures ?? [])
   picturesRef.current = obj.pictures ?? []
-  const pictureDrag = useRef<{ id: string; mode: 'move' | 'resize'; startX: number; startY: number; orig: AnchoredPicture } | null>(null)
+  const pictureDrag = useRef<{ id: string; grip: Corner | null; startX: number; startY: number; orig: AnchoredPicture } | null>(null)
   const picturesKey = JSON.stringify(obj.pictures ?? [])
   useEffect(() => {
     if (!editor) return
@@ -148,14 +148,14 @@ export function TextContainer({
       drawAnchoredPictures(editor, picturesRef.current, obj.width, {
         selectedId: selectedPicture,
         imageBase,
-        onPress: (id, e, mode) => {
+        onPress: (id, e, grip) => {
           e.preventDefault()
           e.stopPropagation()
           const orig = picturesRef.current.find((p) => p.id === id)
           if (!orig) return
           setSelectedPicture(id)
           onDragStart()
-          pictureDrag.current = { id, mode, startX: e.clientX, startY: e.clientY, orig }
+          pictureDrag.current = { id, grip, startX: e.clientX, startY: e.clientY, orig }
           document.body.classList.add('dragging')
         }
       })
@@ -176,11 +176,19 @@ export function TextContainer({
       const area = textAreaWidth(obj.width)
       const next = picturesRef.current.map((p) => {
         if (p.id !== d.id) return p
-        if (d.mode === 'move') {
+        if (!d.grip) {
           return { ...p, x: Math.round(Math.max(0, Math.min(area - p.width, d.orig.x + dx))), y: Math.round(Math.max(0, d.orig.y + dy)) }
         }
-        const width = Math.round(Math.max(MIN_PICTURE_SIZE, Math.min(area - d.orig.x, d.orig.width + dx)))
-        return { ...p, width, height: Math.round((d.orig.height * width) / Math.max(1, d.orig.width)) }
+        // Resize from the grabbed corner, keeping the shape; the opposite corner stays put.
+        const o = d.orig
+        const ratio = o.width / Math.max(1, o.height)
+        const sx = d.grip === 'tr' || d.grip === 'br' ? 1 : -1
+        const sy = d.grip === 'bl' || d.grip === 'br' ? 1 : -1
+        const grow = (sx * dx + sy * dy * ratio) / 2
+        const maxWidth = sx > 0 ? area - o.x : o.x + o.width
+        const width = Math.round(Math.max(MIN_PICTURE_SIZE, Math.min(maxWidth, o.width + grow)))
+        const height = Math.round(width / ratio)
+        return { ...p, width, height, x: sx > 0 ? o.x : o.x + o.width - width, y: sy > 0 ? o.y : Math.max(0, o.y + o.height - height) }
       })
       onPicturesChange(obj.id, next)
     }

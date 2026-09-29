@@ -12,6 +12,22 @@ import { floatLayout } from '@shared/render/anchoredPictures'
 
 const key = new PluginKey<DecorationSet>('anchoredPictures')
 
+export type Corner = 'tl' | 'tr' | 'bl' | 'br'
+/** How close to a corner, in screen pixels, a press resizes rather than moves. */
+const GRIP = 14
+
+function cornerAt(frame: HTMLElement, e: MouseEvent): Corner | null {
+  const r = frame.getBoundingClientRect()
+  const grip = Math.min(GRIP, r.width / 3, r.height / 3)
+  const left = e.clientX - r.left < grip, right = r.right - e.clientX < grip
+  const top = e.clientY - r.top < grip, bottom = r.bottom - e.clientY < grip
+  if (top && left) return 'tl'
+  if (top && right) return 'tr'
+  if (bottom && left) return 'bl'
+  if (bottom && right) return 'br'
+  return null
+}
+
 export const AnchoredPictures = Extension.create({
   name: 'anchoredPictures',
   addProseMirrorPlugins() {
@@ -31,8 +47,8 @@ export const AnchoredPictures = Extension.create({
 export interface PictureHandlers {
   selectedId: string | null
   imageBase: string
-  /** A press on a picture (to move it) or on its corner handle (to resize it). */
-  onPress: (id: string, event: MouseEvent, mode: 'move' | 'resize') => void
+  /** A press on a picture: in its middle to move it, near a corner to resize it from that corner. */
+  onPress: (id: string, event: MouseEvent, grip: Corner | null) => void
 }
 
 export function drawAnchoredPictures(editor: Editor, pictures: AnchoredPicture[] | undefined, boxWidth: number, h: PictureHandlers): void {
@@ -67,20 +83,27 @@ export function drawAnchoredPictures(editor: Editor, pictures: AnchoredPicture[]
               frame.className = `anchored-picture-frame${selected ? ' selected' : ''}`
               frame.dataset['id'] = p.id
               frame.setAttribute('style', `display: block; position: relative; ${f.style}`)
-              frame.title = `${p.originalName}: drag to move, drag the corner to resize`
+              frame.title = `${p.originalName}: drag to move, drag a corner to resize`
               const img = document.createElement('img')
               img.className = 'anchored-picture'
               img.src = h.imageBase + encodeURIComponent(p.name)
               img.alt = p.originalName
               img.draggable = false
               img.setAttribute('style', 'display: block; width: 100%; height: 100%; pointer-events: none')
-              const handle = document.createElement('span')
-              handle.className = 'anchored-resize'
-              handle.title = 'Drag to resize'
-              frame.append(img, handle)
+              // A mark in each corner shows where to grab; the whole corner area is the grip.
+              const marks = (['tl', 'tr', 'bl', 'br'] as Corner[]).map((c) => {
+                const m = document.createElement('span')
+                m.className = `anchored-corner ${c}`
+                return m
+              })
+              frame.append(img, ...marks)
+              frame.addEventListener('mousemove', (e) => {
+                const c = cornerAt(frame, e)
+                frame.style.cursor = c === 'tl' || c === 'br' ? 'nwse-resize' : c ? 'nesw-resize' : 'move'
+              })
               frame.addEventListener('mousedown', (e) => {
                 if (e.button !== 0) return
-                h.onPress(p.id, e, e.target === handle ? 'resize' : 'move')
+                h.onPress(p.id, e, cornerAt(frame, e))
               })
               return frame
             },
