@@ -7,6 +7,12 @@ Every version opens, shows, edits, prints, and searches notebooks made by the
 earlier ones. Nothing ever needs converting.
 
 
+Version 1.1.2 - in development (not yet released)
+-------------------------------------------------
+
+Nothing yet.
+
+
 Version 1.1.1 - 29 September 2026 (pre-release)
 -----------------------------------------------
 
