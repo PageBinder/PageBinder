@@ -17,6 +17,13 @@ Entry format:
 
 ---
 
+## 2026-09-29 · lead (macOS, Apple silicon) · main
+**Changed:** Since the last note: pictures in text boxes resize from any corner and also arrive by drop, paste, or Insert > Picture while the cursor is in a box; four alignment buttons with drawn symbols (Justify added, no selected highlight); a click outside a text box clears its highlight; heading buttons and shortcuts removed (the heading node stays for existing pages; `@tiptap/extension-heading` is now a direct dependency). At the user's explicit, confirmed request the published v1.1.1 pre-release was deleted and rebuilt from this code as 1.1.1, with the 1.1.1 and 1.1.2 revision-log sections merged; the version then moves to 1.1.2.
+**Found:** A copy of the old 1.1.1 (28 September build) may exist on some machines under the same number. It does not know pictures in text boxes: do not edit such pages with it.
+**Checked:** Type check; unit tests; every end-to-end suite after the highlight fix. The heading removal was checked by the user in the running app; its phase 2 test change has not been run yet.
+**Next platform must check:** Windows: install the new PageBinder-Setup-1.1.1.exe; check the alignment buttons, that no heading buttons show, and that a page with pictures in a text box prints as shown.
+**Open:** Run `npm run e2e` once to cover the phase 2 heading test change.
+
 ## 2026-09-28 · lead (macOS, Apple silicon) · main
 **Changed:** Word wrap reworked after the user's testing: pictures are now anchored in a text box (the box's `pictures` list) at a spot the user chooses, a fixed pixel size, text flowing down beside them. Drag to move, corner to resize, Delete to remove, Insert picture at the right-clicked spot. Shared float layout in `app/src/shared/render/anchoredPictures.ts`, editor widgets in `app/src/renderer/src/anchoredPicturesView.ts`. New standing rule: the user tests new features before anything is pushed (`CLAUDE.md`).
 **Found:** The first version (a picture inside a line) resized with the box, could not be placed freely, and wrapped in line rather than beside the text.

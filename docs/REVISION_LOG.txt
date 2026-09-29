@@ -7,29 +7,7 @@ Every version opens, shows, edits, prints, and searches notebooks made by the
 earlier ones. Nothing ever needs converting.
 
 
-Version 1.1.2 - in development (not yet released)
--------------------------------------------------
-
-Editing
-- Text alignment: the toolbar has four alignment buttons, Align left, Center,
-  Align right, and the new Justify, which lines text up on both edges. The
-  buttons have clearer symbols.
-- The heading buttons (H1, H2, H3) and the heading shortcuts are removed.
-  Headings already in a notebook still show and print as before.
-- Highlighted text is no longer left highlighted after clicking somewhere else
-  on the page, such as clear space, a picture, or another text box.
-- Pictures in text boxes: right-click in a text box and choose Insert picture
-  to place a picture at that spot. Dropping a picture file on a text box,
-  pasting one while typing in it, or choosing Insert > Picture with the cursor
-  in it puts the picture in the box too. Lines of text flow down beside the picture
-  and continue underneath it. Drag the picture anywhere in the box, and drag
-  any corner to resize it. It keeps its size when the text box is resized,
-  moves with the text box, and prints exactly as shown. Select it and press
-  Delete to remove it. Copying the text box to another page brings its
-  pictures.
-
-
-Version 1.1.1 - 28 September 2026 (pre-release)
+Version 1.1.1 - 29 September 2026 (pre-release)
 -----------------------------------------------
 
 Page breaks and printing
@@ -57,6 +35,22 @@ Editing
   attachment card), or several selected objects, and choose Order to bring it
   to the front, bring it forward, send it backward, or send it to the back.
   Printing follows the same order, and Undo reverses it.
+- Text alignment: the toolbar has four alignment buttons, Align left, Center,
+  Align right, and the new Justify, which lines text up on both edges. The
+  buttons have clearer symbols.
+- The heading buttons (H1, H2, H3) and the heading shortcuts are removed.
+  Headings already in a notebook still show and print as before.
+- Highlighted text is no longer left highlighted after clicking somewhere else
+  on the page, such as clear space, a picture, or another text box.
+- Pictures in text boxes: right-click in a text box and choose Insert picture
+  to place a picture at that spot. Dropping a picture file on a text box,
+  pasting one while typing in it, or choosing Insert > Picture with the cursor
+  in it puts the picture in the box too. Lines of text flow down beside the
+  picture and continue underneath it. Drag the picture anywhere in the box,
+  and drag any corner to resize it. It keeps its size when the text box is
+  resized, moves with the text box, and prints exactly as shown. Select it and
+  press Delete to remove it. Copying the text box to another page brings its
+  pictures.
 
 
 Version 1.1.0 - 25 September 2026 (pre-release, published 27 September 2026)
