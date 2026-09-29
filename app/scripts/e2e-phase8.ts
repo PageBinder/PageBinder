@@ -521,6 +521,7 @@ async function main(): Promise<void> {
   // under the toolbar, where a press at its coordinates would miss it).
   await moveBar.hover({ position: { x: 30, y: 4 } })
   const bb = (await moveBar.boundingBox())!
+  const picBefore = (await frame.boundingBox())!
   const onBar = await page.evaluate(({ x, y }) => !!document.elementFromPoint(x, y)?.classList.contains('container-handle'), { x: bb.x + 30, y: bb.y + bb.height / 2 })
   assert(onBar, 'the text box\'s move bar is uncovered for the drag')
   await page.mouse.move(bb.x + 30, bb.y + bb.height / 2)
@@ -530,8 +531,9 @@ async function main(): Promise<void> {
   await save(page)
   const boxMoved = (await boxOf(dRel))!
   const fb3 = (await frame.boundingBox())!
+  const bb3 = (await moveBar.boundingBox())!
   assert(Math.abs(boxMoved.x - box.x - 50) <= 1 && Math.abs(boxMoved.y - box.y - 30) <= 1, `the text box moved (${box.x},${box.y} to ${boxMoved.x},${boxMoved.y})`)
-  assert(boxMoved.pictures[0]!.x === moved.x && boxMoved.pictures[0]!.y === moved.y && Math.abs(fb3.x - fb2.x - 50) <= 2 && Math.abs(fb3.y - fb2.y - 30) <= 2, `the picture moves with its text box (${fb2.x},${fb2.y} to ${fb3.x},${fb3.y})`)
+  assert(boxMoved.pictures[0]!.x === moved.x && boxMoved.pictures[0]!.y === moved.y && Math.abs(fb3.x - bb3.x - (picBefore.x - bb.x)) <= 2 && Math.abs(fb3.y - bb3.y - (picBefore.y - bb.y)) <= 2, `the picture moves with its text box (offset from the box ${picBefore.x - bb.x},${picBefore.y - bb.y} to ${fb3.x - bb3.x},${fb3.y - bb3.y})`)
   // Printed exactly as on screen: the picture sits at the same spot in the text box's text area.
   const editorSpot = await page.evaluate(() => {
     const f = document.querySelector('.anchored-picture-frame') as HTMLElement
