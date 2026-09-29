@@ -18,7 +18,7 @@ Every revision must open, show, edit, print, and search notebooks written by any
 ## Published releases (the user's standing rule, 2026-09-28)
 - **Drafts may be replaced.** Rebuilding a draft release, as `release.yml` does for a draft of the same version, is fine.
 - **Anything public is never overwritten.** A published release or pre-release, its installers and notes, and its tag are never replaced, edited, re-uploaded, or deleted unless the user specifically says so, and even then confirm with the user before doing it.
-- **New changes get a new version.** Once a version is published, raise the version in `app/package.json` and build a new draft. `release.yml` stops by itself for a published version: quietly when publishing a draft created the tag, with an error when started by hand.
+- **New changes get a new version, straight away.** As soon as a version is published, raise `app/package.json` (and `package-lock.json`) to the next number, for example 1.1.1 to 1.1.2, and start its section in `docs/REVISION_LOG.txt` as "Version X - in development (not yet released)"; a published number is never used again, not even for a draft. At release, give that section its date. `release.yml` stops by itself for a published version: quietly when publishing a draft created the tag, with an error when started by hand.
 - v1.1.0 was published as a pre-release on 27 September 2026 from commit `e88dbee`, and v1.1.1 on 28 September 2026.
 
 ## Commands
