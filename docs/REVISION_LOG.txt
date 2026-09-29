@@ -13,7 +13,7 @@ Version 1.1.2 - in development (not yet released)
 Editing
 - Text alignment: the toolbar has four alignment buttons, Align left, Center,
   Align right, and the new Justify, which lines text up on both edges. The
-  buttons have clearer symbols, and the one in use is highlighted.
+  buttons have clearer symbols.
 - Pictures in text boxes: right-click in a text box and choose Insert picture
   to place a picture at that spot. Dropping a picture file on a text box,
   pasting one while typing in it, or choosing Insert > Picture with the cursor
