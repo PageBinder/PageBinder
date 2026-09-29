@@ -90,7 +90,10 @@ async function main(): Promise<void> {
   // 2. Heading, table, to-do list, tag.
   await page.locator('.text-container .tiptap').first().click()
   await page.keyboard.type('Survey summary')
-  await page.locator('.tb[title="Heading 2"]').click()
+  // Headings are no longer offered in the program, but pages that have them must still render
+  // them: make one directly, as an earlier version would have.
+  assert((await page.locator('.tb[title^="Heading"]').count()) === 0, 'the toolbar offers no heading buttons')
+  await page.evaluate(() => (document.querySelector('.text-container .tiptap') as HTMLElement & { editor: { commands: { toggleHeading: (a: { level: number }) => boolean } } }).editor.commands.toggleHeading({ level: 2 }))
   await page.keyboard.press('End')
   await page.keyboard.press('Enter')
   await page.keyboard.type('Flew the north field at 60 m.')

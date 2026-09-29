@@ -3,6 +3,7 @@
  * renderer both use it, so what is editable is exactly what is rendered.
  */
 import { StarterKit } from '@tiptap/starter-kit'
+import { Heading } from '@tiptap/extension-heading'
 import { TableKit, TableCell, TableHeader } from '@tiptap/extension-table'
 import { TaskList, TaskItem } from '@tiptap/extension-list'
 import { TextStyleKit } from '@tiptap/extension-text-style'
@@ -69,7 +70,10 @@ export const FONT_SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48,
 /** `imageBase`: where pictures inside text are loaded from (the page's images folder). */
 export function documentExtensions(opts: { imageBase?: string } = {}) {
   return [
-    StarterKit.configure({ link: { openOnClick: false } }),
+    StarterKit.configure({ link: { openOnClick: false }, heading: false }),
+    // Headings are no longer offered, but pages written with them still show and print them: the
+    // node stays, without the typing shortcuts ("# " and Mod-Alt-1 to 6) that would make new ones.
+    Heading.extend({ addInputRules: () => [], addKeyboardShortcuts: () => ({}) }),
     TableKit.configure({ table: { resizable: true, cellMinWidth: 40 }, tableCell: false, tableHeader: false, tableRow: false }),
     DocTableCell,
     DocTableHeader,

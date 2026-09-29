@@ -14,6 +14,8 @@ Editing
 - Text alignment: the toolbar has four alignment buttons, Align left, Center,
   Align right, and the new Justify, which lines text up on both edges. The
   buttons have clearer symbols.
+- The heading buttons (H1, H2, H3) and the heading shortcuts are removed.
+  Headings already in a notebook still show and print as before.
 - Highlighted text is no longer left highlighted after clicking somewhere else
   on the page, such as clear space, a picture, or another text box.
 - Pictures in text boxes: right-click in a text box and choose Insert picture
