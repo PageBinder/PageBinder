@@ -15,6 +15,8 @@ import type { Editor } from '@tiptap/react'
 import { currentSizes } from '@shared/render/tableSizing'
 import { LINE_HEIGHTS, STANDARD_LINE_HEIGHT, lineHeightLabel } from '@shared/render/lineHeight'
 import { defaultLineHeight, newParagraphAttrs, setDefaultLineHeight } from '../textDefaults'
+import { TEXT_IMAGE_WIDTHS } from '@shared/render/textImage'
+import { NodeSelection } from '@tiptap/pm/state'
 
 function newId(): string {
   const bytes = new Uint8Array(12)
@@ -74,6 +76,7 @@ export function Canvas({
   canPaste,
   onSignature,
   onPrintout,
+  onInsertTextPicture,
   onChange,
   onAddImages,
   onAddImagePaths,
@@ -106,6 +109,8 @@ export function Canvas({
   onSignature: (editor: Editor) => void
   /** Render a PDF attachment as pictures below the card. */
   onPrintout: (obj: CanvasObject) => void
+  /** Insert a picture into a text box, at its cursor. */
+  onInsertTextPicture: (editor: Editor) => void
   onChange: (next: PageDoc, opts?: ChangeOpts) => void
   /** In-memory image files (paste, or drops without a path). */
   onAddImages: (files: File[]) => Promise<FileEntry[]>
@@ -570,6 +575,30 @@ export function Canvas({
       const items: MenuItem[] = []
       const ed = tableEditor ?? textEditor
       if (ed) {
+        // A picture inside the text is selected: its wrap and size.
+        const sel = ed.state.selection
+        const picture = sel instanceof NodeSelection && sel.node.type.name === 'textImage' ? (sel.node.attrs as { width: number; wrap: string }) : null
+        if (picture) {
+          const set = (attrs: { width?: number; wrap?: 'inline' | 'left' | 'right' }): void => void ed.chain().focus().updateTextImage(attrs).run()
+          const mark = (on: boolean): string => (on ? '✓ ' : '')
+          items.push(
+            {
+              label: 'Wrap',
+              submenu: [
+                { label: `${mark(picture.wrap === 'inline')}In line with text`, onClick: () => set({ wrap: 'inline' }) },
+                { label: `${mark(picture.wrap === 'left')}Picture on the left, text beside it`, onClick: () => set({ wrap: 'left' }) },
+                { label: `${mark(picture.wrap === 'right')}Picture on the right, text beside it`, onClick: () => set({ wrap: 'right' }) }
+              ]
+            },
+            {
+              label: 'Size',
+              submenu: TEXT_IMAGE_WIDTHS.map((w) => ({ label: `${mark(picture.width === w)}${w === 100 ? 'Full width' : `${w}% of the text box`}`, onClick: () => set({ width: w }) }))
+            },
+            { label: 'Remove picture', onClick: () => void ed.chain().focus().deleteSelection().run() },
+            { separator: true }
+          )
+        }
+        items.push({ label: 'Insert picture…', onClick: () => onInsertTextPicture(ed) }, { separator: true })
         // Line spacing for the paragraphs the selection touches, and the default for new text boxes.
         const current = ((ed.isActive('heading') ? ed.getAttributes('heading') : ed.getAttributes('paragraph'))['lineHeight'] as string | null) ?? STANDARD_LINE_HEIGHT
         const byDefault = defaultLineHeight()
@@ -720,6 +749,7 @@ export function Canvas({
               onContextMenu={(id, x, y, tableEditor, textEditor) => setObjectMenu({ id, x, y, tableEditor, textEditor })}
               onMeasure={onMeasure}
               sheet={{ height: paper.height, marginTop: paper.margins.top, marginBottom: paper.margins.bottom }}
+              imageBase={window.pagebinder.fileUrl(`${pageRel}/images/`)}
             />
           ) : obj.kind === 'shape' ? (
             <ShapeObject

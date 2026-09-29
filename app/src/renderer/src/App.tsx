@@ -28,6 +28,7 @@ import type { TreeChild } from '@shared/types'
 import type { DocName } from '../../preload/api'
 import type { SearchHit } from '../../preload/api'
 import { isImageFile, clampZoom, type CanvasCommands, type ChangeOpts } from './components/Canvas'
+import { textImageNames, renameTextImages } from '@shared/render/textImage'
 
 interface PageState {
   relPath: string
@@ -172,7 +173,9 @@ export function App(): JSX.Element {
         }
         lastHistoryKey.current = key
       }
-      setPage((cur) => (cur ? { ...cur, doc: next, dirty: true, version: cur.version + 1 } : cur))
+      // The canvas changes objects only and may hold a file list a moment old (a picture inserted into
+      // a text box adds its file while the text changes), so the page keeps its own current file list.
+      setPage((cur) => (cur ? { ...cur, doc: { ...next, manifest: cur.doc.manifest }, dirty: true, version: cur.version + 1 } : cur))
       setSaveStatus('unsaved')
       window.clearTimeout(draftTimer.current)
       draftTimer.current = window.setTimeout(() => {
@@ -647,6 +650,7 @@ export function App(): JSX.Element {
         if (clip.fromRel !== p.relPath) {
           for (const o of clip.objects) {
             if (o.kind === 'image') needed.push({ sub: 'images', name: o.name, originalName: o.originalName })
+            else if (o.kind === 'text') for (const name of textImageNames(o.content)) needed.push({ sub: 'images', name })
             else if (o.kind === 'file') needed.push({ sub: 'attachments', name: o.name, originalName: o.originalName })
           }
         }
@@ -673,6 +677,7 @@ export function App(): JSX.Element {
             const e = rename.get(`attachments/${moved.name}`)
             if (e) moved.name = e.name
           }
+          if (moved.kind === 'text') moved.content = renameTextImages(moved.content, (name) => rename.get(`images/${name}`)?.name)
           return moved
         })
         pushHistory({ kind: 'objects', pageRel: p.relPath, doc: p.doc })
@@ -1055,6 +1060,21 @@ export function App(): JSX.Element {
     [placeImages]
   )
 
+  /** Pictures chosen from disk go into the page's images folder and into the text box at its cursor. */
+  const insertTextPicture = useCallback(async (editor: Editor): Promise<void> => {
+    const p = pageRef.current
+    if (!p) return
+    try {
+      const entries = await window.pagebinder.page.pickImages(p.relPath)
+      if (!entries.length) return
+      setPage((cur) => (cur ? { ...cur, doc: { ...cur.doc, manifest: { ...cur.doc.manifest, images: [...cur.doc.manifest.images, ...entries] } }, dirty: true, version: cur.version + 1 } : cur))
+      editor.chain().focus().insertTextImages(entries.map((e) => ({ name: e.name, originalName: e.originalName }))).run()
+    } catch (err) {
+      fail(err)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const placeFiles = useCallback(
     (results: { entry: FileEntry; mail?: MailMeta }[], at?: { x: number; y: number }) => {
       if (!results.length) return
@@ -1409,6 +1429,7 @@ export function App(): JSX.Element {
               canPaste={canPaste}
               onSignature={(ed) => void insertSignature(ed)}
               onPrintout={(o) => void insertPrintout(o)}
+              onInsertTextPicture={(ed) => void insertTextPicture(ed)}
               onChange={onPageChange}
               onAddImages={addImageFiles}
               onAddImagePaths={addImagePaths}

@@ -34,27 +34,36 @@ export const paginateScript = `
   var CANDIDATES = 'p, h1, h2, h3, h4, h5, h6, pre, hr, table';
   var TEXTBLOCK = /^(P|H[1-6]|PRE)$/;
 
-  // The lines of a text block: where each starts, and the top and bottom of its characters.
+  // The lines of a text block: where each starts, and the top and bottom of its characters and of
+  // any picture sitting in the line. Floated pictures are not part of a line and are left out.
   function linesOf(block) {
     var out = [], prev = null, cur = null, range = document.createRange();
-    var walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+    function take(r, container, offset) {
+      if (r.width === 0 && r.height === 0) return;
+      if (!prev || r.left < prev.left - EPS || r.top >= prev.bottom - EPS) {
+        cur = { container: container, offset: offset, top: y(r.top), bottom: y(r.bottom) };
+        out.push(cur);
+      } else {
+        cur.top = Math.min(cur.top, y(r.top));
+        cur.bottom = Math.max(cur.bottom, y(r.bottom));
+      }
+      prev = r;
+    }
+    var walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
     for (var n = walker.nextNode(); n; n = walker.nextNode()) {
+      if (n.nodeType === 1) {
+        if (n.tagName === 'IMG' && n.classList.contains('text-image') && n.classList.contains('wrap-inline') && n.parentNode) {
+          take(n.getBoundingClientRect(), n.parentNode, Array.prototype.indexOf.call(n.parentNode.childNodes, n));
+        }
+        continue;
+      }
       var text = n.data;
       for (var k = 0; k < text.length; k++) {
         var c = text.charAt(k);
         if (c === '\\n' || c === '\\r') continue;
         range.setStart(n, k);
         range.setEnd(n, k + 1);
-        var r = range.getBoundingClientRect();
-        if (r.width === 0 && r.height === 0) continue;
-        if (!prev || r.left < prev.left - EPS || r.top >= prev.bottom - EPS) {
-          cur = { node: n, offset: k, top: y(r.top), bottom: y(r.bottom) };
-          out.push(cur);
-        } else {
-          cur.top = Math.min(cur.top, y(r.top));
-          cur.bottom = Math.max(cur.bottom, y(r.bottom));
-        }
-        prev = r;
+        take(range.getBoundingClientRect(), n, k);
       }
     }
     return out;
@@ -91,7 +100,7 @@ export const paginateScript = `
     spacer.style.display = 'block';
     spacer.style.height = '0px';
     var r = document.createRange();
-    r.setStart(line.node, line.offset);
+    r.setStart(line.container, line.offset);
     r.collapse(true);
     r.insertNode(spacer);
     remeasure();

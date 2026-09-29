@@ -452,11 +452,15 @@ export function registerIpc(): void {
     return addImageBytes(root, rel, originalName, Buffer.from(bytes as Uint8Array))
   })
   ipcMain.handle('page:pickImages', async (_e, rel: string) => {
-    const result = await dialog.showOpenDialog(focusedWindow()!, {
-      title: 'Insert pictures',
-      properties: ['openFile', 'multiSelections'],
-      filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'avif'] }]
-    })
+    // Test seam: automated checks cannot drive the native dialog (the same one Attach files uses).
+    const preset = process.env['PAGEBINDER_TEST_PICK_IMAGES']
+    const result = preset
+      ? { canceled: false, filePaths: preset.split('\n').filter(Boolean) }
+      : await dialog.showOpenDialog(focusedWindow()!, {
+          title: 'Insert pictures',
+          properties: ['openFile', 'multiSelections'],
+          filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'avif'] }]
+        })
     if (result.canceled) return []
     const { root, rel: r } = resolveRel(rel)
     const entries = []

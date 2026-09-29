@@ -7,6 +7,18 @@ Every version opens, shows, edits, prints, and searches notebooks made by the
 earlier ones. Nothing ever needs converting.
 
 
+Next version (not yet released)
+-------------------------------
+
+Editing
+- Pictures inside text: right-click in a text box and choose Insert picture to
+  put a picture at the cursor. Right-click the picture to choose how text
+  flows around it (in line with the text, or the picture on the left or right
+  with the text beside it) and its size (a quarter, half, three quarters, or
+  the full width of the text box). The picture moves with its paragraph and
+  prints as shown. Copying the text box to another page brings its pictures.
+
+
 Version 1.1.1 - 28 September 2026 (pre-release)
 -----------------------------------------------
 

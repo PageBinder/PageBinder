@@ -42,7 +42,7 @@ export function fileCardHtml(opts: { id: string; href: string; x: number; y: num
 }
 
 export function renderObjectsHtml(doc: PageDoc, imageBase = 'images/', attachmentBase = 'attachments/'): string {
-  const extensions = documentExtensions()
+  const extensions = documentExtensions({ imageBase })
   return doc.objects
     .map((obj) => {
       if (obj.kind === 'text') {

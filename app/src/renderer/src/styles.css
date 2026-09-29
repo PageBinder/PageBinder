@@ -279,6 +279,8 @@ input { font: inherit; color: inherit; }
    gives the space at the end of a wrapped line a width, and turns ligatures off; page.html uses
    pre-wrap with normal ligatures. Either difference moves where long lines wrap, so the editor
    follows the printout. */
+/* A picture inside text, selected: outlined, like a selected object. */
+.canvas .tiptap img.text-image.ProseMirror-selectednode { outline: 2px solid var(--accent); outline-offset: 1px; }
 .canvas .tiptap.ProseMirror { white-space: pre-wrap; font-variant-ligatures: normal; font-feature-settings: normal; }
 
 .notebook-button.templates { background: #eeedfe; border-color: #cecbf6; color: #3c3489; }

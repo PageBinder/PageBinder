@@ -13,6 +13,7 @@ import { TableBorders, bordersToStyle, type Borders } from './tableBorders'
 import { TabKey } from './tabKey'
 import { TableContentPaste } from './tableContentPaste'
 import { ParagraphSpacing } from './lineHeight'
+import { TextImage } from './textImage'
 
 /** Cells carry a fill colour and vertical alignment, set from the table toolbar. */
 const cellAttributes = {
@@ -65,7 +66,8 @@ export const FONT_FAMILIES = [
 
 export const FONT_SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 72]
 
-export function documentExtensions() {
+/** `imageBase`: where pictures inside text are loaded from (the page's images folder). */
+export function documentExtensions(opts: { imageBase?: string } = {}) {
   return [
     StarterKit.configure({ link: { openOnClick: false } }),
     TableKit.configure({ table: { resizable: true, cellMinWidth: 40 }, tableCell: false, tableHeader: false, tableRow: false }),
@@ -81,6 +83,7 @@ export function documentExtensions() {
     TaskItem.configure({ nested: true }),
     TextStyleKit.configure({ lineHeight: false }),
     TextAlign.configure({ types: ['heading', 'paragraph'] }),
-    ParagraphSpacing
+    ParagraphSpacing,
+    TextImage.configure({ imageBase: opts.imageBase ?? 'images/' })
   ]
 }
