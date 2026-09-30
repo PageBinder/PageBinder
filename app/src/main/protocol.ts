@@ -37,7 +37,7 @@ export function registerProtocolHandler(): void {
       try {
         const doc = await readSnapshot(resolved.root, snap[1]!, snap[2]!)
         if (!doc) return new Response('Version not readable', { status: 404 })
-        const html = renderPageHtml(doc, { imageBase: '../images/', attachmentBase: '../attachments/' })
+        const html = renderPageHtml(doc, { imageBase: '../images/', attachmentBase: '../attachments/', view: 'sheets' })
         return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } })
       } catch {
         return new Response('Version not readable', { status: 404 })
@@ -55,7 +55,7 @@ export function registerProtocolHandler(): void {
     const page = /^(.*)\/page\.html$/.exec(rel)
     if (page) {
       const doc = await readValidPage(join(abs, '..', PAGE_DOC)).catch(() => undefined)
-      if (doc) return new Response(renderPageHtml(doc), { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } })
+      if (doc) return new Response(renderPageHtml(doc, { view: 'sheets' }), { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } })
     }
     const response = needsNodeRead(abs) ? await fileResponse(abs, request.headers.get('Range')) : await net.fetch(pathToFileURL(abs).toString())
     // Rendered pages must not be cached: they change on every save.

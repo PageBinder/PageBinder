@@ -31,6 +31,17 @@ export const DEFAULT_PAPER: PaperSettings = {
   margins: { top: 1, right: 1, bottom: 1, left: 1 }
 }
 
+/**
+ * The paper a notebook made with Create notebook starts with: narrow margins, 0.5 inch all round.
+ * Only new notebooks use it; DEFAULT_PAPER stays the fallback everywhere else, so existing
+ * notebooks and pages never change.
+ */
+export const NEW_NOTEBOOK_PAPER: PaperSettings = {
+  size: 'letter',
+  orientation: 'portrait',
+  margins: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 }
+}
+
 export const PAPER_DIMENSIONS_IN: Record<Exclude<PaperSize, 'custom'>, [number, number]> = {
   letter: [8.5, 11],
   tabloid: [11, 17],
