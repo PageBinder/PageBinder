@@ -34,7 +34,7 @@ Pictures anchored in text boxes, with text flowing beside them, were built on 20
 
 ## Small fixes
 
-- **Narrow margins by default** (suggested 2026-09-29). New notebooks start with 1-inch margins (`DEFAULT_PAPER` in `app/src/shared/types.ts`). Make the default the Page setup dialog's Narrow preset, 0.5 inch all round. Each page stores its own paper settings in `page.json`, and each notebook its default in `notebook.json`, so existing pages keep their margins and lay out and print exactly as before; only notebooks created from then on (and their pages) start narrow. To settle: whether new pages in existing notebooks should also start narrow (that would mean changing the notebook's own default, which the user can already do in Page setup, so probably not automatic). A few minutes, plus updating tests that assume 1-inch margins.
+- **Narrow margins by default** (suggested 2026-09-29). New notebooks start with 1-inch margins (`DEFAULT_PAPER` in `app/src/shared/types.ts`). Make the default the Page setup dialog's Narrow preset, 0.5 inch all round. Each page stores its own paper settings in `page.json`, and each notebook its default in `notebook.json`, so existing pages keep their margins and lay out and print exactly as before; only notebooks created from then on (and their pages) start narrow. Decided with the user: no change to existing notebooks or pages, including new pages added to existing notebooks; the new default applies only when a notebook is created. A few minutes, plus updating tests that assume 1-inch margins.
 
 ## Page breaks
 
