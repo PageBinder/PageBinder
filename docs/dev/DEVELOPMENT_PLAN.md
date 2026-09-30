@@ -175,6 +175,10 @@ First published as a pre-release on 28 September 2026, then, at the user's expli
 - **Highlight cleared on clicking elsewhere.** The canvas is `user-select: none`, so a press on it never moved the browser's selection and left the last text highlight showing. A capturing mousedown on the canvas now clears the selection and blurs the editor whenever the press lands outside the text box holding the selection (clear space, another object, or another text box). Checked in the phase 3 suite.
 - **The page keeps its own file list.** A change reported by the canvas no longer replaces the page's manifest: the canvas only changes objects and could hold a file list a moment old, which lost a picture inserted into text while the text changed.
 
+## Version 1.1.2 (in development)
+
+- **Outlook email text is searchable.** `.msg` bodies were read only from the plain-text body (PidTagBody). Outlook often saves just the HTML body (PidTagHtml, bytes) or only compressed RTF, so their text never reached the index. `msgBodyText` in `app/src/main/search/mail.ts` now falls back to the HTML bytes (decoded with the message's code page) and then to compressed RTF (`@kenjiuno/decompressrtf`, now a direct dependency), turned into text by `rtfToText`, which also handles Outlook's HTML-in-RTF form (`\fromhtml`, `\htmltag`, `\htmlrtf`). `INDEX_VERSION` is 5, so every notebook rebuilds its index once and emails added before the fix become searchable. Unit tests in `test/mail.test.ts` cover each body form; a real Outlook drag still needs checking on Windows.
+
 ## Commands
 
 The program lives in `app/`; run every command there (`cd app`). User documents are in `docs/` and developer notes in `docs/dev/`.
