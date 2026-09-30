@@ -125,6 +125,11 @@ async function main(): Promise<void> {
   await page.waitForSelector('.verify-row')
   const kinds = await page.locator('.verify-kind').allTextContents()
   assert(kinds.includes('Missing or damaged file') && kinds.includes('Unused file'), `verify reported the damage (${kinds.join(', ')})`)
+  // Each finding says what it means and what its repair does; the checks and buttons are explained.
+  const meanings = await page.locator('.verify-meaning').allTextContents()
+  assert(meanings.length === kinds.length && meanings.some((m) => m.includes('Move to recycle folder moves it out of the way')), `each finding is explained (${meanings.length} of ${kinds.length})`)
+  const verifyText = await page.locator('.dialog.verify').innerText()
+  assert(verifyText.includes('Nothing is ever deleted') && verifyText.includes('Fast, even for large notebooks') && verifyText.includes('Slow on large notebooks') && verifyText.includes('Nothing is changed until you choose a repair') && verifyText.includes('Rebuilds search from the pages themselves'), 'the check types and buttons are explained')
   const orphanRow = page.locator('.verify-row', { hasText: 'Unused file' })
   assert(await orphanRow.locator('button', { hasText: 'Show file' }).count(), 'unused file offers Show file')
   assert(await orphanRow.locator('button', { hasText: 'Open' }).count(), 'unused file offers Open')

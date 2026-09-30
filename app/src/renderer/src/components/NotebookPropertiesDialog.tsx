@@ -60,13 +60,19 @@ export function NotebookPropertiesDialog({ name, onClose }: { name: string; onCl
               {props.largeAttachments.length === 0 ? (
                 <span className="muted">None over 50 MB</span>
               ) : (
+                <>
+                <span className="large-total">
+                  {formatSize(props.largeAttachments.reduce((n, a) => n + a.bytes, 0))} in {props.largeAttachments.length} {props.largeAttachments.length === 1 ? 'attachment' : 'attachments'} of 50 MB or more
+                </span>
+                {props.largeAttachments.length > 1 && <span className="muted small"> · the largest {Math.min(5, props.largeAttachments.length)}:</span>}
                 <ul>
-                  {props.largeAttachments.map((a) => (
+                  {props.largeAttachments.slice(0, 5).map((a) => (
                     <li key={a.rel}>
                       <span className="small">{a.rel}</span> <b>{formatSize(a.bytes)}</b>
                     </li>
                   ))}
                 </ul>
+                </>
               )}
             </dd>
           </dl>

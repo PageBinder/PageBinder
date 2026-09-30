@@ -897,9 +897,20 @@ async function main(): Promise<void> {
   // 18. File > Notebook Properties: last edit with the account name, size and files, history, large attachments.
   await menu2('menu:properties')
   await page2.waitForSelector('.properties .total-size')
+  const propsNone = await page2.locator('.properties').innerText()
+  assert(propsNone.includes('None over 50 MB'), 'no large attachments yet')
+  await page2.keyboard.press('Escape')
+  // Six attachments over 50 MB (sparse files, so quick to make): the total of all six, then the five largest.
+  for (let i = 0; i < 6; i++) {
+    const h = await fs.open(join(root, mRel, 'attachments', `video ${i}.mov`), 'w')
+    await h.truncate(50 * 1024 * 1024 + (i + 1) * 1024 * 1024)
+    await h.close()
+  }
+  await menu2('menu:properties')
+  await page2.waitForSelector('.properties .total-size')
   const propsText = await page2.locator('.properties').innerText()
   const account = (await import('node:os')).userInfo().username
-  assert(propsText.includes(`by ${account}`) && /Size on disk[\s\S]*files/.test(propsText) && /Page history[\s\S]*saved version/.test(propsText) && propsText.includes('None over 50 MB'), `the properties window shows the last edit, sizes, and history (${propsText.replace(/\n/g, ' | ').slice(0, 400)})`)
+  assert(propsText.includes(`by ${account}`) && /Size on disk[\s\S]*files/.test(propsText) && /Page history[\s\S]*saved version/.test(propsText) && (await page2.locator('.properties .large-total').innerText()).includes('in 6 attachments of 50 MB or more') && (await page2.locator('.properties .large-attachments li').count()) === 5 && !(await page2.locator('.properties .large-attachments li', { hasText: 'video 0.mov' }).count()), `the properties window shows the last edit, sizes, and history (${propsText.replace(/\n/g, ' | ').slice(0, 400)})`)
   await page2.keyboard.press('Escape')
   step('File > Notebook Properties shows the last edit with its author, the size and file count, history, and large attachments')
 
