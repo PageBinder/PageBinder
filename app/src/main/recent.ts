@@ -46,12 +46,23 @@ export async function rememberRecent(root: string, name: string): Promise<void> 
 
 // Writes to the list run one at a time, so a quick run of page changes never loses one.
 let queue: Promise<void> = Promise.resolve()
+let pending = 0
+
+/** Writes of the last page still under way; quitting waits for them (see index.ts). */
+export function recentWritesPending(): boolean {
+  return pending > 0
+}
+
+export function whenRecentWritten(): Promise<void> {
+  return queue
+}
 
 /**
  * Remember the page last opened in a notebook (kept in the app's settings, never in the notebook).
  * Runs in the background: opening a page never waits for it.
  */
 export function rememberLastPage(root: string, rel: string): void {
+  pending += 1
   queue = queue
     .then(async () => {
       const list = await readRecent()
@@ -61,6 +72,9 @@ export function rememberLastPage(root: string, rel: string): void {
       await atomicWriteFile(recentPath(), JSON.stringify(list, null, 2))
     })
     .catch(() => undefined)
+    .finally(() => {
+      pending -= 1
+    })
 }
 
 /** The page last opened in a notebook, if remembered. */
