@@ -191,6 +191,10 @@ Published as a pre-release on 30 September 2026.
 - **Recent list remove button.** `.recent-list button { width: 100% }` also stretched the × (`.recent-forget`); it now has its own 28 px size. Phase 8 measures it.
 - **Outlook email text is searchable.** `.msg` bodies were read only from the plain-text body (PidTagBody). Outlook often saves just the HTML body (PidTagHtml, bytes) or only compressed RTF, so their text never reached the index. `msgBodyText` in `app/src/main/search/mail.ts` now falls back to the HTML bytes (decoded with the message's code page) and then to compressed RTF (`@kenjiuno/decompressrtf`, now a direct dependency), turned into text by `rtfToText`, which also handles Outlook's HTML-in-RTF form (`\fromhtml`, `\htmltag`, `\htmlrtf`). `INDEX_VERSION` is 5, so every notebook rebuilds its index once and emails added before the fix become searchable. Unit tests in `test/mail.test.ts` cover each body form; a real Outlook drag still needs checking on Windows.
 
+## Version 1.1.3 (in development)
+
+Nothing yet.
+
 ## Commands
 
 The program lives in `app/`; run every command there (`cd app`). User documents are in `docs/` and developer notes in `docs/dev/`.
