@@ -566,13 +566,18 @@ export function App(): JSX.Element {
     }
   }
 
+  /** The page just created and not yet named (its first name also goes into its title block). */
+  const freshPageRel = useRef<string | null>(null)
+  /** Bumped to redraw the canvas from the page file, when the program itself changed text boxes' text. */
+  const [canvasEpoch, setCanvasEpoch] = useState(0)
   const addPage = useCallback(async (): Promise<void> => {
     if (!sectionRel) return
     try {
       await savePage()
-      const { relPath, tree: t } = await window.pagebinder.page.create(sectionRel, templateModeRef.current ? 'New template' : undefined)
+      const { relPath, tree: t } = await window.pagebinder.page.create(sectionRel, templateModeRef.current ? 'New template' : undefined, templateModeRef.current ? {} : { titleBlock: true })
       setTree(t)
       await openPage(relPath)
+      freshPageRel.current = relPath
       setRenamingRel(relPath)
       recordCreate(relPath, 'new page')
     } catch (err) {
@@ -583,14 +588,19 @@ export function App(): JSX.Element {
 
   const renamePage = async (rel: string, title: string): Promise<void> => {
     setRenamingRel(null)
+    // The name typed straight after creating a page is its first name: the title block takes it.
+    const firstName = freshPageRel.current === rel
+    freshPageRel.current = null
     try {
       await savePage()
-      const result = await window.pagebinder.page.rename(rel, title)
+      const result = await window.pagebinder.page.rename(rel, title, { firstName })
       remapHistory(rel, result.relPath)
       setTree(result.tree)
       if (pageRef.current?.relPath === rel) {
         setPage((cur) => (cur ? { ...cur, relPath: result.relPath, doc: result.doc, dirty: false, version: 0 } : cur))
         setSaveStatus('saved')
+        // Text boxes read their text once; the title block's new name needs a fresh draw.
+        if (firstName) setCanvasEpoch((n) => n + 1)
       }
     } catch (err) {
       fail(err)
@@ -1489,6 +1499,7 @@ export function App(): JSX.Element {
         <div className="body">
           {page ? (
             <Canvas
+              key={canvasEpoch}
               doc={page.doc}
               pageRel={page.relPath}
               missing={page.missing}
@@ -1539,7 +1550,10 @@ export function App(): JSX.Element {
             onDelete={deletePage}
             onStartRename={setRenamingRel}
             onRename={(rel, title) => void renamePage(rel, title)}
-            onCancelRename={() => setRenamingRel(null)}
+            onCancelRename={() => {
+              freshPageRel.current = null
+              setRenamingRel(null)
+            }}
             onHistory={(rel) => {
               void (async () => {
                 await openPage(rel)

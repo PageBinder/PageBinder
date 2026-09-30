@@ -120,7 +120,7 @@ const api = {
     setColor: (rel: string, color: string) => invoke('section:setColor', rel, color)
   },
   page: {
-    create: (sectionRel: string, title?: string) => invoke('page:create', sectionRel, title),
+    create: (sectionRel: string, title?: string, opts?: { titleBlock?: boolean }) => invoke('page:create', sectionRel, title, opts),
     load: (rel: string) => invoke('page:load', rel),
     save: (rel: string, doc: PageDoc) => invoke('page:save', rel, doc),
     saveDraft: (rel: string, doc: PageDoc) => invoke('page:saveDraft', rel, doc),
@@ -130,7 +130,7 @@ const api = {
     snapshotHtml: (rel: string, name: string) => invoke('page:snapshotHtml', rel, name),
     restoreSnapshot: (rel: string, name: string) => invoke('page:restoreSnapshot', rel, name),
     copySnapshot: (rel: string, name: string) => invoke('page:copySnapshot', rel, name),
-    rename: (rel: string, title: string) => invoke('page:rename', rel, title),
+    rename: (rel: string, title: string, opts?: { firstName?: boolean }) => invoke('page:rename', rel, title, opts),
     addImage: (rel: string, originalName: string, bytes: ArrayBuffer) => invoke('page:addImage', rel, originalName, new Uint8Array(bytes)),
     pickImages: (rel: string) => invoke('page:pickImages', rel),
     addImagePaths: (rel: string, paths: string[]) => invoke('page:addImagePaths', rel, paths),

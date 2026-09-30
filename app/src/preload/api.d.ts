@@ -171,7 +171,8 @@ export interface PageBinderApi {
     setColor(rel: string, color: string): Promise<NotebookTree>
   }
   page: {
-    create(sectionRel: string, title?: string): Promise<{ relPath: string; tree: NotebookTree }>
+    /** `titleBlock`: start a blank page with the page name and creation date at the top. */
+    create(sectionRel: string, title?: string, opts?: { titleBlock?: boolean }): Promise<{ relPath: string; tree: NotebookTree }>
     load(rel: string): Promise<LoadPageResult>
     save(rel: string, doc: PageDoc): Promise<SavePageResult>
     saveDraft(rel: string, doc: PageDoc): Promise<void>
@@ -181,7 +182,8 @@ export interface PageBinderApi {
     snapshotHtml(rel: string, name: string): Promise<string>
     restoreSnapshot(rel: string, name: string): Promise<SavePageResult & { tree: NotebookTree }>
     copySnapshot(rel: string, name: string): Promise<{ relPath: string; tree: NotebookTree }>
-    rename(rel: string, title: string): Promise<SavePageResult & { tree: NotebookTree }>
+    /** `firstName`: the name given right after creating the page, which its title block takes too. */
+    rename(rel: string, title: string, opts?: { firstName?: boolean }): Promise<SavePageResult & { tree: NotebookTree }>
     addImage(rel: string, originalName: string, bytes: ArrayBuffer): Promise<FileEntry>
     pickImages(rel: string): Promise<FileEntry[]>
     addImagePaths(rel: string, paths: string[]): Promise<FileEntry[]>

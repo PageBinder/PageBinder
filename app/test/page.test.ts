@@ -3,7 +3,8 @@ import { promises as fs } from 'node:fs'
 import { join } from 'node:path'
 import { createNotebook, openNotebook } from '../src/main/storage/notebook'
 import { createSection } from '../src/main/storage/section'
-import { createPage, loadPage, savePage, saveDraft, listHistory, deletePage } from '../src/main/storage/page'
+import { createPage, loadPage, savePage, saveDraft, listHistory, deletePage, renamePage } from '../src/main/storage/page'
+import { renderPageHtml } from '../src/shared/render/renderPage'
 import { tempDir, removeDir } from './helpers'
 import type { PageDoc, TextContainer } from '../src/shared/types'
 
@@ -128,5 +129,48 @@ describe('page lifecycle', () => {
 
   it('refuses paths that escape the notebook', async () => {
     await expect(loadPage(root, '../outside.page')).rejects.toThrow(/escapes/)
+  })
+})
+
+describe('title block on new pages', () => {
+  const firstRun = (doc: PageDoc): { text?: string; marks?: { type: string; attrs?: { fontSize?: string } }[] } | undefined =>
+    ((doc.objects[0] as TextContainer).content as unknown as { content: { content?: { text?: string; marks?: { type: string; attrs?: { fontSize?: string } }[] }[] }[] }).content[0]!.content?.[0]
+
+  it('starts a page with its name in bold at 20 px and the date below, above an empty text box', async () => {
+    const { doc } = await createPage(root, section, 'Untitled page', undefined, { dateText: 'Tuesday, 29 September 2026 at 18:40' })
+    expect(doc.objects).toHaveLength(2)
+    const block = doc.objects[0] as TextContainer
+    expect(block.x).toBe(96)
+    expect(block.y).toBe(96)
+    expect(firstRun(doc)?.text).toBe('Untitled page')
+    expect(firstRun(doc)?.marks?.map((m) => m.type).sort()).toEqual(['bold', 'textStyle'])
+    expect(JSON.stringify(block.content)).toContain('Tuesday, 29 September 2026 at 18:40')
+    expect(doc.objects[1]!.y).toBeGreaterThan(block.y + 40)
+    const html = renderPageHtml(doc)
+    expect(html).toMatch(/<strong><span style="font-size: 20px;?">Untitled page<\/span><\/strong>|<span style="font-size: 20px;?"><strong>Untitled page<\/strong><\/span>/)
+    expect(html).not.toMatch(/<h[1-6]/)
+  })
+
+  it('pages made without a date, as before, have only the empty text box', async () => {
+    const { doc } = await createPage(root, section, 'Plain')
+    expect(doc.objects).toHaveLength(1)
+  })
+
+  it('takes the first name given to the page, and ignores later renames', async () => {
+    const { relPath } = await createPage(root, section, 'Untitled page', undefined, { dateText: 'today' })
+    const named = await renamePage(root, relPath, 'Hay contract', { firstName: true })
+    expect(firstRun(named.doc)?.text).toBe('Hay contract')
+    const renamed = await renamePage(root, named.relPath, 'Hay contract 2027')
+    expect(renamed.doc.title).toBe('Hay contract 2027')
+    expect(firstRun(renamed.doc)?.text).toBe('Hay contract')
+  })
+
+  it('leaves an edited title block alone on the first naming', async () => {
+    const { relPath, doc } = await createPage(root, section, 'Untitled page', undefined, { dateText: 'today' })
+    const block = doc.objects[0] as TextContainer
+    const edited = { ...doc, objects: [{ ...block, content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'My own heading', marks: [{ type: 'bold' }] }] }] } }, doc.objects[1]!] }
+    await savePage(root, relPath, edited as PageDoc)
+    const named = await renamePage(root, relPath, 'Hay contract', { firstName: true })
+    expect(firstRun(named.doc)?.text).toBe('My own heading')
   })
 })
