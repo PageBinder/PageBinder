@@ -17,6 +17,13 @@ Entry format:
 
 ---
 
+## 2026-09-30 · lead (macOS, Apple silicon) · main
+**Changed:** Version 1.1.2, published as a pre-release: Outlook email bodies stored only as HTML or compressed RTF are searchable (index version 5, so every notebook re-indexes once); new pages start with a title block (name in bold 20 px, creation date and time); format painter; the last notebook and page reopen at start (remembered in the app's settings); small remove button on recent notebooks; narrow margins for new notebooks only; the page.html backup and Page History show the whole canvas while printing and Print Preview use the sheets; cut and paste moves pictures between the page and text boxes, and page objects can be cut; File > Notebook Properties (last edit with the account name, now recorded as `modifiedBy` on each save; size and files; history; large attachments); Verify Notebook explains its checks, buttons, and findings.
+**Found:** Opening a page must not wait on the settings write (it made a quick undo and redo race); page picture objects are not listed in `manifest.images` (existing quirk, worked around when pasting into a box); a test's Cmd+V does not trigger the Edit menu's paste, so phase 8 dispatches the paste event itself.
+**Checked:** Type check; 92 unit tests; every end-to-end suite on this Mac. The user tried each feature in the running app.
+**Next platform must check:** Windows: install PageBinder-Setup-1.1.2.exe; drag an Outlook email onto a page and search for a word from its body (the HTML/RTF fix has only unit tests); check Notebook Properties shows the Windows account name; open a page.html backup in a browser (whole canvas) and print it (sheets only); cut a picture on the page and paste it into a text box.
+**Open:** Nothing.
+
 ## 2026-09-29 · lead (macOS, Apple silicon) · main
 **Changed:** Since the last note: pictures in text boxes resize from any corner and also arrive by drop, paste, or Insert > Picture while the cursor is in a box; four alignment buttons with drawn symbols (Justify added, no selected highlight); a click outside a text box clears its highlight; heading buttons and shortcuts removed (the heading node stays for existing pages; `@tiptap/extension-heading` is now a direct dependency). At the user's explicit, confirmed request the published v1.1.1 pre-release was deleted and rebuilt from this code as 1.1.1, with the 1.1.1 and 1.1.2 revision-log sections merged; the version then moves to 1.1.2.
 **Found:** A copy of the old 1.1.1 (28 September build) may exist on some machines under the same number. It does not know pictures in text boxes: do not edit such pages with it.

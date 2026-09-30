@@ -7,8 +7,8 @@ Every version opens, shows, edits, prints, and searches notebooks made by the
 earlier ones. Nothing ever needs converting.
 
 
-Version 1.1.2 - in development (not yet released)
--------------------------------------------------
+Version 1.1.2 - 30 September 2026 (pre-release)
+-----------------------------------------------
 
 Pages and text
 - New pages start with a title: the page's name in bold at size 20, with the
