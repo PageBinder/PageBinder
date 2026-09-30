@@ -27,6 +27,10 @@ Pictures anchored in text boxes, with text flowing beside them, were built on 20
 
 - **Document-wide undo** (suggested 2026-09-27). Today undo follows keyboard focus: with the cursor in a text box, Cmd+Z undoes that box's typing and formatting; anywhere else it undoes page actions (creating, moving, deleting objects, page operations). Word and OneNote keep one undo list for the whole document, so Cmd+Z always reverses the most recent change wherever the user last clicked. PageBinder could do the same by keeping one ordered list of undoable steps, where a text step points to the text box whose own history holds it: undo then takes the latest step of either kind, putting the cursor back in that box when it is a text step. Open questions: whether text steps should survive switching pages (each text box's history is lost when its page closes today) and how redo interleaves. Layout and storage are unaffected, so it raises no compatibility concern. About 2 to 3 days.
 
+## Small fixes
+
+- **Oversized remove button on the Welcome screen's recent notebooks** (reported 2026-09-29). The × that removes a notebook from the Recent list takes up most of the row, squeezing the notebook's name and path into a narrow column. Likely cause: the rule `.recent-list button { width: 100% }` in `app/src/renderer/src/styles.css` also applies to the × button (`.recent-forget`), so it grows to fill the row. Giving `.recent-forget` a fixed small width (and no background band) should fix it. A few minutes.
+
 ## Page breaks
 
 - **Split tall tables between rows.** A table that fits on a sheet moves whole to the next sheet, but one taller than a sheet runs through the margins at the page break. Splitting it between rows, perhaps repeating a header row, would complete line-by-line page breaks. About 1 to 2 days.
