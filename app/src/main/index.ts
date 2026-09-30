@@ -2,6 +2,7 @@ import { app, BrowserWindow, Menu, dialog, screen, session, shell, systemPrefere
 import { join, resolve } from 'node:path'
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { registerIpc, closeCurrentNotebookSync } from './ipc'
+import { recentWritesPending, whenRecentWritten } from './recent'
 import { registerScheme, registerProtocolHandler } from './protocol'
 import { chooseSettingsFolder, decideFirstRun, earlierSettings, firstRunQuestion, readInstallRecord, setAsideEarlierSettings, writeInstallRecord } from './settingsFolder'
 
@@ -256,7 +257,14 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
-app.on('before-quit', () => {
+app.on('before-quit', (e) => {
+  // The page last opened is remembered in the background; let that finish, so the next start
+  // reopens it even when PageBinder is quit straight after changing pages.
+  if (recentWritesPending()) {
+    e.preventDefault()
+    void whenRecentWritten().finally(() => app.quit())
+    return
+  }
   closeCurrentNotebookSync()
 })
 
