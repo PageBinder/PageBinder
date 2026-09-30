@@ -103,6 +103,8 @@ export interface RecentNotebook {
 export interface PageBinderApi {
   notebook: {
     recent(): Promise<RecentNotebook[]>
+    /** The page last opened in the open notebook, if it was remembered. */
+    lastPage(): Promise<string | null>
     startupRoot(): Promise<string | null>
     forget(root: string): Promise<void>
     pickFolder(): Promise<string | null>

@@ -46,7 +46,7 @@ import {
   renamePage,
   deletePage
 } from './storage/page'
-import { readRecent, rememberRecent, forgetRecent } from './recent'
+import { readRecent, rememberRecent, forgetRecent, rememberLastPage, lastPageOf } from './recent'
 
 let currentRoot: string | undefined
 let indexer: Indexer | undefined
@@ -303,7 +303,9 @@ export function registerIpc(): void {
   /* ---------- notebooks ---------- */
   ipcMain.handle('notebook:recent', () => readRecent())
   ipcMain.handle('notebook:forget', (_e, root: string) => forgetRecent(root))
-  ipcMain.handle('notebook:startupRoot', () => process.env['PAGEBINDER_OPEN'] ?? process.argv.find((a) => a.endsWith('.pagebinder') || a.includes('notebook.json')) ?? null)
+  // At start: a notebook named on the command line (or by the test seam), else the one used last.
+  ipcMain.handle('notebook:startupRoot', async () => process.env['PAGEBINDER_OPEN'] ?? process.argv.find((a) => a.endsWith('.pagebinder') || a.includes('notebook.json')) ?? (await readRecent())[0]?.root ?? null)
+  ipcMain.handle('notebook:lastPage', () => (currentRoot ? lastPageOf(currentRoot) : null))
 
   ipcMain.handle('notebook:pickFolder', async () => {
     const win = focusedWindow()
@@ -403,6 +405,7 @@ export function registerIpc(): void {
   ipcMain.handle('page:load', async (_e, relIn: string) => {
     const { root, rel, template } = resolveRel(relIn)
     const result = await loadPage(root, rel)
+    if (!template) rememberLastPage(root, rel)
     // A page restored from history on load may have a different title than the index knows.
     if (!template && result.notices.some((n) => n.kind === 'recovered-from-history' || n.kind === 'no-valid-version')) {
       await indexer?.refreshSection(parentOf(rel)).catch(() => undefined)
@@ -446,6 +449,7 @@ export function registerIpc(): void {
       return { ...result, relPath: relIn, tree: await templatesTree() }
     }
     const result = await renamePage(root, rel, title, opts ?? {})
+    rememberLastPage(root, result.relPath)
     await reindexPage(result.relPath, result.doc, rel)
     return { ...result, tree: await afterSectionChange(parentOf(rel)) }
   })

@@ -32,6 +32,7 @@ import type { PageDoc, PaperSettings } from '../shared/types'
 const api = {
   notebook: {
     recent: () => invoke('notebook:recent'),
+    lastPage: () => invoke('notebook:lastPage'),
     startupRoot: () => invoke('notebook:startupRoot'),
     forget: (root: string) => invoke('notebook:forget', root),
     pickFolder: () => invoke('notebook:pickFolder'),

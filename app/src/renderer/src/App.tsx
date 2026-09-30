@@ -366,10 +366,20 @@ export function App(): JSX.Element {
       if (t.regenerated.length) {
         setError(`Some notebook metadata was missing and has been rebuilt with defaults: ${t.regenerated.join(', ')}`)
       }
-      await navigateGroup(t, '')
+      // Back to the page last opened in this notebook, when it still exists; else the first page.
+      const last = await window.pagebinder.notebook.lastPage().catch(() => null)
+      const lastSection = last ? last.slice(0, last.lastIndexOf('/')) : null
+      if (last && lastSection && findSection(t, lastSection)?.pages.some((p) => p.relPath === last)) {
+        setSearch(null)
+        setGroupRel(parentGroupRel(lastSection))
+        setSectionRel(lastSection)
+        await openPage(last)
+      } else {
+        await navigateGroup(t, '')
+      }
       await refreshTemplates()
     },
-    [navigateGroup, refreshTemplates]
+    [navigateGroup, refreshTemplates, openPage]
   )
 
   /* ---------- notebook actions ---------- */

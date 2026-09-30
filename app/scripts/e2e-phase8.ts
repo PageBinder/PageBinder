@@ -608,7 +608,7 @@ async function main(): Promise<void> {
   step('Insert > Picture in a text box and pictures dropped on a text box go into the box')
 
   // 13. A new page starts with a title block: its name in bold at 20 px and the creation date and
-  //     time below, with the first empty text box under it. The first name given goes into the
+  //     time below, and nothing else. The first name given goes into the
   //     title; a later rename leaves it alone.
   await page.locator('.page-row.add').click()
   await page.waitForSelector('.page-row.renaming input')
@@ -621,14 +621,14 @@ async function main(): Promise<void> {
     const d = await doc(pRel)
     const t = d.objects[0] as unknown as { kind: string; y: number; content: { content: Para[] } }
     const next = d.objects[1] as unknown as { kind: string; y: number } | undefined
-    return { first: t.content.content[0]!, second: t.content.content[1]!, objects: d.objects.length, below: !!next && next.kind === 'text' && next.y > t.y + 40 }
+    return { first: t.content.content[0]!, second: t.content.content[1]!, objects: d.objects.length, below: !next }
   }
   const made = await titleOf()
   const nameRun = made.first.content?.[0]
   const year = String(new Date().getFullYear())
   assert(nameRun?.text === 'Pasture log' && nameRun.marks?.some((m) => m.type === 'bold') && nameRun.marks?.some((m) => m.type === 'textStyle' && m.attrs?.fontSize === '20px'), `the title block holds the page name in bold at 20 px (${JSON.stringify(made.first)})`)
   assert(!!made.second.content?.[0]?.text?.includes(year) && !made.second.content[0]!.marks?.length, `the line below is the creation date and time in plain text (${JSON.stringify(made.second)})`)
-  assert(made.objects === 2 && made.below, 'the first empty text box sits below the title block')
+  assert(made.objects === 1 && made.below, `the title block is the only object on the new page (${made.objects})`)
   await page.waitForFunction(() => document.querySelector('.canvas .text-container .tiptap p')?.textContent === 'Pasture log')
   assert(!(await page.locator('.canvas .tiptap', { hasText: 'Untitled page' }).count()), 'the title on screen shows the name just given, not the placeholder')
   assert(!(await page.locator('.canvas .tiptap h1, .canvas .tiptap h2, .canvas .tiptap h3').count()), 'the title is not a heading')
@@ -643,6 +643,9 @@ async function main(): Promise<void> {
 
   // 14. Format painter: copy the look of some text and paint it onto other text.
   const fpRel = `${sec}/Pasture log 2026.page`
+  await page.locator('.canvas').click({ button: 'right', position: { x: 140, y: 320 } })
+  await page.locator('.context-item', { hasText: /^Text box$/ }).click()
+  await page.waitForTimeout(300)
   const fpBox = page.locator('.text-container').nth(1).locator('.tiptap')
   await fpBox.click()
   await page.keyboard.type('Source words here')
@@ -753,7 +756,26 @@ async function main(): Promise<void> {
   assert(fpParas[2]!.attrs?.textAlign === 'center', 'a whole painted paragraph takes the alignment too')
   step('the format painter copies a look once, or keeps painting after a double click, and Undo reverses a paint')
 
+  // 15. Starting PageBinder again with no notebook named opens the last notebook at the last page.
+  await save(page)
   await app.close()
+  const env2: Record<string, string> = { ...(process.env as Record<string, string>), PAGEBINDER_TEST_DISPLAY: '2' }
+  delete env2['PAGEBINDER_OPEN']
+  const app2 = await electron.launch({ args: [resolve(process.env['E2E_OUT'] ?? 'out-e2e', 'main/index.js'), `--user-data-dir=${userData}`], cwd: resolve('.'), env: env2 })
+  const page2 = await app2.firstWindow()
+  await page2.waitForSelector('.page-row.on', { timeout: 20000 })
+  const reopened = await page2.locator('.page-row.on').innerText()
+  assert(reopened.includes('Pasture log 2026'), `the last page is open again after a restart (${reopened})`)
+  assert(await page2.locator('.canvas .tiptap', { hasText: 'Target one' }).count(), 'the last page shows its content')
+  // The Welcome screen's remove button is a small button beside the notebook, not a wide band.
+  await page2.locator('.notebook-button').click()
+  await page2.locator('.context-item', { hasText: /^Switch notebook/ }).click()
+  await page2.waitForSelector('.recent-forget')
+  const forget = (await page2.locator('.recent-forget').first().boundingBox())!
+  const row = (await page2.locator('.recent-row').first().boundingBox())!
+  assert(forget.width <= 32 && forget.height <= 32 && forget.width < row.width / 8, `the remove button is small (${Math.round(forget.width)}x${Math.round(forget.height)} in a ${Math.round(row.width)} px row)`)
+  step('a restart reopens the last notebook at the last page, and the recent list has a small remove button')
+  await app2.close()
   process.stdout.write(`\nPASS. Notebook kept at ${root}\n`)
 }
 
