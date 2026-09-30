@@ -14,9 +14,9 @@ Pages and text
 - New pages start with a title: the page's name in bold at size 20, with the
   date and time the page was made on the line below, in the computer's own
   date format. It is an ordinary text box that can be edited, moved, or
-  deleted; click anywhere on the page to start writing. The name typed when the page is created goes into the title;
-  renaming the page later leaves the title as it is. Pages made from a
-  template are unchanged.
+  deleted; click anywhere on the page to start writing. The name typed when
+  the page is created goes into the title; renaming the page later leaves the
+  title as it is. Pages made from a template are unchanged.
 - Format painter: the paintbrush button in the toolbar copies the look of the
   text where the cursor is (font, size, colour, highlight, bold, italic,
   underline, strike-through) and paints it onto the next text you highlight,
