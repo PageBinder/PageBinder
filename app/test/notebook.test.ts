@@ -5,12 +5,33 @@ import { createNotebook, openNotebook, acquireLock, releaseLock } from '../src/m
 import { createSection, createGroup, renameContainer, setSectionColor } from '../src/main/storage/section'
 import { createPage } from '../src/main/storage/page'
 import { tempDir, removeDir } from './helpers'
+import { DEFAULT_PAPER, NEW_NOTEBOOK_PAPER } from '../src/shared/types'
+import { renderPageHtml } from '../src/shared/render/renderPage'
 
 let dir: string
 beforeEach(async () => { dir = await tempDir() })
 afterEach(async () => { await removeDir(dir) })
 
 describe('notebook structure', () => {
+  it('a notebook made with narrow margins gives its new pages narrow margins; the storage default stays 1 inch', async () => {
+    const narrow = await createNotebook(dir, 'New one', NEW_NOTEBOOK_PAPER)
+    const tree = await openNotebook(narrow)
+    expect(tree.meta.settings.paper.margins).toEqual({ top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 })
+    const sec = await createSection(narrow, '', 'Notes')
+    const { doc } = await createPage(narrow, sec, 'First', tree.meta.settings.paper)
+    expect(doc.paper.margins.left).toBe(0.5)
+    const plain = await openNotebook(await createNotebook(dir, 'Old style'))
+    expect(plain.meta.settings.paper).toEqual(DEFAULT_PAPER)
+  })
+
+  it('page.html shows the whole canvas by default, and the printed sheets when asked', async () => {
+    const root = await createNotebook(dir, 'Views')
+    const sec = await createSection(root, '', 'Notes')
+    const { doc } = await createPage(root, sec, 'P')
+    expect(renderPageHtml(doc)).toContain('data-view="canvas"')
+    expect(renderPageHtml(doc, { view: 'sheets' })).toContain('data-view="sheets"')
+  })
+
   it('creates a notebook with metadata, templates folder, and readme', async () => {
     const root = await createNotebook(dir, 'Farm records 2026')
     const names = await fs.readdir(root)

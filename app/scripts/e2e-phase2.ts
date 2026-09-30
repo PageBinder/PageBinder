@@ -289,6 +289,9 @@ async function main(): Promise<void> {
     const win = new BrowserWindow({ show: false, webPreferences: { sandbox: true } })
     await win.loadFile(path)
     await new Promise((r) => setTimeout(r, 300))
+    // Measured as printed: on screen the backup copy shows the whole canvas instead of the sheets.
+    win.webContents.debugger.attach()
+    await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { media: 'print' })
     const rows = (await win.webContents.executeJavaScript(`Array.from(document.querySelectorAll('.sheet table tr')).map(tr => Math.round(tr.getBoundingClientRect().height))`)) as number[]
     win.destroy()
     return rows

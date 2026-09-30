@@ -9,7 +9,7 @@ import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { createNotebook } from '../src/main/storage/notebook'
 import { createSection } from '../src/main/storage/section'
-import { createPage } from '../src/main/storage/page'
+import { createPage, savePage } from '../src/main/storage/page'
 import type { PageDoc } from '../src/shared/types'
 import { tealPng } from './png'
 
@@ -775,6 +775,51 @@ async function main(): Promise<void> {
   const row = (await page2.locator('.recent-row').first().boundingBox())!
   assert(forget.width <= 32 && forget.height <= 32 && forget.width < row.width / 8, `the remove button is small (${Math.round(forget.width)}x${Math.round(forget.height)} in a ${Math.round(row.width)} px row)`)
   step('a restart reopens the last notebook at the last page, and the recent list has a small remove button')
+
+  // 16. The page.html backup copy shows the whole canvas, including what lies beside the paper;
+  //     printing it still gives the sheets; Print Preview inside PageBinder shows the sheets.
+  const wide = await createPage(root, sec, 'Beside the paper')
+  const textBox = (id: string, x: number, y: number, text: string) => ({ kind: 'text' as const, id, x, y, width: 240, content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text }] }] } })
+  await savePage(root, wide.relPath, { ...wide.doc, objects: [textBox('in1', 100, 100, 'Inside the page'), textBox('out1', 900, 200, 'Out beside the paper')] })
+  const backup = await app2.evaluate(async ({ BrowserWindow }, file) => {
+    const w = new BrowserWindow({ show: false, width: 1400, height: 1100 })
+    await w.loadFile(file)
+    for (let i = 0; i < 50 && !(await w.webContents.executeJavaScript("document.body.classList.contains('paginated')")); i++) await new Promise((r) => setTimeout(r, 100))
+    const probe = `(() => {
+      // Seen: laid out, and not cut away by the sheet's printable-area clip.
+      const seen = (p) => {
+        const r = p.getBoundingClientRect()
+        if (!p.getClientRects().length || r.width <= 0 || getComputedStyle(p).visibility !== 'visible') return false
+        const clip = p.closest('.clip')
+        if (!clip) return true
+        const c = clip.getBoundingClientRect()
+        return r.right > c.left && r.left < c.right && r.bottom > c.top && r.top < c.bottom
+      }
+      const find = (t) => Array.from(document.querySelectorAll('p')).filter((p) => p.textContent === t && seen(p)).length
+      return { view: document.body.dataset.view, sheetsShown: getComputedStyle(document.getElementById('sheets')).display !== 'none', boardShown: !!document.querySelector('.board') && getComputedStyle(document.querySelector('.board')).display !== 'none' && getComputedStyle(document.querySelector('.board')).visibility === 'visible', papers: document.querySelectorAll('.board .paper-bg').length, inside: find('Inside the page'), outside: find('Out beside the paper') }
+    })()`
+    const screen = await w.webContents.executeJavaScript(probe)
+    w.webContents.debugger.attach()
+    await w.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { media: 'print' })
+    const print = await w.webContents.executeJavaScript(probe)
+    w.destroy()
+    return { screen, print }
+  }, join(root, wide.relPath, 'page.html'))
+  assert(backup.screen.view === 'canvas' && backup.screen.boardShown && !backup.screen.sheetsShown && backup.screen.papers >= 1 && backup.screen.inside === 1 && backup.screen.outside === 1, `the backup copy shows the whole canvas, including text beside the paper (${JSON.stringify(backup.screen)})`)
+  assert(backup.print.sheetsShown && !backup.print.boardShown && backup.print.outside === 0 && backup.print.inside >= 1, `printed, the backup copy gives only the sheets (${JSON.stringify(backup.print)})`)
+  // Back into the notebook from the Welcome screen's Recent list.
+  await page2.locator('.recent-row button').first().click()
+  await page2.waitForSelector('.section-tabs')
+  const previewUrl = await page2.evaluate((rel) => window.pagebinder.fileUrl(`${rel}/page.html`), wide.relPath)
+  const previewView = await app2.evaluate(async ({ BrowserWindow }, url) => {
+    const w = new BrowserWindow({ show: false })
+    await w.loadURL(url)
+    const v = (await w.webContents.executeJavaScript('document.body.dataset.view')) as string
+    w.destroy()
+    return v
+  }, previewUrl)
+  assert(previewView === 'sheets', `Print Preview inside PageBinder still shows the printed sheets (${previewView})`)
+  step('the HTML backup copy shows the whole canvas on screen and prints the sheets; Print Preview is unchanged')
   await app2.close()
   process.stdout.write(`\nPASS. Notebook kept at ${root}\n`)
 }

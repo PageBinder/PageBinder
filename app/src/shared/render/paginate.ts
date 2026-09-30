@@ -176,7 +176,29 @@ export const paginateScript = `
     }
     host.appendChild(sheet);
   }
-  source.parentNode.style.display = 'none';
+  var board = source.parentNode;
+  if (body.dataset.view === 'canvas') {
+    // The whole canvas on screen: the paper sheets and their margins drawn behind it, sized to hold
+    // everything on the page, including what lies beside or below the paper.
+    var cr = source.getBoundingClientRect(), maxRight = 0;
+    for (var r = 0; r < objs.length; r++) maxRight = Math.max(maxRight, objs[r].getBoundingClientRect().right - cr.left);
+    board.classList.add('board');
+    board.style.width = Math.max(W, Math.ceil(maxRight) + 24) + 'px';
+    board.style.height = Math.max(sheets * H, Math.ceil(maxBottom) + 24) + 'px';
+    for (var g = 0; g < sheets; g++) {
+      var bg = document.createElement('div');
+      bg.className = 'paper-bg';
+      bg.style.top = (g * H) + 'px'; bg.style.width = W + 'px'; bg.style.height = H + 'px';
+      board.insertBefore(bg, source);
+      var guide = document.createElement('div');
+      guide.className = 'margin-guide';
+      guide.style.left = ml + 'px'; guide.style.top = (g * H + mt) + 'px';
+      guide.style.width = (W - ml - mr) + 'px'; guide.style.height = printableH + 'px';
+      board.insertBefore(guide, source);
+    }
+  } else {
+    board.style.display = 'none';
+  }
   body.classList.remove('unpaginated');
   body.classList.add('paginated');
 })();

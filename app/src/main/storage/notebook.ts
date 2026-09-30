@@ -10,6 +10,7 @@ import {
   DEFAULT_PAPER,
   SECTION_COLORS,
   type NotebookMeta,
+  type PaperSettings,
   type GroupMeta,
   type SectionMeta,
   type NotebookTree,
@@ -50,7 +51,7 @@ export async function writeJson(path: string, value: unknown): Promise<void> {
 
 /* ---------- create ---------- */
 
-export async function createNotebook(parentDir: string, name: string): Promise<string> {
+export async function createNotebook(parentDir: string, name: string, paper: PaperSettings = DEFAULT_PAPER): Promise<string> {
   const folder = await uniqueName(parentDir, sanitizeName(name))
   const root = join(parentDir, folder)
   await fs.mkdir(root, { recursive: true })
@@ -62,7 +63,7 @@ export async function createNotebook(parentDir: string, name: string): Promise<s
     created: now(),
     modified: now(),
     order: [],
-    settings: { paper: DEFAULT_PAPER }
+    settings: { paper }
   }
   await writeJson(join(root, NOTEBOOK_META), meta)
   await fs.writeFile(join(root, 'README.txt'), README, 'utf8')

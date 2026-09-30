@@ -100,7 +100,16 @@ body { background: #e4e2dc; font-family: ${DOC_FONT}; color: #2c2c2a; }
 #measure { position: absolute; left: 0; top: 0; visibility: hidden; pointer-events: none; }
 #canvas { position: relative; }
 .unpaginated #sheets { display: none; }
+/* The whole-canvas view (the stored backup copy): the canvas as in the editor, on the paper sheets
+   drawn behind it, with anything outside the printable area still shown. Printing uses the sheets. */
+@media screen {
+  .paginated[data-view="canvas"] #sheets { display: none; }
+  .paginated[data-view="canvas"] #measure.board { position: relative; visibility: visible; pointer-events: auto; margin: 24px; }
+}
+.board .paper-bg { position: absolute; left: 0; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.15); }
+.board .margin-guide { position: absolute; border: 1px dashed #c9c7bf; box-sizing: border-box; pointer-events: none; }
 @media print {
+  .board { display: none !important; }
   body { background: #fff; }
   .chrome { display: none; }
   #sheets { padding: 0; gap: 0; display: block; }
@@ -109,7 +118,12 @@ body { background: #e4e2dc; font-family: ${DOC_FONT}; color: #2c2c2a; }
 }
 `
 
-export function renderPageHtml(doc: PageDoc, options: { imageBase?: string; attachmentBase?: string } = {}): string {
+/**
+ * `view`: how the page shows on screen. 'canvas' (the stored backup copy) shows the whole canvas,
+ * including anything outside the printable area; 'sheets' (Print Preview inside PageBinder) shows
+ * the printed sheets. Printing always uses the sheets.
+ */
+export function renderPageHtml(doc: PageDoc, options: { imageBase?: string; attachmentBase?: string; view?: 'canvas' | 'sheets' } = {}): string {
   const paper = paperSizePx(doc.paper)
   const m = doc.paper.margins
   const print = doc.print ?? DEFAULT_PRINT
@@ -129,7 +143,7 @@ ${pageCss}
 ${docCss}
 </style>
 </head>
-<body class="unpaginated"
+<body class="unpaginated" data-view="${options.view ?? 'canvas'}"
   data-paper-w="${paper.width}" data-paper-h="${paper.height}"
   data-mt="${Math.round(m.top * DPI)}" data-mr="${Math.round(m.right * DPI)}" data-mb="${Math.round(m.bottom * DPI)}" data-ml="${Math.round(m.left * DPI)}"
   data-title="${attr(doc.title)}" data-date="${attr(dateText)}"

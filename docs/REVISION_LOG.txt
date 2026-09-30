@@ -24,6 +24,16 @@ Pages and text
   and line spacing. Double-click the paintbrush to paint several times; press
   Escape or click the paintbrush again to stop. Undo reverses each paint.
 
+Notebooks and backups
+- New notebooks start with narrow margins (0.5 inch all round). Existing
+  notebooks and their pages keep their margins, including pages added to them
+  later.
+- Each page's HTML backup copy (page.html, in the page's folder) now shows the
+  whole page when opened in a web browser, including anything placed beside
+  or below the paper, with the paper and its margins drawn behind it. Printed
+  from the browser, it still gives the page exactly as PageBinder prints it. A
+  page's copy is brought up to date the next time the page is saved.
+
 Starting up
 - PageBinder opens the notebook you used last, at the page you had open. If
   that page has since been deleted or renamed elsewhere, it opens the

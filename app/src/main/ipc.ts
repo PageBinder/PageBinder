@@ -5,6 +5,7 @@
  */
 import { ipcMain, dialog, BrowserWindow, shell, app } from 'electron'
 import type { PageDoc, NotebookTree, PaperSettings } from '../shared/types'
+import { NEW_NOTEBOOK_PAPER } from '../shared/types'
 import {
   createNotebook,
   openNotebook,
@@ -329,7 +330,8 @@ export function registerIpc(): void {
   })
 
   ipcMain.handle('notebook:create', async (_e, parentDir: string, name: string) => {
-    const root = await createNotebook(parentDir, name)
+    // Notebooks made here start with narrow margins; see NEW_NOTEBOOK_PAPER.
+    const root = await createNotebook(parentDir, name, NEW_NOTEBOOK_PAPER)
     return openAndLock(root)
   })
 
