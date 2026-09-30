@@ -136,16 +136,15 @@ describe('title block on new pages', () => {
   const firstRun = (doc: PageDoc): { text?: string; marks?: { type: string; attrs?: { fontSize?: string } }[] } | undefined =>
     ((doc.objects[0] as TextContainer).content as unknown as { content: { content?: { text?: string; marks?: { type: string; attrs?: { fontSize?: string } }[] }[] }[] }).content[0]!.content?.[0]
 
-  it('starts a page with its name in bold at 20 px and the date below, above an empty text box', async () => {
+  it('starts a page with only a title block: its name in bold at 20 px and the date below', async () => {
     const { doc } = await createPage(root, section, 'Untitled page', undefined, { dateText: 'Tuesday, 29 September 2026 at 18:40' })
-    expect(doc.objects).toHaveLength(2)
+    expect(doc.objects).toHaveLength(1)
     const block = doc.objects[0] as TextContainer
     expect(block.x).toBe(96)
     expect(block.y).toBe(96)
     expect(firstRun(doc)?.text).toBe('Untitled page')
     expect(firstRun(doc)?.marks?.map((m) => m.type).sort()).toEqual(['bold', 'textStyle'])
     expect(JSON.stringify(block.content)).toContain('Tuesday, 29 September 2026 at 18:40')
-    expect(doc.objects[1]!.y).toBeGreaterThan(block.y + 40)
     const html = renderPageHtml(doc)
     expect(html).toMatch(/<strong><span style="font-size: 20px;?">Untitled page<\/span><\/strong>|<span style="font-size: 20px;?"><strong>Untitled page<\/strong><\/span>/)
     expect(html).not.toMatch(/<h[1-6]/)
@@ -168,7 +167,7 @@ describe('title block on new pages', () => {
   it('leaves an edited title block alone on the first naming', async () => {
     const { relPath, doc } = await createPage(root, section, 'Untitled page', undefined, { dateText: 'today' })
     const block = doc.objects[0] as TextContainer
-    const edited = { ...doc, objects: [{ ...block, content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'My own heading', marks: [{ type: 'bold' }] }] }] } }, doc.objects[1]!] }
+    const edited = { ...doc, objects: [{ ...block, content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'My own heading', marks: [{ type: 'bold' }] }] }] } }] }
     await savePage(root, relPath, edited as PageDoc)
     const named = await renamePage(root, relPath, 'Hay contract', { firstName: true })
     expect(firstRun(named.doc)?.text).toBe('My own heading')

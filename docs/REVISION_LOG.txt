@@ -14,7 +14,7 @@ Pages and text
 - New pages start with a title: the page's name in bold at size 20, with the
   date and time the page was made on the line below, in the computer's own
   date format. It is an ordinary text box that can be edited, moved, or
-  deleted. The name typed when the page is created goes into the title;
+  deleted; click anywhere on the page to start writing. The name typed when the page is created goes into the title;
   renaming the page later leaves the title as it is. Pages made from a
   template are unchanged.
 - Format painter: the paintbrush button in the toolbar copies the look of the
@@ -23,6 +23,14 @@ Pages and text
   or the word you click. Painting a whole paragraph also copies its alignment
   and line spacing. Double-click the paintbrush to paint several times; press
   Escape or click the paintbrush again to stop. Undo reverses each paint.
+
+Starting up
+- PageBinder opens the notebook you used last, at the page you had open. If
+  that page has since been deleted or renamed elsewhere, it opens the
+  notebook's first page. The Welcome screen is still available from the
+  notebook menu (Switch notebook).
+- The button that removes a notebook from the Welcome screen's Recent list is
+  now a small x beside the notebook instead of a wide band.
 
 Search
 - The text of emails dragged in from Outlook is now searchable. Many Outlook

@@ -302,8 +302,9 @@ html[data-busy] * { cursor: progress !important; }
 .welcome-card { max-width: 92vw; }
 .recent-row { display: flex; align-items: stretch; border-bottom: 1px solid var(--border); }
 .recent-row > button:first-child { flex: 1; border-bottom: none; }
-.recent-forget { border: none; color: var(--muted); padding: 0 10px; font-size: 16px; }
-.recent-forget:hover { color: var(--danger); }
+.recent-list .recent-forget { flex: 0 0 auto; width: 28px; align-self: center; height: 28px; padding: 0; border: none; border-radius: 6px; background: transparent; color: var(--muted); font-size: 16px; line-height: 1; text-align: center; }
+.recent-list .recent-forget:hover { background: var(--hover, rgba(0, 0, 0, 0.05)); }
+.recent-list .recent-forget:hover { color: var(--danger); }
 
 .shape-object { cursor: move; }
 .shape-object.selected { outline: 1px dashed var(--accent); outline-offset: 2px; }

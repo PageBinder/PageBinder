@@ -44,9 +44,6 @@ export function emptyTextContainer(x = 96, y = 96, width = 480): CanvasObject {
 
 /** Title-block text size: the page name, bold. */
 export const TITLE_BLOCK_FONT_SIZE = '20px'
-/** Room the title block takes above the first text box. */
-const TITLE_BLOCK_HEIGHT = 88
-
 /**
  * The title block at the top of a new page, as in OneNote: the page name in bold at 20 px, and the
  * date and time the page was made below it. An ordinary text box, not linked to the page name.
@@ -76,8 +73,8 @@ function isTitleBlockFor(obj: CanvasObject, title: string): boolean {
 }
 
 /**
- * A new page. With `dateText`, it starts with a title block at the top of the printable area and
- * its first empty text box below it; otherwise just the empty text box.
+ * A new page. With `dateText`, it starts with just a title block at the top of the printable area
+ * (a click on the page starts a text box, as always); otherwise with one empty text box.
  */
 export function newPageDoc(title: string, paper: PaperSettings = DEFAULT_PAPER, opts: { dateText?: string } = {}): PageDoc {
   const stamp = now()
@@ -86,7 +83,7 @@ export function newPageDoc(title: string, paper: PaperSettings = DEFAULT_PAPER, 
     const x = Math.round(paper.margins.left * 96)
     const y = Math.round(paper.margins.top * 96)
     const printable = paperSizePx(paper).width - x - Math.round(paper.margins.right * 96)
-    objects = [titleBlock(title, opts.dateText, x, y, Math.max(240, Math.min(624, printable))), emptyTextContainer(x, y + TITLE_BLOCK_HEIGHT)]
+    objects = [titleBlock(title, opts.dateText, x, y, Math.max(240, Math.min(624, printable)))]
   }
   return withChecksum({
     format: FORMAT_VERSION,

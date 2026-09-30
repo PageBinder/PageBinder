@@ -134,7 +134,11 @@ async function main(): Promise<void> {
   assert(await fs.stat(join(root, 'Second section', 'section.json')).then(() => true, () => false), 'section folder created')
   step('New section is created from the + menu')
 
-  // 8. Simulate an unsaved draft and a crash: corrupt page.json, leave a newer draft.
+  // 8. Simulate an unsaved draft and a crash: corrupt page.json, leave a newer draft. The page is
+  //    left open, so it is the one PageBinder reopens on the next start.
+  await page.locator('.tab', { hasText: 'Notes' }).click()
+  await page.locator('.page-row', { hasText: 'Renamed page' }).click()
+  await page.waitForSelector('.page-row.on:has-text("Renamed page")')
   await close()
   const renamedRel = `${notes}/Renamed page.page`
   const docPath = join(root, renamedRel, 'page.json')
@@ -146,7 +150,7 @@ async function main(): Promise<void> {
   const text = await fs.readFile(docPath, 'utf8')
   await fs.writeFile(docPath, text.slice(0, text.length / 2))
   ;({ page, close } = await launch(root))
-  // The damaged page is the first in its section, so it opens automatically.
+  // The damaged page was the last one open, so it opens automatically.
   await page.waitForSelector('.notice.recovered-from-history')
   await page.waitForSelector('.notice.draft-available')
   // The newest snapshot predates the rename, so the recovered title is the older one.
