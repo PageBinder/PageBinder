@@ -48,6 +48,7 @@ import {
   deletePage
 } from './storage/page'
 import { readRecent, rememberRecent, forgetRecent, rememberLastPage, lastPageOf } from './recent'
+import { notebookProperties } from './properties'
 
 let currentRoot: string | undefined
 let indexer: Indexer | undefined
@@ -306,6 +307,7 @@ export function registerIpc(): void {
   ipcMain.handle('notebook:forget', (_e, root: string) => forgetRecent(root))
   // At start: a notebook named on the command line (or by the test seam), else the one used last.
   ipcMain.handle('notebook:startupRoot', async () => process.env['PAGEBINDER_OPEN'] ?? process.argv.find((a) => a.endsWith('.pagebinder') || a.includes('notebook.json')) ?? (await readRecent())[0]?.root ?? null)
+  ipcMain.handle('notebook:properties', () => notebookProperties(requireRoot()))
   ipcMain.handle('notebook:lastPage', () => (currentRoot ? lastPageOf(currentRoot) : null))
 
   ipcMain.handle('notebook:pickFolder', async () => {

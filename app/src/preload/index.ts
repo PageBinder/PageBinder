@@ -33,6 +33,7 @@ const api = {
   notebook: {
     recent: () => invoke('notebook:recent'),
     lastPage: () => invoke('notebook:lastPage'),
+    properties: () => invoke('notebook:properties'),
     startupRoot: () => invoke('notebook:startupRoot'),
     forget: (root: string) => invoke('notebook:forget', root),
     pickFolder: () => invoke('notebook:pickFolder'),

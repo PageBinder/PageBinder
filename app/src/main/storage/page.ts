@@ -4,6 +4,7 @@
  */
 import { promises as fs } from 'node:fs'
 import { join, dirname, basename } from 'node:path'
+import { userInfo } from 'node:os'
 import {
   FORMAT_VERSION,
   DEFAULT_PAPER,
@@ -37,6 +38,15 @@ import { pruneHistory, type HistoryPolicy, DEFAULT_HISTORY_POLICY } from './hist
 import { recyclePage } from './recycle'
 
 /* ---------- construction ---------- */
+
+/** The account name of the person using this computer, recorded with each save. */
+export function accountName(): string | null {
+  try {
+    return userInfo().username || null
+  } catch {
+    return null
+  }
+}
 
 export function emptyTextContainer(x = 96, y = 96, width = 480): CanvasObject {
   return { kind: 'text', id: newId(), x, y, width, content: { type: 'doc', content: [{ type: 'paragraph' }] } }
@@ -91,6 +101,7 @@ export function newPageDoc(title: string, paper: PaperSettings = DEFAULT_PAPER, 
     title,
     created: stamp,
     modified: stamp,
+    ...(accountName() ? { modifiedBy: accountName()! } : {}),
     tags: [],
     paper,
     objects,
@@ -317,7 +328,8 @@ export async function savePage(root: string, pageRel: string, input: PageDoc, po
     format: FORMAT_VERSION,
     id: previous?.id ?? input.id ?? newId(),
     created: previous?.created ?? input.created ?? now(),
-    modified: now()
+    modified: now(),
+    ...(accountName() ? { modifiedBy: accountName()! } : {})
   })
   const snapshot = await snapshotCurrent(dir)
   await atomicWriteFile(join(dir, PAGE_DOC), serialize(doc))

@@ -7,6 +7,7 @@ import { ActiveEditorProvider, useActiveEditor } from './editorContext'
 import type { Editor } from '@tiptap/react'
 import { childrenOf, findSection, groupPath, firstSection, parentGroupRel } from './tree'
 import { Welcome } from './components/Welcome'
+import { NotebookPropertiesDialog } from './components/NotebookPropertiesDialog'
 import { Toolbar } from './components/Toolbar'
 import { Breadcrumb } from './components/Breadcrumb'
 import { SectionTabs } from './components/SectionTabs'
@@ -30,7 +31,7 @@ import type { SearchHit } from '../../preload/api'
 import { isImageFile, clampZoom, type CanvasCommands, type ChangeOpts } from './components/Canvas'
 import { textImageNames, renameTextImages } from '@shared/render/textImage'
 import type { AnchoredPicture } from '@shared/types'
-import { textAreaWidth } from '@shared/render/anchoredPictures'
+import { textAreaWidth, TEXT_BOX_INSET } from '@shared/render/anchoredPictures'
 
 interface PageState {
   relPath: string
@@ -79,11 +80,13 @@ export function App(): JSX.Element {
   const [pageSetupOpen, setPageSetupOpen] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [zoom, setZoom] = useState(1)
-  const [panel, setPanel] = useState<'history' | 'recycle' | 'verify' | 'export' | null>(null)
+  const [panel, setPanel] = useState<'history' | 'recycle' | 'verify' | 'export' | 'properties' | null>(null)
   const [drawTool, setDrawTool] = useState<DrawTool | null>(null)
   const [selectionInfo, setSelectionInfo] = useState({ shapes: 0, total: 0 })
   /** App clipboard for page objects; files are copied between page folders on paste. */
   const objectClipboard = useRef<{ objects: CanvasObject[]; fromRel: string } | null>(null)
+  /** What copying objects put on the system clipboard, to recognise it at paste time. */
+  const clipMarker = useRef<string | null>(null)
   const [canPaste, setCanPaste] = useState(false)
   const [copiedPage, setCopiedPage] = useState<PageRef | null>(null)
   const onSelectionInfo = useCallback((i: { shapes: number; total: number }) => setSelectionInfo((cur) => (cur.shapes === i.shapes && cur.total === i.total ? cur : i)), [])
@@ -680,7 +683,37 @@ export function App(): JSX.Element {
     if (!p || !objects.length) return
     objectClipboard.current = { objects: JSON.parse(JSON.stringify(objects)) as CanvasObject[], fromRel: p.relPath }
     setCanPaste(true)
+    // The system clipboard gets a marker, so a paste in a text box can tell whether these objects
+    // are still the latest thing copied (text copied since then pastes as text).
+    const first = objects[0]!
+    const label = objects.length === 1 && (first.kind === 'image' || first.kind === 'file') ? first.originalName : `${objects.length} objects`
+    clipMarker.current = `${label}\u2060`
+    void navigator.clipboard.writeText(clipMarker.current).catch(() => undefined)
   }, [])
+
+  /** Copy (or cut) a picture anchored in a text box, as a picture object for the page. */
+  const copyAnchoredPicture = useCallback(
+    (boxId: string, pictureId: string, cut: boolean): void => {
+      const p = pageRef.current
+      const box = p?.doc.objects.find((o) => o.id === boxId)
+      const pic = box?.kind === 'text' ? (box.pictures ?? []).find((q) => q.id === pictureId) : undefined
+      if (!p || !box || !pic) return
+      copyObjects([{ kind: 'image', id: newId(), x: box.x + TEXT_BOX_INSET + pic.x, y: box.y + TEXT_BOX_INSET + pic.y, width: pic.width, height: pic.height, name: pic.name, originalName: pic.originalName }])
+      if (!cut) return
+      pushHistory({ kind: 'objects', pageRel: p.relPath, doc: p.doc })
+      setPage((cur) => {
+        if (!cur) return cur
+        const objects = cur.doc.objects.map((o) => (o.id === boxId && o.kind === 'text' ? { ...o, pictures: (o.pictures ?? []).filter((q) => q.id !== pictureId) } : o))
+        return { ...cur, doc: { ...cur.doc, objects }, dirty: true, version: cur.version + 1 }
+      })
+      setSaveStatus('unsaved')
+      window.clearTimeout(saveTimer.current)
+      saveTimer.current = window.setTimeout(() => void savePage(), 500)
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [copyObjects, savePage]
+  )
+
 
   const pasteObjects = useCallback(
     async (at?: { x: number; y: number }): Promise<void> => {
@@ -1113,7 +1146,7 @@ export function App(): JSX.Element {
    * Pictures already in the page's images folder are anchored in a text box at `at` (relative to its
    * text area), at their natural size up to half the box's text width.
    */
-  const anchorPictures = useCallback(async (objectId: string, entries: FileEntry[], at: { x: number; y: number }): Promise<void> => {
+  const anchorPictures = useCallback(async (objectId: string, entries: (FileEntry & { width?: number; height?: number })[], at: { x: number; y: number }): Promise<void> => {
     const p = pageRef.current
     if (!p || !entries.length) return
     try {
@@ -1137,8 +1170,12 @@ export function App(): JSX.Element {
           let y = Math.round(at.y)
           const added: AnchoredPicture[] = entries.map((e, i) => {
             const s = sizes[i]!
-            const width = Math.max(16, Math.min(s.w, Math.round(area / 2)))
-            const height = Math.max(16, Math.round((s.h * width) / Math.max(1, s.w)))
+            // A picture moved in from the page keeps its size (shrunk only to fit the text area);
+            // a new one starts at its natural size up to half the text width.
+            const e2 = entries[i]!
+            const given = e2.width && e2.height ? { w: e2.width, h: e2.height } : null
+            const width = given ? Math.max(16, Math.min(Math.round(given.w), area)) : Math.max(16, Math.min(s.w, Math.round(area / 2)))
+            const height = given ? Math.max(16, Math.round((given.h * width) / Math.max(1, given.w))) : Math.max(16, Math.round((s.h * width) / Math.max(1, s.w)))
             const picture = { id: newId(), name: e.name, originalName: e.originalName, x: Math.round(Math.max(0, Math.min(area - width, at.x))), y, width, height }
             y += height + 8
             return picture
@@ -1146,7 +1183,8 @@ export function App(): JSX.Element {
           return { ...o, pictures: [...(o.pictures ?? []), ...added] }
         })
         const known = new Set(cur.doc.manifest.images.map((m) => m.name))
-        const images = [...cur.doc.manifest.images, ...entries.filter((e) => !known.has(e.name))]
+        // Only complete file records are added (a picture moved within the page has none to add).
+        const images = [...cur.doc.manifest.images, ...entries.filter((e) => !known.has(e.name) && e.sha256).map(({ width: _w, height: _h, ...entry }) => entry)]
         return { ...cur, doc: { ...cur.doc, objects, manifest: { ...cur.doc.manifest, images } }, dirty: true, version: cur.version + 1 }
       })
       setSaveStatus('unsaved')
@@ -1157,6 +1195,38 @@ export function App(): JSX.Element {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savePage])
+
+  /** Paste the copied pictures into a text box, at `at` in its text area, keeping their size. */
+  const pastePicturesIntoBox = useCallback(
+    async (boxId: string, at: { x: number; y: number }): Promise<void> => {
+      const clip = objectClipboard.current
+      const p = pageRef.current
+      if (!clip || !p) return
+      const images = clip.objects.filter((o): o is Extract<CanvasObject, { kind: 'image' }> => o.kind === 'image' && o.display !== 'card')
+      if (!images.length) return
+      try {
+        let entries: (FileEntry & { width?: number; height?: number })[]
+        if (clip.fromRel !== p.relPath) {
+          const copied = await window.pagebinder.page.copyFilesBetween(clip.fromRel, p.relPath, images.map((o) => ({ sub: 'images' as const, name: o.name, originalName: o.originalName })))
+          const byName = new Map(copied.map((c) => [c.from, c.entry]))
+          entries = images.flatMap((o) => {
+            const entry = byName.get(o.name)
+            return entry ? [{ ...entry, width: o.width, height: o.height }] : []
+          })
+        } else {
+          // Same page: the files are already in its folder (listed with it or not).
+          entries = images.map((o) => {
+            const known = p.doc.manifest.images.find((m) => m.name === o.name)
+            return { ...(known ?? { name: o.name, originalName: o.originalName, size: 0, sha256: '', added: '' }), originalName: o.originalName, width: o.width, height: o.height }
+          })
+        }
+        await anchorPictures(boxId, entries, at)
+      } catch (err) {
+        fail(err)
+      }
+    },
+    [anchorPictures]
+  )
 
   /** Pictures chosen from disk, anchored in a text box at `at`. */
   const insertTextPicture = useCallback(async (objectId: string, at: { x: number; y: number }): Promise<void> => {
@@ -1289,6 +1359,16 @@ export function App(): JSX.Element {
   useEffect(() => {
     const onPaste = (e: ClipboardEvent): void => {
       if (!pageRef.current || !e.clipboardData) return
+      // Pictures copied in PageBinder, pasted while typing in a text box, go into the box.
+      if (clipMarker.current && e.clipboardData.getData('text/plain') === clipMarker.current) {
+        const into = textBoxAtCursor()
+        if (into) {
+          e.preventDefault()
+          e.stopPropagation()
+          void pastePicturesIntoBox(into.id, into.at)
+        }
+        return
+      }
       const files = Array.from(e.clipboardData.files)
       if (!files.length) return
       e.preventDefault()
@@ -1307,7 +1387,7 @@ export function App(): JSX.Element {
     }
     document.addEventListener('paste', onPaste, true)
     return () => document.removeEventListener('paste', onPaste, true)
-  }, [addImageFiles, addImagePaths, addFilePaths, placeImages, placeFiles, anchorPictures])
+  }, [addImageFiles, addImagePaths, addFilePaths, placeImages, placeFiles, anchorPictures, pastePicturesIntoBox])
 
   // The background folder check may find changes made outside the app; refresh the tree when it does.
   useEffect(() => {
@@ -1355,6 +1435,7 @@ export function App(): JSX.Element {
       ...(['getting-started', 'readme', 'shortcuts', 'history-verify', 'recovery', 'description', 'dependencies', 'uninstall'] as const).map((d) => window.pagebinder.onMenu(`menu:doc:${d}`, () => setAbout(d))),
       window.pagebinder.onMenu('menu:recycle', () => setPanel('recycle')),
       window.pagebinder.onMenu('menu:verify', () => setPanel('verify')),
+      window.pagebinder.onMenu('menu:properties', () => setPanel('properties')),
       window.pagebinder.onMenu('menu:insertTable', () => {
         if (!insertTableRef.current()) canvasCommands.current.insertTable()
       }),
@@ -1527,6 +1608,7 @@ export function App(): JSX.Element {
               onInsertPicture={(display, at) => void insertImage(display, at)}
               onInsertFile={(at) => void insertFile(at)}
               onCopyObjects={copyObjects}
+              onCopyPicture={copyAnchoredPicture}
               onPasteObjects={(at) => void pasteObjects(at)}
               canPaste={canPaste}
               onSignature={(ed) => void insertSignature(ed)}
@@ -1621,6 +1703,7 @@ export function App(): JSX.Element {
             onClose={() => setPanel(null)}
           />
         )}
+        {panel === 'properties' && tree && !templateMode && <NotebookPropertiesDialog name={tree.meta.name} onClose={() => setPanel(null)} />}
         {panel === 'verify' && <VerifyPanel onClose={() => setPanel(null)} onRebuildIndex={() => void window.pagebinder.search.rebuild()} />}
         {previewUrl && page && (
           <PrintPreview
