@@ -12,8 +12,11 @@ import type { PageDoc } from '../../shared/types'
 import { INDEX_DIR } from '../storage/paths'
 import { extractPageText } from './text'
 
-/** 4: printout text column. A version change makes every notebook rebuild its index on open. */
-export const INDEX_VERSION = 4
+/**
+ * 4: printout text column. 5: Outlook email bodies stored only as HTML or compressed RTF are
+ * indexed. A version change makes every notebook rebuild its index on open.
+ */
+export const INDEX_VERSION = 5
 export const INDEX_FILE = 'search.sqlite'
 
 export type ResultKind = 'page' | 'section' | 'group'

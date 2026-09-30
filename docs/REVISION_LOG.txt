@@ -10,7 +10,11 @@ earlier ones. Nothing ever needs converting.
 Version 1.1.2 - in development (not yet released)
 -------------------------------------------------
 
-Nothing yet.
+Search
+- The text of emails dragged in from Outlook is now searchable. Many Outlook
+  messages keep their text only in a formatted form, which search used to
+  skip. The search index rebuilds itself once when a notebook is first opened
+  in this version, so emails added earlier become searchable too.
 
 
 Version 1.1.1 - 29 September 2026 (pre-release)
