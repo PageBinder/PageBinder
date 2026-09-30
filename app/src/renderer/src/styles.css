@@ -334,3 +334,9 @@ html[data-busy] * { cursor: progress !important; }
 
 /* Format painter armed: a brush pointer over text. */
 body.format-painting .canvas .tiptap { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.3' stroke-linejoin='round'%3E%3Crect x='2' y='1.5' width='11' height='4.5' rx='1' fill='white'/%3E%3Cpath d='M13 3.75h1.25v4H8v2'/%3E%3Crect x='6.75' y='9.75' width='2.5' height='5' rx='0.8' fill='black'/%3E%3C/svg%3E") 8 19, text; }
+
+/* File > Notebook Properties */
+.properties-list { display: grid; grid-template-columns: max-content 1fr; gap: 10px 18px; margin: 12px 0 0; }
+.properties-list dt { color: var(--muted); font-size: 12px; padding-top: 2px; }
+.properties-list dd { margin: 0; word-break: break-word; }
+.properties-list ul { margin: 0; padding-left: 16px; }

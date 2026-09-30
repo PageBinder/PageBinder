@@ -94,6 +94,16 @@ export interface AboutInfo {
   dependencies: { name: string; version: string; license: string; description: string }[]
 }
 
+export interface NotebookProperties {
+  root: string
+  totalBytes: number
+  fileCount: number
+  historyBytes: number
+  historyFiles: number
+  largeAttachments: { rel: string; bytes: number }[]
+  lastEdit: { when: string; by: string | null; pageRel: string; title: string } | null
+}
+
 export interface RecentNotebook {
   root: string
   name: string
@@ -105,6 +115,8 @@ export interface PageBinderApi {
     recent(): Promise<RecentNotebook[]>
     /** The page last opened in the open notebook, if it was remembered. */
     lastPage(): Promise<string | null>
+    /** Size, file counts, large attachments, and the last edit of the open notebook. */
+    properties(): Promise<NotebookProperties>
     startupRoot(): Promise<string | null>
     forget(root: string): Promise<void>
     pickFolder(): Promise<string | null>

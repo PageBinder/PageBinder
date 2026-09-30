@@ -28,7 +28,8 @@ export function TextContainer({
   onMeasure,
   sheet,
   imageBase,
-  onPicturesChange
+  onPicturesChange,
+  onCopyPicture
 }: {
   obj: TextContainerModel
   autoFocus: false | 'start' | 'end'
@@ -48,6 +49,7 @@ export function TextContainer({
   imageBase: string
   /** Pictures anchored in the box were moved, resized, or removed. */
   onPicturesChange: (id: string, pictures: AnchoredPicture[]) => void
+  onCopyPicture: (boxId: string, pictureId: string, cut: boolean) => void
 }): JSX.Element {
   const { setEditor, editor: active } = useActiveEditor()
   const editor = useEditor({
@@ -202,7 +204,16 @@ export function TextContainer({
       if (!(e.target as HTMLElement | null)?.closest?.(`.anchored-picture-frame[data-id]`)) setSelectedPicture(null)
     }
     const key = (e: KeyboardEvent): void => {
-      if (!selectedPicture || (e.key !== 'Delete' && e.key !== 'Backspace')) return
+      if (!selectedPicture) return
+      // Cmd/Ctrl+C or X: copy or cut the selected picture, to paste onto the page or into a box.
+      if ((e.metaKey || e.ctrlKey) && (e.key.toLowerCase() === 'c' || e.key.toLowerCase() === 'x')) {
+        e.preventDefault()
+        e.stopPropagation()
+        onCopyPicture(obj.id, selectedPicture, e.key.toLowerCase() === 'x')
+        if (e.key.toLowerCase() === 'x') setSelectedPicture(null)
+        return
+      }
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return
       e.preventDefault()
       e.stopPropagation()
       onPicturesChange(obj.id, picturesRef.current.filter((p) => p.id !== selectedPicture))
@@ -218,7 +229,7 @@ export function TextContainer({
       window.removeEventListener('mousedown', down, true)
       window.removeEventListener('keydown', key, true)
     }
-  }, [obj.id, obj.width, onPicturesChange, selectedPicture])
+  }, [obj.id, obj.width, onPicturesChange, onCopyPicture, selectedPicture])
   useEffect(() => {
     const move = (e: MouseEvent): void => {
       const z = zoomRef.current

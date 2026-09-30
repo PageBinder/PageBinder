@@ -24,7 +24,23 @@ Pages and text
   and line spacing. Double-click the paintbrush to paint several times; press
   Escape or click the paintbrush again to stop. Undo reverses each paint.
 
+Pictures
+- Move a picture between the page and a text box with cut (or copy) and
+  paste. Select a picture on the page, cut it, click in a text box, and
+  paste: it goes into the box with text flowing beside it, keeping its size.
+  Select a picture in a text box, cut it, click on the page, and paste: it
+  sits on the page again. Pictures in text boxes also have Cut picture and
+  Copy picture on their right-click menu, and any object on the page can now
+  be cut (right-click > Cut, or Cmd+X / Ctrl+X). Text copied afterwards still
+  pastes as text.
+
 Notebooks and backups
+- File > Notebook Properties shows when the notebook was last edited and by
+  whom (the account name of the computer's user, recorded with each save),
+  its size on disk and number of files, how much of that is page history,
+  and any attachment of 50 MB or more.
+- Page History shows each saved version as the whole page, including anything
+  beside or below the paper, as the HTML backup copy does.
 - New notebooks start with narrow margins (0.5 inch all round). Existing
   notebooks and their pages keep their margins, including pages added to them
   later.

@@ -31,13 +31,14 @@ export function registerProtocolHandler(): void {
     if (!ALLOWED.test(relIn) || relIn.includes('..')) return new Response('Forbidden', { status: 403 })
     const resolved = resolveRel(relIn)
     const rel = resolved.rel
-    // A history snapshot is served as a rendered page, so the history panel can preview it.
+    // A history snapshot is served as a rendered page, so the history panel can preview it, showing
+    // the whole canvas as the page.html backup does.
     const snap = /^(.*)\/\.history\/([^/]+\.json)$/.exec(rel)
     if (snap) {
       try {
         const doc = await readSnapshot(resolved.root, snap[1]!, snap[2]!)
         if (!doc) return new Response('Version not readable', { status: 404 })
-        const html = renderPageHtml(doc, { imageBase: '../images/', attachmentBase: '../attachments/', view: 'sheets' })
+        const html = renderPageHtml(doc, { imageBase: '../images/', attachmentBase: '../attachments/', view: 'canvas' })
         return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } })
       } catch {
         return new Response('Version not readable', { status: 404 })

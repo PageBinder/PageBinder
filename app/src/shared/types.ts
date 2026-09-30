@@ -210,6 +210,8 @@ export interface PageDoc {
   modified: string
   tags: string[]
   parentPageId?: string
+  /** The account name of whoever saved the page last (optional; pages from 1.1.1 and earlier lack it). */
+  modifiedBy?: string
   paper: PaperSettings
   print?: PrintSettings
   objects: CanvasObject[]

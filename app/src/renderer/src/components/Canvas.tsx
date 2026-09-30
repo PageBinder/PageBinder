@@ -73,6 +73,7 @@ export function Canvas({
   onInsertPicture,
   onInsertFile,
   onCopyObjects,
+  onCopyPicture,
   onPasteObjects,
   canPaste,
   onSignature,
@@ -105,6 +106,8 @@ export function Canvas({
   onInsertFile: (at: { x: number; y: number }) => void
   /** Copy the given objects to the app clipboard; paste them at a point. */
   onCopyObjects: (objects: CanvasObject[]) => void
+  /** Copy or cut a picture anchored in a text box, to paste onto the page or into another box. */
+  onCopyPicture: (boxId: string, pictureId: string, cut: boolean) => void
   onPasteObjects: (at?: { x: number; y: number }) => void
   canPaste: boolean
   /** Insert the user's signature into the given editor. */
@@ -390,9 +393,11 @@ export function Canvas({
         if (selectedRef.current.size) setSelectedIds(new Set())
         return
       }
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'c' && selectedRef.current.size) {
+      if ((e.metaKey || e.ctrlKey) && (e.key.toLowerCase() === 'c' || e.key.toLowerCase() === 'x') && selectedRef.current.size) {
         e.preventDefault()
         onCopyObjects(docRef.current.objects.filter((o) => selectedRef.current.has(o.id)))
+        // Cut: copied, then removed (Undo brings them back).
+        if (e.key.toLowerCase() === 'x') deleteSelected()
         return
       }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'v') {
@@ -578,6 +583,15 @@ export function Canvas({
       ]
     }
     const copyItem: MenuItem = { label: selectedIds.has(id) && selectedIds.size > 1 ? `Copy ${selectedIds.size} objects` : 'Copy', onClick: () => onCopyObjects(doc.objects.filter((o) => (selectedIds.has(id) ? selectedIds.has(o.id) : o.id === id))) }
+    const cutTargets = (): CanvasObject[] => doc.objects.filter((o) => (selectedIds.has(id) ? selectedIds.has(o.id) : o.id === id))
+    const cutItem: MenuItem = {
+      label: selectedIds.has(id) && selectedIds.size > 1 ? `Cut ${selectedIds.size} objects` : 'Cut',
+      onClick: () => {
+        const targets = cutTargets()
+        onCopyObjects(targets)
+        removeObjects(new Set(targets.map((o) => o.id)))
+      }
+    }
     if (obj.kind === 'shape') {
       const setShape = (patch: Partial<ShapeModel>): void => update((objs) => objs.map((o) => (o.id === id && o.kind === 'shape' ? { ...o, ...patch } : o)))
       const isLine = obj.shape === 'line' || obj.shape === 'arrow'
@@ -587,6 +601,7 @@ export function Canvas({
         { label: `Line weight: ${obj.strokeWidth} px (click to change)`, keepOpen: true, onClick: () => setShape({ strokeWidth: obj.strokeWidth >= 6 ? 1 : obj.strokeWidth + 1 }) },
         { separator: true },
         orderItem,
+        cutItem,
         copyItem,
         { label: 'Delete', onClick: () => removeObject(id) }
       ]
@@ -625,7 +640,12 @@ export function Canvas({
         // A picture anchored in the box.
         const anchored = extra?.pictureId && obj.kind === 'text' ? (obj.pictures ?? []).find((p) => p.id === extra.pictureId) : undefined
         if (anchored && obj.kind === 'text') {
-          items.push({ label: 'Remove picture', onClick: () => onPicturesChange(obj.id, (obj.pictures ?? []).filter((p) => p.id !== anchored.id)) }, { separator: true })
+          items.push(
+            { label: 'Cut picture', onClick: () => onCopyPicture(obj.id, anchored.id, true) },
+            { label: 'Copy picture', onClick: () => onCopyPicture(obj.id, anchored.id, false) },
+            { label: 'Remove picture', onClick: () => onPicturesChange(obj.id, (obj.pictures ?? []).filter((p) => p.id !== anchored.id)) },
+            { separator: true }
+          )
         } else {
           items.push({ label: 'Insert picture…', onClick: () => onInsertTextPicture(obj.id, extra?.at ?? { x: 0, y: 0 }) }, { separator: true })
         }
@@ -685,7 +705,7 @@ export function Canvas({
         )
       }
       if (ed) items.push({ label: 'Insert signature', onClick: () => onSignature(ed) }, { separator: true })
-      items.push(orderItem, copyItem, { label: 'Delete text box', onClick: () => removeObject(id) })
+      items.push(orderItem, cutItem, copyItem, { label: 'Delete text box', onClick: () => removeObject(id) })
       return items
     }
     const fileItems: MenuItem[] = [
@@ -701,7 +721,7 @@ export function Canvas({
       fileItems.push({ separator: true })
     }
     if (obj.kind === 'file' && /\.pdf$/i.test(obj.name)) fileItems.push({ label: 'Insert printout of this PDF', onClick: () => onPrintout(obj) }, { separator: true })
-    fileItems.push(orderItem, copyItem, { label: 'Delete', onClick: () => removeObject(id) })
+    fileItems.push(orderItem, cutItem, copyItem, { label: 'Delete', onClick: () => removeObject(id) })
     return fileItems
   }
 
@@ -791,6 +811,7 @@ export function Canvas({
               zoom={zoom}
               onContextMenu={(id, x, y, tableEditor, textEditor, extra) => setObjectMenu({ id, x, y, tableEditor, textEditor, extra })}
               onPicturesChange={onPicturesChange}
+              onCopyPicture={onCopyPicture}
               onMeasure={onMeasure}
               sheet={{ height: paper.height, marginTop: paper.margins.top, marginBottom: paper.margins.bottom }}
               imageBase={window.pagebinder.fileUrl(`${pageRel}/images/`)}

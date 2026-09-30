@@ -163,6 +163,7 @@ function buildMenu(): void {
         { label: 'Page History…', accelerator: 'CmdOrCtrl+Shift+H', click: () => send('menu:history') },
         { label: 'Recycled Pages…', click: () => send('menu:recycle') },
         { label: 'Verify Notebook…', click: () => send('menu:verify') },
+        { label: 'Notebook Properties…', click: () => send('menu:properties') },
         { type: 'separator' },
         isMac ? { role: 'close' } : { role: 'quit' }
       ]

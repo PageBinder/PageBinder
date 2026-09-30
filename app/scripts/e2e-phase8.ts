@@ -759,7 +759,7 @@ async function main(): Promise<void> {
   // 15. Starting PageBinder again with no notebook named opens the last notebook at the last page.
   await save(page)
   await app.close()
-  const env2: Record<string, string> = { ...(process.env as Record<string, string>), PAGEBINDER_TEST_DISPLAY: '2' }
+  const env2: Record<string, string> = { ...(process.env as Record<string, string>), PAGEBINDER_TEST_DISPLAY: '2', PAGEBINDER_TEST_PICK_IMAGES: picturePath }
   delete env2['PAGEBINDER_OPEN']
   const app2 = await electron.launch({ args: [resolve(process.env['E2E_OUT'] ?? 'out-e2e', 'main/index.js'), `--user-data-dir=${userData}`], cwd: resolve('.'), env: env2 })
   const page2 = await app2.firstWindow()
@@ -820,6 +820,102 @@ async function main(): Promise<void> {
   }, previewUrl)
   assert(previewView === 'sheets', `Print Preview inside PageBinder still shows the printed sheets (${previewView})`)
   step('the HTML backup copy shows the whole canvas on screen and prints the sheets; Print Preview is unchanged')
+
+  // 17. Cut and paste moves a picture from the page into a text box, and back out onto the page.
+  const menu2 = async (channel: string): Promise<void> => {
+    await app2.evaluate(({ BrowserWindow }, ch) => BrowserWindow.getAllWindows()[0]!.webContents.send(ch), channel)
+  }
+  await page2.locator('.page-row.add').click()
+  await page2.waitForSelector('.page-row.renaming input')
+  await page2.locator('.page-row.renaming input').fill('Moving pictures')
+  await page2.keyboard.press('Enter')
+  await page2.waitForSelector('.page-row.on:has-text("Moving pictures")')
+  const mRel = `${sec}/Moving pictures.page`
+  await page2.locator('.canvas').click({ button: 'right', position: { x: 140, y: 300 } })
+  await page2.locator('.context-item', { hasText: /^Text box$/ }).click()
+  await page2.waitForTimeout(300)
+  await page2.keyboard.type('Words for the picture to sit beside.')
+  await page2.keyboard.press('Escape')
+  await page2.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+  await menu2('menu:insertImage')
+  await page2.waitForSelector('.image-object img')
+  const mDoc = async (): Promise<PageDoc> => JSON.parse(await fs.readFile(join(root, mRel, 'page.json'), 'utf8')) as PageDoc
+  const counts = async (): Promise<{ onPage: number; inBox: number; name: string }> => {
+    const d = await mDoc()
+    const box = d.objects.find((o) => o.kind === 'text' && JSON.stringify(o.content).includes('Words for the picture')) as unknown as { pictures?: { name: string; width: number }[] } | undefined
+    const img = d.objects.find((o) => o.kind === 'image') as unknown as { name: string } | undefined
+    return { onPage: d.objects.filter((o) => o.kind === 'image').length, inBox: box?.pictures?.length ?? 0, name: img?.name ?? box?.pictures?.[0]?.name ?? '' }
+  }
+  await save(page2)
+  const start = await counts()
+  assert(start.onPage === 1 && start.inBox === 0, `a picture sits on the page (${JSON.stringify(start)})`)
+  // Cut it from the page, click in the text box, paste: it goes into the box.
+  await page2.locator('.image-object').click()
+  await page2.keyboard.press(`${mod}+x`)
+  await page2.waitForFunction(() => !document.querySelector('.image-object'))
+  // What the menu's Paste does: a paste event carrying the system clipboard (which a test's key
+  // press does not trigger).
+  const pasteClipboard = async (text?: string): Promise<void> => {
+    await page2.evaluate(async (t) => {
+      const data = t ?? (await navigator.clipboard.readText())
+      const dt = new DataTransfer()
+      dt.setData('text/plain', data)
+      ;(document.activeElement ?? document.body).dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }))
+    }, text)
+  }
+  const marker = await page2.evaluate(() => navigator.clipboard.readText())
+  assert(marker.startsWith('teal square.png'), `copying a picture puts a marker on the system clipboard (${JSON.stringify(marker)})`)
+  await page2.locator('.canvas .tiptap p', { hasText: 'Words for the picture' }).click({ position: { x: 4, y: 6 } })
+  await pasteClipboard()
+  await page2.waitForSelector('.anchored-picture-frame')
+  await save(page2)
+  const inside = await counts()
+  assert(inside.onPage === 0 && inside.inBox === 1 && inside.name === start.name, `cut from the page and pasted in the text box, the picture is in the box (${JSON.stringify(inside)})`)
+  // Cut it from the box, click on the page, paste: it is back on the page.
+  await page2.locator('.anchored-picture-frame').click()
+  await page2.keyboard.press(`${mod}+x`)
+  await page2.waitForFunction(() => !document.querySelector('.anchored-picture-frame'))
+  await page2.locator('.canvas').click({ position: { x: 600, y: 700 } })
+  await page2.keyboard.press(`${mod}+v`)
+  await page2.waitForSelector('.image-object img')
+  await save(page2)
+  const outside = await counts()
+  assert(outside.onPage === 1 && outside.inBox === 0 && outside.name === start.name, `cut from the box and pasted on the page, the picture is on the page again (${JSON.stringify(outside)})`)
+  // Text copied afterwards (so the clipboard no longer holds the marker) pastes as text.
+  await page2.locator('.canvas .tiptap p', { hasText: 'Words for the picture' }).click()
+  await page2.keyboard.press('End')
+  await page2.evaluate(() => navigator.clipboard.writeText('Words'))
+  await pasteClipboard()
+  await page2.waitForTimeout(300)
+  await save(page2)
+  const afterText = await counts()
+  const boxText = JSON.stringify((await mDoc()).objects.find((o) => o.kind === 'text' && JSON.stringify(o.content).includes('Words for')))
+  const boxWords = [...boxText.matchAll(/"text":"([^"]*)"/g)].map((m) => m[1]).join("")
+  assert(afterText.inBox === 0 && (boxWords.match(/Words/g) ?? []).length === 2, `text copied later pastes as text (${boxWords})`)
+  step('cut and paste moves a picture from the page into a text box and back, and later text copies still paste as text')
+
+  // 18. File > Notebook Properties: last edit with the account name, size and files, history, large attachments.
+  await menu2('menu:properties')
+  await page2.waitForSelector('.properties .total-size')
+  const propsText = await page2.locator('.properties').innerText()
+  const account = (await import('node:os')).userInfo().username
+  assert(propsText.includes(`by ${account}`) && /Size on disk[\s\S]*files/.test(propsText) && /Page history[\s\S]*saved version/.test(propsText) && propsText.includes('None over 50 MB'), `the properties window shows the last edit, sizes, and history (${propsText.replace(/\n/g, ' | ').slice(0, 400)})`)
+  await page2.keyboard.press('Escape')
+  step('File > Notebook Properties shows the last edit with its author, the size and file count, history, and large attachments')
+
+  // 19. Page History shows a version as the whole canvas.
+  await menu2('menu:history')
+  await page2.waitForSelector('.preview.history')
+  await page2.waitForFunction(() => document.querySelectorAll('.history-row').length >= 1)
+  await page2.locator('.history-row').nth(0).click()
+  let histView: string | undefined
+  for (let i = 0; i < 50 && !histView; i++) {
+    const f = page2.frames().find((fr) => fr !== page2.mainFrame() && fr.url().includes('/.history/'))
+    if (f) histView = await f.evaluate(() => (document.body.classList.contains('paginated') ? document.body.dataset.view : undefined)).catch(() => undefined)
+    if (!histView) await page2.waitForTimeout(100)
+  }
+  assert(histView === 'canvas', `Page History previews a version as the whole canvas (${histView})`)
+  step('Page History previews versions as the whole canvas')
   await app2.close()
   process.stdout.write(`\nPASS. Notebook kept at ${root}\n`)
 }
