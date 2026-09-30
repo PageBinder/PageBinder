@@ -27,8 +27,19 @@ async function launch(userData: string, root?: string, extra: Record<string, str
   else delete env['PAGEBINDER_OPEN']
   const app = await electron.launch({ args: [resolve(process.env['E2E_OUT'] ?? 'out-e2e', 'main/index.js'), `--user-data-dir=${userData}`], cwd: resolve('.'), env })
   const page = await app.firstWindow()
-  await page.waitForSelector(root ? '.section-tabs' : '.welcome')
+  await page.waitForSelector(root ? '.section-tabs' : '.welcome, .section-tabs')
   return { app, page }
+}
+
+/**
+ * With a notebook in the recent list, PageBinder reopens it at start; the recent list is then on
+ * the Welcome screen, reached with Switch notebook.
+ */
+async function reopenedThenWelcome(page: Page, name: string): Promise<void> {
+  await page.waitForSelector('.section-tabs')
+  await page.locator('.notebook-button').click()
+  await page.locator('.context-item', { hasText: /^Switch notebook/ }).click()
+  await page.locator('.recent-name', { hasText: name }).waitFor()
 }
 
 async function menu(app: ElectronApplication, channel: string): Promise<void> {
@@ -103,10 +114,10 @@ async function main(): Promise<void> {
   // 5. With a notebook in the recent list, the first-run panel is gone.
   {
     const { app, page } = await launch(userData)
-    await page.locator('.recent-name', { hasText: 'Deep notebook' }).waitFor()
+    await reopenedThenWelcome(page, 'Deep notebook')
     assert(!(await page.locator('.first-run').count()), 'no first-run panel once a notebook has been opened')
     await app.close()
-    step('the first-run panel is replaced by the recent list once a notebook has been opened')
+    step('once a notebook has been opened, PageBinder reopens it at start, and the Welcome screen lists it with no first-run panel')
   }
 
   // 6. As an installed copy, settings nobody has confirmed (as development leaves them) bring the
@@ -118,12 +129,12 @@ async function main(): Promise<void> {
   await fs.cp(userData, freshDir, { recursive: true })
   {
     const { app, page } = await launch(keepDir, undefined, { PAGEBINDER_TEST_PACKAGED: '1', PAGEBINDER_TEST_SETTINGS_CHOICE: 'keep' })
-    await page.locator('.recent-name', { hasText: 'Deep notebook' }).waitFor()
+    await reopenedThenWelcome(page, 'Deep notebook')
     await app.close()
     assert(await fs.stat(join(keepDir, 'install.json')).then(() => true, () => false), 'the installation is recorded after Keep')
     // The same installation starting again must not ask: a dialog would stop the window from appearing.
     const again = await launch(keepDir, undefined, { PAGEBINDER_TEST_PACKAGED: '1' })
-    await again.page.locator('.recent-name', { hasText: 'Deep notebook' }).waitFor()
+    await reopenedThenWelcome(again.page, 'Deep notebook')
     await again.app.close()
     step('Keep my settings keeps the recent list, and the next start does not ask again')
   }
