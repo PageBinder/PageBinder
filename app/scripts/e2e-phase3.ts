@@ -98,12 +98,12 @@ async function main(): Promise<void> {
 
   // The four alignment buttons: each one saves and prints. None is shown as selected (the user
   // asked for no highlight on these buttons).
-  assert((await page.locator('.tb.tb-icon svg').count()) === 4, 'four alignment buttons, each with a drawn symbol')
+  assert((await page.locator('.tb.tb-icon:not(.painter) svg').count()) === 4, 'four alignment buttons, each with a drawn symbol')
   for (const [title, value] of [['Justify', 'justify'], ['Align right', 'right'], ['Align left', 'left'], ['Center', 'center']] as const) {
     await page.locator(`.tb[title="${title}"]`).click()
     await save(page)
     assert(JSON.stringify((await doc()).objects).includes(`"textAlign":"${value}"`) && (await html()).includes(`text-align: ${value}`), `${title} is saved and rendered in page.html`)
-    assert((await page.locator('.tb.tb-icon.active').count()) === 0, `no alignment button is highlighted after ${title}`)
+    assert((await page.locator('.tb.tb-icon.active:not(.painter)').count()) === 0, `no alignment button is highlighted after ${title}`)
   }
   step('Align left, Center, Align right, and Justify each save and print, with no highlight')
 

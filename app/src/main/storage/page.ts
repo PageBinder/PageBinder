@@ -31,7 +31,7 @@ import {
   toRel
 } from './paths'
 import { withChecksum, verifyChecksum } from './checksum'
-import { renderPageHtml } from '../../shared/render/renderPage'
+import { renderPageHtml, paperSizePx } from '../../shared/render/renderPage'
 import { findMissingFiles, ATTACHMENTS_DIR, IMAGES_DIR } from './attachments'
 import { pruneHistory, type HistoryPolicy, DEFAULT_HISTORY_POLICY } from './history'
 import { recyclePage } from './recycle'
@@ -42,8 +42,52 @@ export function emptyTextContainer(x = 96, y = 96, width = 480): CanvasObject {
   return { kind: 'text', id: newId(), x, y, width, content: { type: 'doc', content: [{ type: 'paragraph' }] } }
 }
 
-export function newPageDoc(title: string, paper: PaperSettings = DEFAULT_PAPER): PageDoc {
+/** Title-block text size: the page name, bold. */
+export const TITLE_BLOCK_FONT_SIZE = '20px'
+/** Room the title block takes above the first text box. */
+const TITLE_BLOCK_HEIGHT = 88
+
+/**
+ * The title block at the top of a new page, as in OneNote: the page name in bold at 20 px, and the
+ * date and time the page was made below it. An ordinary text box, not linked to the page name.
+ */
+export function titleBlock(title: string, dateText: string, x: number, y: number, width: number): CanvasObject {
+  return {
+    kind: 'text',
+    id: newId(),
+    x,
+    y,
+    width,
+    content: {
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: title, marks: [{ type: 'bold' }, { type: 'textStyle', attrs: { fontSize: TITLE_BLOCK_FONT_SIZE } }] }] },
+        { type: 'paragraph', content: [{ type: 'text', text: dateText }] }
+      ]
+    }
+  }
+}
+
+/** The title block's page-name text, when `obj` is a title block made for `title`. */
+function isTitleBlockFor(obj: CanvasObject, title: string): boolean {
+  if (obj.kind !== 'text') return false
+  const first = (obj.content as { content?: { content?: { type: string; text?: string; marks?: { type: string }[] }[] }[] }).content?.[0]?.content
+  return !!first && first.length === 1 && first[0]!.text === title && !!first[0]!.marks?.some((m) => m.type === 'bold')
+}
+
+/**
+ * A new page. With `dateText`, it starts with a title block at the top of the printable area and
+ * its first empty text box below it; otherwise just the empty text box.
+ */
+export function newPageDoc(title: string, paper: PaperSettings = DEFAULT_PAPER, opts: { dateText?: string } = {}): PageDoc {
   const stamp = now()
+  let objects: CanvasObject[] = [emptyTextContainer()]
+  if (opts.dateText) {
+    const x = Math.round(paper.margins.left * 96)
+    const y = Math.round(paper.margins.top * 96)
+    const printable = paperSizePx(paper).width - x - Math.round(paper.margins.right * 96)
+    objects = [titleBlock(title, opts.dateText, x, y, Math.max(240, Math.min(624, printable))), emptyTextContainer(x, y + TITLE_BLOCK_HEIGHT)]
+  }
   return withChecksum({
     format: FORMAT_VERSION,
     id: newId(),
@@ -52,7 +96,7 @@ export function newPageDoc(title: string, paper: PaperSettings = DEFAULT_PAPER):
     modified: stamp,
     tags: [],
     paper,
-    objects: [emptyTextContainer()],
+    objects,
     manifest: { images: [], attachments: [] }
   })
 }
@@ -90,7 +134,8 @@ export async function createPage(
   root: string,
   sectionRel: string,
   title = 'Untitled page',
-  paper?: PaperSettings
+  paper?: PaperSettings,
+  opts: { dateText?: string } = {}
 ): Promise<{ relPath: string; doc: PageDoc }> {
   const sectionAbs = resolveInside(root, sectionRel)
   const folder = await uniqueName(sectionAbs, sanitizeName(title), PAGE_SUFFIX)
@@ -99,7 +144,7 @@ export async function createPage(
   await fs.mkdir(join(dir, 'images'))
   await fs.mkdir(join(dir, 'attachments'))
   await fs.mkdir(join(dir, HISTORY_DIR))
-  const doc = newPageDoc(title, paper)
+  const doc = newPageDoc(title, paper, opts)
   await atomicWriteFile(join(dir, PAGE_DOC), serialize(doc))
   await writeRendered(dir, doc)
   await appendPageOrder(sectionAbs, folder)
@@ -322,10 +367,25 @@ export async function readSnapshot(root: string, pageRel: string, name: string):
   return readValidPage(join(resolveInside(root, pageRel), HISTORY_DIR, name))
 }
 
-/** Rename a page: loads it, changes the title, saves it (folder rename included). */
-export async function renamePage(root: string, pageRel: string, title: string): Promise<SavePageResult> {
+/**
+ * Rename a page: loads it, changes the title, saves it (folder rename included). `firstName` is set
+ * when the name is given right after the page was created: the title block, if it still shows the
+ * placeholder name, takes the new name. Later renames leave the title block alone.
+ */
+export async function renamePage(root: string, pageRel: string, title: string, opts: { firstName?: boolean } = {}): Promise<SavePageResult> {
   const loaded = await loadPage(root, pageRel)
-  return savePage(root, loaded.relPath, { ...loaded.doc, title: title.trim() || 'Untitled page' })
+  const next = title.trim() || 'Untitled page'
+  let objects = loaded.doc.objects
+  if (opts.firstName) {
+    const i = objects.findIndex((o) => isTitleBlockFor(o, loaded.doc.title))
+    if (i >= 0) {
+      const block = objects[i] as CanvasObject & { kind: 'text'; content: { content: { content: { text: string }[] }[] } }
+      const content = structuredClone(block.content)
+      content.content[0]!.content[0]!.text = next
+      objects = objects.map((o, k) => (k === i ? { ...block, content } : o))
+    }
+  }
+  return savePage(root, loaded.relPath, { ...loaded.doc, title: next, objects })
 }
 
 /* ---------- snapshots: restore and copy ---------- */

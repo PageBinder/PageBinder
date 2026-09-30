@@ -443,7 +443,7 @@ async function main(): Promise<void> {
   await page.keyboard.press('Enter')
   await page.waitForSelector('.page-row.on:has-text("Delta")')
   const dRel = `${sec}/Delta.page`
-  await page.locator('.canvas').click({ button: 'right', position: { x: 140, y: 160 } })
+  await page.locator('.canvas').click({ button: 'right', position: { x: 140, y: 400 } })
   await page.locator('.context-item', { hasText: /^Text box$/ }).click()
   await page.waitForTimeout(300)
   await page.keyboard.type(Array.from({ length: 12 }, () => 'Words that flow beside the picture and then below it.').join(' '))
@@ -606,6 +606,152 @@ async function main(): Promise<void> {
   const dropped = (viaDrop.pictures ?? []).find((q) => q.originalName === 'dropped.png')
   assert(!!dropped && Math.abs(dropped.x - 200) <= 2 && (await imagesOnPage()) === pageImagesBefore && !JSON.stringify(viaDrop).includes('textImage'), `a picture dropped on a text box is anchored where it was dropped (${JSON.stringify(viaDrop.pictures)})`)
   step('Insert > Picture in a text box and pictures dropped on a text box go into the box')
+
+  // 13. A new page starts with a title block: its name in bold at 20 px and the creation date and
+  //     time below, with the first empty text box under it. The first name given goes into the
+  //     title; a later rename leaves it alone.
+  await page.locator('.page-row.add').click()
+  await page.waitForSelector('.page-row.renaming input')
+  await page.locator('.page-row.renaming input').fill('Pasture log')
+  await page.keyboard.press('Enter')
+  await page.waitForSelector('.page-row.on:has-text("Pasture log")')
+  const pRel = `${sec}/Pasture log.page`
+  type Para = { content?: { text?: string; marks?: { type: string; attrs?: { fontSize?: string } }[] }[] }
+  const titleOf = async (): Promise<{ first: Para; second: Para; objects: number; below: boolean }> => {
+    const d = await doc(pRel)
+    const t = d.objects[0] as unknown as { kind: string; y: number; content: { content: Para[] } }
+    const next = d.objects[1] as unknown as { kind: string; y: number } | undefined
+    return { first: t.content.content[0]!, second: t.content.content[1]!, objects: d.objects.length, below: !!next && next.kind === 'text' && next.y > t.y + 40 }
+  }
+  const made = await titleOf()
+  const nameRun = made.first.content?.[0]
+  const year = String(new Date().getFullYear())
+  assert(nameRun?.text === 'Pasture log' && nameRun.marks?.some((m) => m.type === 'bold') && nameRun.marks?.some((m) => m.type === 'textStyle' && m.attrs?.fontSize === '20px'), `the title block holds the page name in bold at 20 px (${JSON.stringify(made.first)})`)
+  assert(!!made.second.content?.[0]?.text?.includes(year) && !made.second.content[0]!.marks?.length, `the line below is the creation date and time in plain text (${JSON.stringify(made.second)})`)
+  assert(made.objects === 2 && made.below, 'the first empty text box sits below the title block')
+  await page.waitForFunction(() => document.querySelector('.canvas .text-container .tiptap p')?.textContent === 'Pasture log')
+  assert(!(await page.locator('.canvas .tiptap', { hasText: 'Untitled page' }).count()), 'the title on screen shows the name just given, not the placeholder')
+  assert(!(await page.locator('.canvas .tiptap h1, .canvas .tiptap h2, .canvas .tiptap h3').count()), 'the title is not a heading')
+  await page.locator('.page-row.on', { hasText: 'Pasture log' }).dblclick()
+  await page.waitForSelector('.page-row.renaming input')
+  await page.locator('.page-row.renaming input').fill('Pasture log 2026')
+  await page.keyboard.press('Enter')
+  await page.waitForSelector('.page-row.on:has-text("Pasture log 2026")')
+  const renamed = JSON.parse(await fs.readFile(join(root, sec, 'Pasture log 2026.page', 'page.json'), 'utf8')) as PageDoc
+  assert(JSON.stringify(renamed.objects[0]).includes('"text":"Pasture log"') && !JSON.stringify(renamed.objects[0]).includes('Pasture log 2026'), 'a later rename leaves the title block alone')
+  step('a new page starts with its name and creation date at the top, not linked to later renames')
+
+  // 14. Format painter: copy the look of some text and paint it onto other text.
+  const fpRel = `${sec}/Pasture log 2026.page`
+  const fpBox = page.locator('.text-container').nth(1).locator('.tiptap')
+  await fpBox.click()
+  await page.keyboard.type('Source words here')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('Target one and target two')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('Plain line')
+  // Give "Source" a look: bold, red, 18 px, centred.
+  await fpBox.evaluate((el) => {
+    const ed = (el as HTMLElement & { editor: { chain: () => { setTextSelection: (r: { from: number; to: number }) => { toggleBold: () => { setColor: (c: string) => { setFontSize: (s: string) => { setTextAlign: (a: string) => { run: () => boolean } } } } } } } }).editor
+    ed.chain().setTextSelection({ from: 1, to: 7 }).toggleBold().setColor('#a32d2d').setFontSize('18px').setTextAlign('center').run()
+  })
+  const wordPoint = async (word: string, nth = 0): Promise<{ x: number; y: number }> =>
+    fpBox.evaluate(
+      (el, { word, nth }) => {
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+        let seen = 0
+        for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+          const t = n as Text
+          let i = t.data.indexOf(word)
+          while (i >= 0) {
+            if (seen++ === nth) {
+              const r = document.createRange()
+              r.setStart(t, i)
+              r.setEnd(t, i + word.length)
+              const b = r.getBoundingClientRect()
+              return { x: b.left + b.width / 2, y: b.top + b.height / 2 }
+            }
+            i = t.data.indexOf(word, i + 1)
+          }
+        }
+        throw new Error(`no ${word}`)
+      },
+      { word, nth }
+    )
+  const textRuns = async (): Promise<string> => JSON.stringify((await doc(fpRel)).objects[1])
+  // Single use: click in "Source", click the brush, then highlight "Target" by dragging.
+  let sp = await wordPoint('Source')
+  await page.mouse.click(sp.x, sp.y)
+  await page.locator('.tb.painter').click()
+  assert(await page.locator('.tb.painter.active').count(), 'the brush shows as armed')
+  let wp = await wordPoint('Target')
+  // From the start of "Target" to its end ("Target" is about 44 px wide at 14 px).
+  const tRange = await fpBox.evaluate((el) => {
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      const t = n as Text
+      const i = t.data.indexOf('Target')
+      if (i < 0) continue
+      const r = document.createRange()
+      r.setStart(t, i)
+      r.setEnd(t, i + 6)
+      const b = r.getBoundingClientRect()
+      return { x0: b.left + 1, x1: b.right - 0.5, y: b.top + b.height / 2 }
+    }
+    throw new Error('no Target')
+  })
+  await page.mouse.move(tRange.x0, tRange.y)
+  await page.mouse.down()
+  await page.mouse.move(tRange.x1, tRange.y, { steps: 4 })
+  await page.mouse.up()
+  await page.waitForFunction(() => !document.querySelector('.tb.painter.active'))
+  await save(page)
+  let j = await textRuns()
+  const targetRun = (JSON.parse(j) as { content: { content: { content?: { text: string; marks?: { type: string; attrs?: Record<string, string> }[] }[] }[] } }).content.content[1]!.content!.find((r) => r.text === 'Target')
+  assert(!!targetRun && targetRun.marks?.some((m) => m.type === 'bold') && targetRun.marks?.some((m) => m.type === 'textStyle' && m.attrs?.['color'] === '#a32d2d' && m.attrs?.['fontSize'] === '18px'), `"Target" took the look of "Source" (${JSON.stringify(targetRun)})`)
+  assert(!j.includes('"textAlign":"center"},"content":[{"text":"Target') && (JSON.parse(j) as { content: { content: { attrs?: { textAlign?: string } }[] } }).content.content[1]!.attrs?.textAlign !== 'center', 'painting part of a paragraph leaves its alignment alone')
+  // Undo reverses the paint in one step.
+  await page.keyboard.press(`${mod}+z`)
+  await save(page)
+  j = await textRuns()
+  assert(!/"text":"Target"[^}]*#a32d2d|#a32d2d[^}]*\}\],"text":"Target"/.test(j) && !j.includes('"text":"Target","marks"') , `Undo reverses the paint (${j.slice(0, 300)})`)
+  // Double-click the brush: it keeps painting (plain clicks on words) until Escape.
+  sp = await wordPoint('Source')
+  await page.mouse.click(sp.x, sp.y)
+  await page.locator('.tb.painter').dblclick()
+  wp = await wordPoint('one')
+  await page.mouse.click(wp.x, wp.y)
+  await page.waitForTimeout(100)
+  wp = await wordPoint('two')
+  await page.mouse.click(wp.x, wp.y)
+  await page.waitForTimeout(100)
+  assert(await page.locator('.tb.painter.active').count(), 'a double-clicked brush stays armed')
+  // Painting a whole paragraph also brings the alignment.
+  const lineRange = await fpBox.evaluate((el) => {
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      const t = n as Text
+      if (t.data !== 'Plain line') continue
+      const r = document.createRange()
+      r.selectNodeContents(t)
+      const b = r.getBoundingClientRect()
+      return { x0: b.left + 1, x1: b.right - 0.5, y: b.top + b.height / 2 }
+    }
+    throw new Error('no Plain line')
+  })
+  await page.mouse.move(lineRange.x0, lineRange.y)
+  await page.mouse.down()
+  await page.mouse.move(lineRange.x1, lineRange.y, { steps: 4 })
+  await page.mouse.up()
+  await page.waitForTimeout(100)
+  await page.keyboard.press('Escape')
+  await page.waitForFunction(() => !document.querySelector('.tb.painter.active'))
+  await save(page)
+  const fpParas = (JSON.parse(await textRuns()) as { content: { content: { attrs?: { textAlign?: string }; content?: { text: string; marks?: { type: string }[] }[] }[] } }).content.content
+  const boldWords = fpParas.flatMap((q) => q.content ?? []).filter((r) => r.marks?.some((m) => m.type === 'bold')).map((r) => r.text)
+  assert(boldWords.includes('one') && boldWords.includes('two') && boldWords.includes('Plain line') && !boldWords.includes('Target'), `the sticky brush painted each clicked word and the whole line (${JSON.stringify(boldWords)})`)
+  assert(fpParas[2]!.attrs?.textAlign === 'center', 'a whole painted paragraph takes the alignment too')
+  step('the format painter copies a look once, or keeps painting after a double click, and Undo reverses a paint')
 
   await app.close()
   process.stdout.write(`\nPASS. Notebook kept at ${root}\n`)

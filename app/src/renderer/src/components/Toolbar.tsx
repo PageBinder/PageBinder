@@ -1,7 +1,8 @@
 import type { JSX } from 'react'
-import { useState, type MouseEvent } from 'react'
+import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import { useActiveEditor } from '../editorContext'
 import { ContextMenu, type MenuItem } from './ContextMenu'
+import { applyFormat, captureFormat, domSelectionRange, editorAt, type CapturedFormat } from '../formatPainter'
 import { FONT_FAMILIES, FONT_SIZES } from '@shared/render/extensions'
 import { LINE_HEIGHTS, STANDARD_LINE_HEIGHT, lineHeightLabel } from '@shared/render/lineHeight'
 import type { DrawTool } from '@shared/types'
@@ -45,6 +46,56 @@ export function Toolbar({
   const keep = (e: MouseEvent): void => e.preventDefault()
   const can = !!editor
   const chain = () => editor!.chain().focus()
+
+  // Format painter: armed with the look of the text where it was clicked; the next text
+  // highlighted (or word clicked) takes that look. A double click keeps it armed until Escape or
+  // another click on the brush.
+  const [painter, setPainter] = useState<{ format: CapturedFormat; sticky: boolean } | null>(null)
+  const painterRef = useRef(painter)
+  painterRef.current = painter
+  const armPainter = (sticky: boolean): void => {
+    if (!editor) return
+    if (!sticky && painterRef.current) {
+      setPainter(null)
+      return
+    }
+    setPainter({ format: captureFormat(editor), sticky })
+  }
+  useEffect(() => {
+    if (!painter) return
+    document.body.classList.add('format-painting')
+    const onDown = (e: globalThis.MouseEvent): void => {
+      const t = e.target as Element
+      // A press outside any text (other than on the brush itself) puts the brush down.
+      if (!editorAt(t) && !t.closest('.tb.painter')) setPainter(null)
+    }
+    const onUp = (e: globalThis.MouseEvent): void => {
+      const target = editorAt(e.target as Element)
+      if (!target || e.button !== 0) return
+      // Let the browser finish placing the selection first.
+      window.setTimeout(() => {
+        const p = painterRef.current
+        if (!p || target.isDestroyed) return
+        // The highlighted text, or else the word under the pointer.
+        const hit = target.view.posAtCoords({ left: e.clientX, top: e.clientY })
+        const range = domSelectionRange(target) ?? (hit ? { from: hit.pos, to: hit.pos } : null)
+        if (range) applyFormat(target, p.format, range)
+        if (!p.sticky) setPainter(null)
+      }, 0)
+    }
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') setPainter(null)
+    }
+    document.addEventListener('mousedown', onDown, true)
+    document.addEventListener('mouseup', onUp, true)
+    document.addEventListener('keydown', onKey, true)
+    return () => {
+      document.body.classList.remove('format-painting')
+      document.removeEventListener('mousedown', onDown, true)
+      document.removeEventListener('mouseup', onUp, true)
+      document.removeEventListener('keydown', onKey, true)
+    }
+  }, [painter])
   const b = (label: React.ReactNode, active: boolean, run: () => void, title: string, enabled = can, className = ''): JSX.Element => (
     <button type="button" className={`tb${active ? ' active' : ''}${className ? ` ${className}` : ''}`} disabled={!enabled} onMouseDown={keep} onClick={run} title={title}>
       {label}
@@ -98,6 +149,19 @@ export function Toolbar({
           </select>
         </G>
         <G>
+          <button
+            type="button"
+            className={`tb tb-icon painter${painter ? ' active' : ''}`}
+            disabled={!can}
+            onMouseDown={keep}
+            onClick={(e) => {
+              if (e.detail < 2) armPainter(false)
+            }}
+            onDoubleClick={() => armPainter(true)}
+            title="Format painter: copy the look of this text, then highlight other text to paint it. Double-click to paint several times; Escape stops."
+          >
+            <PainterIcon />
+          </button>
           {b('B', !!editor?.isActive('bold'), () => chain().toggleBold().run(), 'Bold (⌘B)', can, 'bold')}
           {b('I', !!editor?.isActive('italic'), () => chain().toggleItalic().run(), 'Italic (⌘I)', can, 'italic')}
           {b('U', !!editor?.isActive('underline'), () => chain().toggleUnderline().run(), 'Underline (⌘U)', can, 'underline')}
@@ -183,6 +247,17 @@ function AlignIcon({ kind }: { kind: 'left' | 'center' | 'right' | 'justify' }):
       <rect {...short} y="5.5" height="1.6" rx="0.4" />
       <rect x="1" y="9" width="14" height="1.6" rx="0.4" />
       <rect {...short} y="12.5" height="1.6" rx="0.4" />
+    </svg>
+  )
+}
+
+/** A paintbrush: bristles at the top, the handle running down. */
+function PainterIcon(): JSX.Element {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" strokeLinecap="round">
+      <rect x="2" y="1.5" width="11" height="4.5" rx="1" fill="currentColor" fillOpacity="0.25" />
+      <path d="M13 3.75h1.25v4H8v2" />
+      <rect x="6.75" y="9.75" width="2.5" height="5" rx="0.8" fill="currentColor" />
     </svg>
   )
 }

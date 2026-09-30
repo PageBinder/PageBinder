@@ -373,7 +373,7 @@ export function registerIpc(): void {
   })
 
   /* ---------- pages ---------- */
-  ipcMain.handle('page:create', async (_e, sectionRel: string, title?: string) => {
+  ipcMain.handle('page:create', async (_e, sectionRel: string, title?: string, opts?: { titleBlock?: boolean }) => {
     if (sectionRel.startsWith('@')) {
       const scope: TemplateScope = sectionRel === '@global' ? 'global' : 'notebook'
       const info = await createBlankTemplate(libraryForSection(sectionRel), scope, title ?? 'New template')
@@ -394,7 +394,9 @@ export function registerIpc(): void {
         /* template missing: fall back to a blank page */
       }
     }
-    const { relPath } = await createPage(root, sectionRel, title, meta?.settings.paper)
+    // A new blank page starts with a title block dated in the computer's regional format.
+    const dateText = opts?.titleBlock ? new Intl.DateTimeFormat(app.getSystemLocale() || undefined, { dateStyle: 'full', timeStyle: 'short' }).format(new Date()) : undefined
+    const { relPath } = await createPage(root, sectionRel, title, meta?.settings.paper, dateText ? { dateText } : {})
     return { relPath, tree: await afterSectionChange(sectionRel) }
   })
   ipcMain.handle('notebook:openTemplates', async () => templatesTree())
@@ -436,14 +438,14 @@ export function registerIpc(): void {
     const { root, rel } = resolveRel(relIn)
     return readSnapshot(root, rel, name)
   })
-  ipcMain.handle('page:rename', async (_e, relIn: string, title: string) => {
+  ipcMain.handle('page:rename', async (_e, relIn: string, title: string, opts?: { firstName?: boolean }) => {
     const { root, rel, template } = resolveRel(relIn)
     if (template) {
       const result = await renamePage(root, rel, title)
       await syncTemplateMeta(resolveInside(root, rel), result.doc.title)
       return { ...result, relPath: relIn, tree: await templatesTree() }
     }
-    const result = await renamePage(root, rel, title)
+    const result = await renamePage(root, rel, title, opts ?? {})
     await reindexPage(result.relPath, result.doc, rel)
     return { ...result, tree: await afterSectionChange(parentOf(rel)) }
   })
