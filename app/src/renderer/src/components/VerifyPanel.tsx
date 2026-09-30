@@ -23,6 +23,18 @@ const LABELS: Record<Finding['kind'], string> = {
   'long-path': 'Long file path'
 }
 
+/** What each kind of finding means and what its repair does, shown under it. */
+const DESCRIPTIONS: Record<Finding['kind'], string> = {
+  'corrupt-page': "The page's file can't be read. Restore from history puts back its last good saved version.",
+  'missing-file': 'A picture or attachment on a page is missing or has changed. Use Show file or Open to find it; there is no automatic repair.',
+  'orphan-file': "A file in a page's folder that no page uses. Move to recycle folder moves it out of the way without deleting it.",
+  'stale-html': "The page's HTML backup copy is older than the page. Regenerate page.html brings it up to date.",
+  'history-over-policy': 'More saved versions are kept than the history rules call for. Remove old snapshots removes the extras.',
+  'temp-file': 'A file left behind by a save that was interrupted. Remove temp file removes it.',
+  'regenerated-meta': 'A notebook, section, or group settings file was missing and was rebuilt with default settings. For information only.',
+  'long-path': "A file's full path is close to the length some Windows backup tools can't handle. Consider shortening the page or section name."
+}
+
 export function VerifyPanel({ onClose, onRebuildIndex }: { onClose: () => void; onRebuildIndex: () => void }): JSX.Element {
   const [mode, setMode] = useState<'quick' | 'full'>('quick')
   const [running, setRunning] = useState(false)
@@ -65,20 +77,33 @@ export function VerifyPanel({ onClose, onRebuildIndex }: { onClose: () => void; 
     <div className="dialog-backdrop">
       <div className="dialog wide verify" onMouseDown={(e) => e.stopPropagation()}>
         <h2>Verify notebook</h2>
-        <p className="muted small">
-          Checks every page document, every referenced file, unused files, rendered copies, and history. Repairs never delete a source file: unused files go to the recycle folder and damaged pages are restored from history.
+        <p className="muted small verify-intro">
+          Checks this notebook's files for problems and offers to fix them. Nothing is ever deleted: unused files go to the notebook's recycle folder, and damaged pages are put back from their saved versions.
         </p>
         <div className="verify-controls">
-          <label>
-            <input type="radio" checked={mode === 'quick'} onChange={() => setMode('quick')} disabled={running} /> Quick (names and sizes)
-          </label>
-          <label>
-            <input type="radio" checked={mode === 'full'} onChange={() => setMode('full')} disabled={running} /> Full (also verifies every file's content hash; slow on large notebooks)
-          </label>
+          <div className="verify-modes">
+            <label>
+              <input type="radio" checked={mode === 'quick'} onChange={() => setMode('quick')} disabled={running} />
+              <span>
+                <b>Quick</b>
+                <span className="muted small verify-desc">Checks that every page opens and every picture and attachment is where it should be. Fast, even for large notebooks.</span>
+              </span>
+            </label>
+            <label>
+              <input type="radio" checked={mode === 'full'} onChange={() => setMode('full')} disabled={running} />
+              <span>
+                <b>Full</b>
+                <span className="muted small verify-desc">Also reads every file to confirm its contents haven't changed or been damaged. Slow on large notebooks.</span>
+              </span>
+            </label>
+          </div>
           <span className="spacer" />
-          <button type="button" className="primary" disabled={running} onClick={() => void run()}>
-            {running ? `Checking${progress ? ` ${progress.done} of ${progress.total}` : ''}…` : 'Run check'}
-          </button>
+          <div className="verify-run">
+            <button type="button" className="primary" disabled={running} onClick={() => void run()}>
+              {running ? `Checking${progress ? ` ${progress.done} of ${progress.total}` : ''}…` : 'Run check'}
+            </button>
+            <span className="muted small verify-desc">Looks for problems. Nothing is changed until you choose a repair.</span>
+          </div>
         </div>
         {report && (
           <div className="verify-report">
@@ -91,6 +116,7 @@ export function VerifyPanel({ onClose, onRebuildIndex }: { onClose: () => void; 
                 <div key={key(f)} className="verify-row">
                   <span className="verify-text">
                     <span className="verify-kind">{LABELS[f.kind]}</span>
+                    <span className="muted small verify-meaning">{DESCRIPTIONS[f.kind]}</span>
                     <span className="muted small">
                       {f.rel}
                       {f.file ? ` · ${f.file}` : ''}
@@ -138,6 +164,12 @@ export function VerifyPanel({ onClose, onRebuildIndex }: { onClose: () => void; 
             <img src={window.pagebinder.fileUrl(preview.rel)} alt={preview.name} />
           </div>
         )}
+        <dl className="verify-help small">
+          <dt>Apply all repairs</dt>
+          <dd className="muted">Runs every repair listed above, in one go.</dd>
+          <dt>Rebuild search index</dt>
+          <dd className="muted">Rebuilds search from the pages themselves. Use it if search misses something you know is there.</dd>
+        </dl>
         <div className="dialog-actions">
           <button type="button" onClick={onRebuildIndex} title="Delete and rebuild the search index from the page files">
             Rebuild search index

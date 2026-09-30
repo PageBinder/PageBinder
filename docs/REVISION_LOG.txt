@@ -38,7 +38,11 @@ Notebooks and backups
 - File > Notebook Properties shows when the notebook was last edited and by
   whom (the account name of the computer's user, recorded with each save),
   its size on disk and number of files, how much of that is page history,
-  and any attachment of 50 MB or more.
+  and the total size of all attachments of 50 MB or more, with the five
+  largest listed.
+- Verify Notebook explains itself: what the Quick and Full checks do, what
+  each button does, and, for every problem it finds, what the problem means
+  and what its repair will do.
 - Page History shows each saved version as the whole page, including anything
   beside or below the paper, as the HTML backup copy does.
 - New notebooks start with narrow margins (0.5 inch all round). Existing
