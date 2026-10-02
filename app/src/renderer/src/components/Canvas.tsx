@@ -76,6 +76,8 @@ export function Canvas({
   onCopyPicture,
   onPasteObjects,
   canPaste,
+  canPastePicture,
+  onPastePictureIntoBox,
   onSignature,
   onPrintout,
   onInsertTextPicture,
@@ -110,6 +112,9 @@ export function Canvas({
   onCopyPicture: (boxId: string, pictureId: string, cut: boolean) => void
   onPasteObjects: (at?: { x: number; y: number }) => void
   canPaste: boolean
+  /** A copied or cut picture is waiting, to be pasted into a text box from its right-click menu. */
+  canPastePicture: boolean
+  onPastePictureIntoBox: (boxId: string, at: { x: number; y: number }) => void
   /** Insert the user's signature into the given editor. */
   onSignature: (editor: Editor) => void
   /** Render a PDF attachment as pictures below the card. */
@@ -647,7 +652,10 @@ export function Canvas({
             { separator: true }
           )
         } else {
-          items.push({ label: 'Insert picture…', onClick: () => onInsertTextPicture(obj.id, extra?.at ?? { x: 0, y: 0 }) }, { separator: true })
+          items.push({ label: 'Insert picture…', onClick: () => onInsertTextPicture(obj.id, extra?.at ?? { x: 0, y: 0 }) })
+          // A picture cut or copied earlier goes in where the box was right-clicked.
+          if (canPastePicture) items.push({ label: 'Paste picture', onClick: () => onPastePictureIntoBox(obj.id, extra?.at ?? { x: 0, y: 0 }) })
+          items.push({ separator: true })
         }
         // Line spacing for the paragraphs the selection touches, and the default for new text boxes.
         const current = ((ed.isActive('heading') ? ed.getAttributes('heading') : ed.getAttributes('paragraph'))['lineHeight'] as string | null) ?? STANDARD_LINE_HEIGHT

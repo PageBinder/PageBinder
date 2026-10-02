@@ -88,6 +88,8 @@ export function App(): JSX.Element {
   /** What copying objects put on the system clipboard, to recognise it at paste time. */
   const clipMarker = useRef<string | null>(null)
   const [canPaste, setCanPaste] = useState(false)
+  /** The object clipboard holds a picture that can go into a text box. */
+  const [canPastePicture, setCanPastePicture] = useState(false)
   const [copiedPage, setCopiedPage] = useState<PageRef | null>(null)
   const onSelectionInfo = useCallback((i: { shapes: number; total: number }) => setSelectionInfo((cur) => (cur.shapes === i.shapes && cur.total === i.total ? cur : i)), [])
   const [about, setAbout] = useState<DocName | 'about' | 'dependencies' | null>(null)
@@ -683,6 +685,7 @@ export function App(): JSX.Element {
     if (!p || !objects.length) return
     objectClipboard.current = { objects: JSON.parse(JSON.stringify(objects)) as CanvasObject[], fromRel: p.relPath }
     setCanPaste(true)
+    setCanPastePicture(objects.some((o) => o.kind === 'image' && o.display !== 'card'))
     // The system clipboard gets a marker, so a paste in a text box can tell whether these objects
     // are still the latest thing copied (text copied since then pastes as text).
     const first = objects[0]!
@@ -1611,6 +1614,8 @@ export function App(): JSX.Element {
               onCopyPicture={copyAnchoredPicture}
               onPasteObjects={(at) => void pasteObjects(at)}
               canPaste={canPaste}
+              canPastePicture={canPastePicture}
+              onPastePictureIntoBox={(id, at) => void pastePicturesIntoBox(id, at)}
               onSignature={(ed) => void insertSignature(ed)}
               onPrintout={(o) => void insertPrintout(o)}
               onInsertTextPicture={(id, at) => void insertTextPicture(id, at)}
