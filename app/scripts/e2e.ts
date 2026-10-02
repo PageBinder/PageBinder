@@ -73,6 +73,13 @@ async function main(): Promise<void> {
     return file?.submenu?.items.find((i) => i.label === 'Save')?.accelerator ?? null
   })
   assert(saveShortcut === 'CmdOrCtrl+S', `File > Save has the Cmd/Ctrl+S shortcut (${saveShortcut})`)
+  // Export: one File menu item, Export Notebook (Cmd/Ctrl+Shift+E); PDFs of a single page come from Print Preview.
+  const fileItems = await app.evaluate(({ Menu }) => {
+    const file = Menu.getApplicationMenu()?.items.find((i) => i.label === 'File')
+    return (file?.submenu?.items ?? []).map((i) => ({ label: i.label, accelerator: i.accelerator ?? null }))
+  })
+  const exportItems = fileItems.filter((i) => /export/i.test(i.label))
+  assert(exportItems.length === 1 && exportItems[0]!.label === 'Export Notebook…' && exportItems[0]!.accelerator === 'CmdOrCtrl+Shift+E', `the File menu has one export item, Export Notebook… (${JSON.stringify(exportItems)})`)
   await saveViaMenu(page)
   const saved = await readDoc(join(root, first.relPath, 'page.json'))
   assert(verifyChecksum(saved), 'saved page has a valid checksum')

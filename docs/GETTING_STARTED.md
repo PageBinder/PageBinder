@@ -14,7 +14,7 @@ Everything is saved for you: a draft moments after you stop typing, and a full s
 
 ## Printing and sharing
 
-Pages are laid out on sheets of paper from the start. The dashed lines are the printable area; page numbers appear where they will print. File > Page Setup chooses the paper size and orientation for a page or the whole notebook. File > Print Preview shows exactly what will print, and File > Export Pages writes a page, a section, a group, or the whole notebook as one PDF or one HTML file.
+Pages are laid out on sheets of paper from the start. The dashed lines are the printable area; page numbers appear where they will print. File > Page Setup chooses the paper size and orientation for a page or the whole notebook. File > Print Preview shows exactly what will print, and its Save as PDF button saves the page as a PDF. File > Export Notebook writes a page, a section, a group, or the whole notebook as one PDF, or as a web page with every picture and attachment in one .zip file that anyone can open in a web browser.
 
 ## Where your notebooks are on disk
 

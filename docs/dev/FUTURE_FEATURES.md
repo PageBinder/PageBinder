@@ -27,7 +27,7 @@ Pictures anchored in text boxes, with text flowing beside them, were built on 20
 
 Reworked 2026-09-29 at the user's request, to replace today's separate commands with one consistent set. On 2026-10-01 the user chose to keep the existing dialog and menus for now; only the HTML option changed, into the web-page package described under 2 below (built in 1.1.3). The rest stays for consideration.
 
-**Today.** The File menu has *Export This Page as PDF…* (the open page, straight to a file) and *Export Pages…* (Cmd+Shift+E: a dialog choosing this page, its section, its group, or the whole notebook, as one PDF or one HTML file). Print (Cmd+P) can also save a PDF through the system dialog. The PDF is self-contained but carries attachments only as cards. The HTML export links to pictures and attachments in the notebook, by relative paths when saved inside the notebook and by absolute paths on this computer otherwise, so it breaks when sent to anyone else. Each page's own `page.html` backup shows only what prints.
+**Before 1.1.3.** The File menu had *Export This Page as PDF…* (the open page, straight to a file) and *Export Pages…* (Cmd+Shift+E: a dialog choosing this page, its section, its group, or the whole notebook, as one PDF or one HTML file). Print (Cmd+P) can also save a PDF through the system dialog. The PDF is self-contained but carries attachments only as cards. The HTML export links to pictures and attachments in the notebook, by relative paths when saved inside the notebook and by absolute paths on this computer otherwise, so it breaks when sent to anyone else. Each page's own `page.html` backup shows only what prints.
 
 **Proposal: one Export dialog, two kinds of output.**
 
@@ -39,7 +39,7 @@ Reworked 2026-09-29 at the user's request, to replace today's separate commands 
   - The dialog always opens on PDF; it does not remember the last format used (decided with the user, 2026-09-29). File names follow the page, section, or notebook name.
 - **Clean output.** No PageBinder internals in any export (`page.json`, history, drafts, the index), and nothing that names the program.
 - **Share after saving.** After writing the file, offer *Show in Finder* / *Show in Explorer*, and on macOS the system Share menu (Mail, Messages, AirDrop), which Electron supports there. Windows has no equivalent that Electron can open, so Show in Explorer only.
-- **What goes away.** *Export This Page as PDF…* (now Export with "this page" and PDF chosen) and the linked-HTML export, which only works on this computer. Printing, Print Preview, and the system dialog's Save as PDF stay as they are.
+- **Done in 1.1.3.** *Export This Page as PDF…* was removed from the File menu and *Export Pages…* renamed *Export Notebook…*, with the same dialog and shortcut (the user's choice, 2026-10-02); a single page is saved as a PDF from Print Preview or from Export Notebook with "This page". The linked-HTML export was replaced by the web-page zip. Printing, Print Preview, and the system dialog's Save as PDF are unchanged.
 - **Settling before building** (the user has no answers yet, 2026-09-29). Whether the zip for a whole notebook should keep the section folders; what happens with very large attachments (a size warning); and whether to add Markdown later (it is listed under the comparison gaps below).
 - **Compatibility.** Exports only read the notebook; nothing in the notebook changes. A small pure-JavaScript zip library (for example `fflate`) would be a new dependency. About 2 to 3 days in all.
 

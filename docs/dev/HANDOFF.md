@@ -22,6 +22,8 @@ Entry format:
 **Found:** The processor sat idle 97% of the test time. Full local end-to-end run: about 21 minutes before, 133–137 seconds after (phase 8: 7.5–8.7 minutes to 40 seconds). Faster tests exposed one hidden race: Insert signature fills in its text a moment after the click, so the step now waits for it before saving.
 **Checked:** Type check; 94 unit tests; every end-to-end suite three times in a row on this Mac, all passing.
 **Next platform must check:** The next GitHub run (or the Windows PC) should show the Windows suites finishing in a few minutes instead of about 25; report any suite that now fails on Windows, since shorter waits can expose platform timing differences.
+**Also changed:** File menu: "Export This Page as PDF…" removed (Print Preview's Save as PDF and Export Notebook's "This page" cover it), and "Export Pages…" renamed "Export Notebook…" (same dialog and shortcut); `e2e.ts` checks both. The v1.1.3 draft was rebuilt from this commit at the user's request.
+**Next platform must check (also):** Windows: the File menu shows Export Notebook… (Ctrl+Shift+E) and no Export This Page as PDF….
 **Open:** Plan steps 2 to 6 (free disk space, Windows 11 VM, local check and release commands, GitHub manual then private, optional self-hosted runners) wait for the user.
 
 ## 2026-10-01 · lead (macOS, Apple silicon) · main (later)

@@ -1454,7 +1454,6 @@ export function App(): JSX.Element {
       window.pagebinder.onMenu('menu:pageSetup', () => setPageSetupOpen(true)),
       window.pagebinder.onMenu('menu:printPreview', () => void openPreview()),
       window.pagebinder.onMenu('menu:print', () => void printPage()),
-      window.pagebinder.onMenu('menu:exportPdf', () => void exportPdf())
     ]
     const onBlur = (): void => void savePage()
     const onUnload = (): void => {

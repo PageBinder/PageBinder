@@ -1,6 +1,6 @@
 /**
  * Export pages as one PDF, one linked HTML file (the command-line script), or a web-page package
- * (File > Export Pages > Web page): one zip holding the HTML with every picture and attachment,
+ * (File > Export Notebook > Web page): one zip holding the HTML with every picture and attachment,
  * linked inside the zip, for people without PageBinder.
  */
 import { promises as fs, createReadStream, createWriteStream } from 'node:fs'

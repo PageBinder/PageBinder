@@ -26,7 +26,11 @@ Pages
   still breaks the text at each sheet.
 
 Export
-- File > Export Pages > "Web page with attachments (.zip)" replaces the HTML
+- The File menu's export item is now called Export Notebook (same dialog,
+  same shortcut). Export This Page as PDF is removed from the File menu: the
+  open page is saved as a PDF from Print Preview (Save as PDF), or from Export
+  Notebook with "This page" chosen.
+- File > Export Notebook > "Web page with attachments (.zip)" replaces the HTML
   file that only worked on this computer. It writes one .zip file holding a
   web page of the chosen pages with every picture and attached file, so it can
   be sent to anyone: unzipped anywhere, the .html file opens in any web

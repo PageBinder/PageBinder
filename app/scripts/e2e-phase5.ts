@@ -140,7 +140,7 @@ async function main(): Promise<void> {
   await page.locator('.dialog.verify button', { hasText: 'Close' }).click()
   step('Verify Notebook finds problems, lets the user inspect files, and repairs what it safely can')
 
-  // 4b. File > Export Pages from the app: the whole notebook as one PDF.
+  // 4b. File > Export Notebook from the app: the whole notebook as one PDF.
   await menu(app, 'menu:export')
   await page.waitForSelector('.dialog select')
   await page.locator('.dialog select').first().selectOption('')
@@ -157,7 +157,7 @@ async function main(): Promise<void> {
   }
   assert(((await page.locator('.export-explain').textContent()) ?? '').includes('exactly as they print'), 'the PDF option is explained')
   await page.locator('.dialog button', { hasText: 'Close' }).click()
-  step('Export Pages in the app writes the whole notebook as one PDF')
+  step('Export Notebook in the app writes the whole notebook as one PDF')
 
   // 4b'. The web page option writes one zip holding the HTML and the pages' files.
   await menu(app, 'menu:export')
@@ -174,7 +174,7 @@ async function main(): Promise<void> {
   const zipHtml = htmlName ? strFromU8(zipped[htmlName]!) : ''
   assert(!!htmlName && zipNames.some((n) => n.includes('/files/')) && !zipHtml.includes('file://') && zipHtml.includes('="files/'), `the web page export is one zip with the HTML and its files (${zipNames.slice(0, 6).join(', ')})`)
   await page.locator('.dialog button', { hasText: 'Close' }).click()
-  step('Export Pages as a web page writes one zip with the HTML and every picture and attachment')
+  step('Export Notebook as a web page writes one zip with the HTML and every picture and attachment')
 
   // 4c. Help > About shows the version and build time; documents open in the app.
   await menu(app, 'menu:about')
