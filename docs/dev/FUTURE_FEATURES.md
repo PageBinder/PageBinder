@@ -48,6 +48,10 @@ Reworked 2026-09-29 at the user's request, to replace today's separate commands 
 
 - **Split tall tables between rows.** A table that fits on a sheet moves whole to the next sheet, but one taller than a sheet runs through the margins at the page break. Splitting it between rows, perhaps repeating a header row, would complete line-by-line page breaks. About 1 to 2 days.
 - **Widow and orphan control.** Word keeps at least two lines of a paragraph together at a page break. Line-by-line breaks currently allow a single line on either side. Small once wanted.
+- **A truly infinite canvas when the page border is off, set per page** (suggested by the user; first recorded 2026-10-01). Two parts:
+  1. *No gaps between sheets.* Today View > Toggle Page Border only hides the paper outlines: the editor still pushes text that crosses a sheet boundary down past the bottom and top margins (`sheetBreaks.ts`), so blank gaps stay between the printable areas. With the border off, the editor would skip those sheet breaks and let text run on continuously, so the canvas looks like one endless page. Printing, Print Preview, and PDF export still break the text line by line at each sheet, as now (the print layout is untouched), so with the border off the screen no longer shows where the paper breaks will fall.
+  2. *Stored with each page.* The border setting moves from a View-menu switch for the whole app to a setting of each page, saved in `page.json` as a new optional field (for example `pageBorder: false`); pages without the field keep the border, as every page from earlier versions does. View > Toggle Page Border then changes only the page that is open, and other pages keep their own setting. Could also apply to the page's HTML backup copy's screen view.
+  - To settle: whether new pages start with the border on (as now) or follow a default the user can choose; whether templates carry the setting; whether the page grid follows the border setting too. A new optional field, so no compatibility concern; older versions ignore it and show the border. About 1 day.
 
 ## Gaps noted in the feature comparison
 
