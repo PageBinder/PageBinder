@@ -17,6 +17,13 @@ Entry format:
 
 ---
 
+## 2026-10-02 · lead (macOS, Apple silicon) · main
+**Changed:** End-to-end tests save through File > Save's command (`saveViaMenu`, `app/scripts/e2e-save.ts`) instead of pressing Cmd/Ctrl+S, which tests cannot deliver to a menu shortcut; every save had been waiting for the 20-second autosave. `e2e.ts` checks the Save shortcut by reading the File menu. This is step 1 of a local build plan the user asked for (build and test Mac and Windows on the lead Mac, GitHub private, no Actions minutes; the plan itself is an artifact in the lead session, not in the repository).
+**Found:** The processor sat idle 97% of the test time. Full local end-to-end run: about 21 minutes before, 133–137 seconds after (phase 8: 7.5–8.7 minutes to 40 seconds). Faster tests exposed one hidden race: Insert signature fills in its text a moment after the click, so the step now waits for it before saving.
+**Checked:** Type check; 94 unit tests; every end-to-end suite three times in a row on this Mac, all passing.
+**Next platform must check:** The next GitHub run (or the Windows PC) should show the Windows suites finishing in a few minutes instead of about 25; report any suite that now fails on Windows, since shorter waits can expose platform timing differences.
+**Open:** Plan steps 2 to 6 (free disk space, Windows 11 VM, local check and release commands, GitHub manual then private, optional self-hosted runners) wait for the user.
+
 ## 2026-10-01 · lead (macOS, Apple silicon) · main (later)
 **Changed:** Page border and grid are saved with each page (`pageBorder`, `pageGrid`, optional); View > Toggle Page Border and Toggle Grid change only the open page; with the border off the editor shows one endless canvas (no sheet-break gaps), while printing is unchanged; templates carry both settings. The v1.1.3 draft was rebuilt from this commit at the user's request.
 **Found:** Nothing new.
