@@ -842,7 +842,7 @@ async function main(): Promise<void> {
   const mDoc = async (): Promise<PageDoc> => JSON.parse(await fs.readFile(join(root, mRel, 'page.json'), 'utf8')) as PageDoc
   const counts = async (): Promise<{ onPage: number; inBox: number; name: string }> => {
     const d = await mDoc()
-    const box = d.objects.find((o) => o.kind === 'text' && JSON.stringify(o.content).includes('Words for the picture')) as unknown as { pictures?: { name: string; width: number }[] } | undefined
+    const box = d.objects.find((o) => o.kind === 'text' && JSON.stringify(o.content).includes('Words for the')) as unknown as { pictures?: { name: string; width: number }[] } | undefined
     const img = d.objects.find((o) => o.kind === 'image') as unknown as { name: string } | undefined
     return { onPage: d.objects.filter((o) => o.kind === 'image').length, inBox: box?.pictures?.length ?? 0, name: img?.name ?? box?.pictures?.[0]?.name ?? '' }
   }
@@ -881,6 +881,15 @@ async function main(): Promise<void> {
   await save(page2)
   const outside = await counts()
   assert(outside.onPage === 1 && outside.inBox === 0 && outside.name === start.name, `cut from the box and pasted on the page, the picture is on the page again (${JSON.stringify(outside)})`)
+  // Right-click > Paste picture in a text box puts a copied picture where the box was right-clicked.
+  await page2.locator('.image-object').click()
+  await page2.keyboard.press(`${mod}+c`)
+  await page2.locator('.canvas .tiptap p', { hasText: 'Words for the picture' }).click({ button: 'right', position: { x: 30, y: 6 } })
+  await page2.locator('.context-item', { hasText: /^Paste picture$/ }).click()
+  await page2.waitForSelector('.anchored-picture-frame')
+  await save(page2)
+  const viaRightClick = await counts()
+  assert(viaRightClick.onPage === 1 && viaRightClick.inBox === 1, `right-click > Paste picture puts the copied picture in the text box (${JSON.stringify(viaRightClick)})`)
   // Text copied afterwards (so the clipboard no longer holds the marker) pastes as text.
   await page2.locator('.canvas .tiptap p', { hasText: 'Words for the picture' }).click()
   await page2.keyboard.press('End')
@@ -891,8 +900,8 @@ async function main(): Promise<void> {
   const afterText = await counts()
   const boxText = JSON.stringify((await mDoc()).objects.find((o) => o.kind === 'text' && JSON.stringify(o.content).includes('Words for')))
   const boxWords = [...boxText.matchAll(/"text":"([^"]*)"/g)].map((m) => m[1]).join("")
-  assert(afterText.inBox === 0 && (boxWords.match(/Words/g) ?? []).length === 2, `text copied later pastes as text (${boxWords})`)
-  step('cut and paste moves a picture from the page into a text box and back, and later text copies still paste as text')
+  assert(afterText.inBox === viaRightClick.inBox && (boxWords.match(/Words/g) ?? []).length === 2, `text copied later pastes as text (${boxWords}; pictures ${JSON.stringify(afterText)})`)
+  step('cut and paste moves a picture from the page into a text box and back, right-click > Paste picture works in a text box, and later text copies still paste as text')
 
   // 18. File > Notebook Properties: last edit with the account name, size and files, history, large attachments.
   await menu2('menu:properties')

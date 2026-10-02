@@ -10,7 +10,9 @@ earlier ones. Nothing ever needs converting.
 Version 1.1.3 - in development (not yet released)
 -------------------------------------------------
 
-Nothing yet.
+Pictures
+- A picture that was cut or copied can be pasted into a text box from the
+  box's right-click menu (Paste picture), at the spot that was right-clicked.
 
 
 Version 1.1.2 - 30 September 2026 (pre-release)
