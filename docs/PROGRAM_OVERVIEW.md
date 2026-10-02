@@ -18,7 +18,7 @@ A new page starts with its name in bold at the top and the date and time it was 
 
 - **Paper.** Letter is the default. Tabloid (11 × 17), Legal, A4, and A3 are available, portrait or landscape, with margin presets. The choice can be made for one page or for the whole notebook, and page numbers can be printed in the footer.
 - **Printing.** File > Print Preview shows exactly what will print. Print a page, a section, a section group, or a whole notebook.
-- **Export.** File > Export Pages writes any of those as a single PDF or a single HTML file.
+- **Export.** File > Export Notebook writes any of those as a single PDF, or as a web page with every picture and attachment in one .zip file that opens in any web browser without PageBinder. Print Preview's Save as PDF saves the open page.
 
 ## Writing and editing
 
