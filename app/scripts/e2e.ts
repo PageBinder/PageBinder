@@ -158,8 +158,9 @@ async function main(): Promise<void> {
   await page.screenshot({ path: join(shots, 'recovery.png') })
   step('a damaged page is recovered from history and the draft is offered')
   await page.locator('.notice.draft-available button.primary').click()
+  // Wait for the restored draft to reach the file (the "saved" status may still be showing from before).
+  for (let i = 0; i < 100 && !(await fs.readFile(docPath, 'utf8').catch(() => '')).includes('DRAFT TEXT'); i++) await page.waitForTimeout(100)
   await page.waitForSelector('.save-status.saved')
-  await page.waitForTimeout(400)
   const restored = await readDoc(docPath)
   assert(verifyChecksum(restored), 'restored page has a valid checksum')
   assert(JSON.stringify(restored.objects).includes('DRAFT TEXT'), 'draft content restored and saved')
