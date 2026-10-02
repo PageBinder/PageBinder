@@ -152,7 +152,7 @@ export async function createPageFromTemplate(
   const saved = await savePage(
     root,
     created.relPath,
-    { ...created.doc, title, paper: paper ?? tdoc.paper, ...(tdoc.print ? { print: tdoc.print } : {}), objects: fillObjects(tdoc.objects, full), manifest: { images: tdoc.manifest.images, attachments: [] } },
+    { ...created.doc, title, paper: paper ?? tdoc.paper, ...(tdoc.print ? { print: tdoc.print } : {}), ...(tdoc.pageBorder !== undefined ? { pageBorder: tdoc.pageBorder } : {}), ...(tdoc.pageGrid !== undefined ? { pageGrid: tdoc.pageGrid } : {}), objects: fillObjects(tdoc.objects, full), manifest: { images: tdoc.manifest.images, attachments: [] } },
     policy
   )
   return { relPath: saved.relPath, doc: saved.doc }

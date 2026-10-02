@@ -134,7 +134,7 @@ export function TextContainer({
       editor.off('update', run)
       window.clearTimeout(timer)
     }
-  }, [editor, obj.x, obj.y, obj.width, sheet.height, sheet.marginTop, sheet.marginBottom, zoom, JSON.stringify(obj.pictures ?? [])])
+  }, [editor, obj.x, obj.y, obj.width, sheet.height, sheet.marginTop, sheet.marginBottom, sheet.continuous, zoom, JSON.stringify(obj.pictures ?? [])])
 
   // Pictures anchored in the box: drawn as floats at the start of the text, moved and resized by
   // dragging, selected by clicking, removed with Delete. They keep their size when the box is

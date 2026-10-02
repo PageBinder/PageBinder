@@ -24,6 +24,8 @@ export interface SheetGeometry {
   height: number
   marginTop: number
   marginBottom: number
+  /** The page border is off: text runs on with no gaps at sheet boundaries (on screen only). */
+  continuous?: boolean
 }
 
 const key = new PluginKey<DecorationSet>('sheetBreaks')
@@ -99,6 +101,7 @@ export function layoutSheetBreaks(editor: Editor, canvas: HTMLElement, zoom: num
   // Start from the natural layout. DOM updates happen synchronously, so nothing is painted in between.
   const current = key.getState(editor.state)
   if (current && current.find().length) setDecorations(editor, DecorationSet.empty)
+  if (g.continuous) return
 
   const bandTop = (i: number): number => i * H + g.marginTop
   const bandBottom = (i: number): number => (i + 1) * H - g.marginBottom
