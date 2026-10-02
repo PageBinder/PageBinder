@@ -193,7 +193,8 @@ Published as a pre-release on 30 September 2026.
 
 ## Version 1.1.3 (in development)
 
-Nothing yet.
+- **Paste picture in a text box's right-click menu**, when a cut or copied picture is waiting (`canPastePicture`).
+- **Web page export as a package.** The Export Pages dialog's HTML option now calls `exportHtmlPackage` (`app/src/main/export.ts`): one zip with `<name>/<name>.html` (the combined pages, whole-canvas on screen) and `<name>/files/<page folders>/images|attachments/...`, linked by relative paths; pictures and attachments are stored uncompressed and streamed, the HTML deflated; written to `<file>.partial` and renamed. Uses `fflate` (new dependency). The command-line `--combine` keeps the linked single HTML file. The dialog explains each format, and `.setup-grid` columns are `minmax(0, 1fr)` so long option names no longer push a drop-down past the dialog. Unit test `test/export-package.test.ts`; phase 5 checks the dialog and the zip.
 
 ## Commands
 

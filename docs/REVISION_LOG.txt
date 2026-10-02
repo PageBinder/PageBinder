@@ -14,6 +14,15 @@ Pictures
 - A picture that was cut or copied can be pasted into a text box from the
   box's right-click menu (Paste picture), at the spot that was right-clicked.
 
+Export
+- File > Export Pages > "Web page with attachments (.zip)" replaces the HTML
+  file that only worked on this computer. It writes one .zip file holding a
+  web page of the chosen pages with every picture and attached file, so it can
+  be sent to anyone: unzipped anywhere, the .html file opens in any web
+  browser without PageBinder, and its attachment cards open their files. The
+  dialog explains what each format contains, and its drop-down lists no
+  longer run past the dialog's edge.
+
 
 Version 1.1.2 - 30 September 2026 (pre-release)
 -----------------------------------------------

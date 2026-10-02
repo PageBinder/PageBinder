@@ -149,8 +149,32 @@ async function main(): Promise<void> {
   await page.waitForFunction(() => /Written to/.test(document.querySelector('.dialog')?.textContent ?? ''), undefined, { timeout: 60000 })
   const pdfBytes = await fs.readFile(exportOut)
   assert(pdfBytes.length > 2000 && (pdfBytes.toString('latin1').match(/\/Type \/Page\b/g) ?? []).length >= 2, 'the app exported a multi-page PDF of the notebook')
+  // The drop-downs stay inside the dialog, and each format is explained.
+  const dlg = (await page.locator('.dialog').boundingBox())!
+  for (const i of [0, 1]) {
+    const sel = (await page.locator('.dialog select').nth(i).boundingBox())!
+    assert(sel.x >= dlg.x && sel.x + sel.width <= dlg.x + dlg.width, `drop-down ${i + 1} fits inside the export dialog`)
+  }
+  assert(((await page.locator('.export-explain').textContent()) ?? '').includes('exactly as they print'), 'the PDF option is explained')
   await page.locator('.dialog button', { hasText: 'Close' }).click()
   step('Export Pages in the app writes the whole notebook as one PDF')
+
+  // 4b'. The web page option writes one zip holding the HTML and the pages' files.
+  await menu(app, 'menu:export')
+  await page.waitForSelector('.dialog select')
+  await page.locator('.dialog select').first().selectOption('')
+  await page.locator('.dialog select').nth(1).selectOption('html')
+  assert(((await page.locator('.export-explain').textContent()) ?? '').includes('without PageBinder'), 'the web page option is explained')
+  await page.locator('.dialog button[type=submit]').click()
+  await page.waitForFunction(() => /Written to/.test(document.querySelector('.dialog')?.textContent ?? ''), undefined, { timeout: 60000 })
+  const { unzipSync, strFromU8 } = await import('fflate')
+  const zipped = unzipSync(new Uint8Array(await fs.readFile(exportOut)))
+  const zipNames = Object.keys(zipped)
+  const htmlName = zipNames.find((n) => /^[^/]+\/[^/]+\.html$/.test(n))
+  const zipHtml = htmlName ? strFromU8(zipped[htmlName]!) : ''
+  assert(!!htmlName && zipNames.some((n) => n.includes('/files/')) && !zipHtml.includes('file://') && zipHtml.includes('="files/'), `the web page export is one zip with the HTML and its files (${zipNames.slice(0, 6).join(', ')})`)
+  await page.locator('.dialog button', { hasText: 'Close' }).click()
+  step('Export Pages as a web page writes one zip with the HTML and every picture and attachment')
 
   // 4c. Help > About shows the version and build time; documents open in the app.
   await menu(app, 'menu:about')

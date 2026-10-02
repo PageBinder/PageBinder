@@ -10,7 +10,7 @@ import { paperSizePx } from '../shared/render/renderPage'
 import { atomicWriteFile } from './storage/atomic'
 import { notebookUrl } from './protocol'
 import { sanitizeFileName } from './storage/names'
-import { stageForPdf, exportHtml } from './export'
+import { stageForPdf, exportHtmlPackage } from './export'
 import { pathToFileURL } from 'node:url'
 
 async function loadHidden(rel: string): Promise<BrowserWindow> {
@@ -95,13 +95,14 @@ export async function exportPages(targetDir: string, format: 'html' | 'pdf', sug
   const result = preset
     ? { canceled: false, filePath: preset }
     : await dialog.showSaveDialog(parent!, {
-        title: format === 'pdf' ? 'Export as PDF' : 'Export as HTML',
-        defaultPath: `${sanitizeFileName(suggestedName || 'export')}.${format}`,
-        filters: [format === 'pdf' ? { name: 'PDF', extensions: ['pdf'] } : { name: 'HTML', extensions: ['html'] }]
+        title: format === 'pdf' ? 'Export as PDF' : 'Export as a web page',
+        defaultPath: `${sanitizeFileName(suggestedName || 'export')}.${format === 'pdf' ? 'pdf' : 'zip'}`,
+        filters: [format === 'pdf' ? { name: 'PDF', extensions: ['pdf'] } : { name: 'Zip archive', extensions: ['zip'] }]
       })
   if (result.canceled || !result.filePath) return null
   if (format === 'html') {
-    await exportHtml(targetDir, result.filePath)
+    // A package to share: the web page with every picture and attachment, in one zip.
+    await exportHtmlPackage(targetDir, result.filePath, sanitizeFileName(suggestedName || 'export'))
     return result.filePath
   }
   const staged = await stageForPdf(targetDir)
