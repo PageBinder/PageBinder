@@ -2,7 +2,8 @@
  * End-to-end check of phase 1 through the real Electron window.
  *   npm run e2e
  */
-import { _electron as electron, type Page } from 'playwright'
+import { _electron as electron, type Page, type ElectronApplication } from 'playwright'
+import { useApp, saveViaMenu } from './e2e-save'
 import { promises as fs } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -27,11 +28,12 @@ async function readDoc(path: string): Promise<PageDoc> {
   return JSON.parse(await fs.readFile(path, 'utf8')) as PageDoc
 }
 
-async function launch(root: string): Promise<{ page: Page; close: () => Promise<void> }> {
+async function launch(root: string): Promise<{ app: ElectronApplication; page: Page; close: () => Promise<void> }> {
   const app = await electron.launch({ args: [resolve(process.env['E2E_OUT'] ?? 'out-e2e', 'main/index.js'), `--user-data-dir=${join(tmpdir(), 'pagebinder-e2e-userdata')}`], cwd: resolve('.'), env: { ...process.env, PAGEBINDER_OPEN: root } })
   const page = await app.firstWindow()
+  useApp(app)
   await page.waitForSelector('.section-tabs')
-  return { page, close: () => app.close() }
+  return { app, page, close: () => app.close() }
 }
 
 async function main(): Promise<void> {
@@ -48,7 +50,7 @@ async function main(): Promise<void> {
     process.stdout.write(`  ✓ ${s}\n`)
   }
 
-  let { page, close } = await launch(root)
+  let { app, page, close } = await launch(root)
 
   // 1. Notebook opened, section and page visible.
   assert(await page.locator('.tab.on', { hasText: 'Notes' }).count(), 'Notes section tab is active')
@@ -63,10 +65,15 @@ async function main(): Promise<void> {
   assert(await fs.stat(draftPath).then(() => true, () => false), 'autosave draft written after typing')
   step('writes an autosave draft after typing')
 
-  // 3. Cmd+S saves, snapshot appears, draft removed, checksum valid.
-  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+s' : 'Control+s')
-  await page.waitForSelector('.save-status.saved')
-  await page.waitForTimeout(300)
+  // 3. File > Save (Cmd/Ctrl+S) saves, snapshot appears, draft removed, checksum valid. A test's key
+  //    press cannot reach a menu shortcut, so the test saves through the menu's own command and
+  //    checks that the menu item carries the Cmd/Ctrl+S shortcut.
+  const saveShortcut = await app.evaluate(({ Menu }) => {
+    const file = Menu.getApplicationMenu()?.items.find((i) => i.label === 'File')
+    return file?.submenu?.items.find((i) => i.label === 'Save')?.accelerator ?? null
+  })
+  assert(saveShortcut === 'CmdOrCtrl+S', `File > Save has the Cmd/Ctrl+S shortcut (${saveShortcut})`)
+  await saveViaMenu(page)
   const saved = await readDoc(join(root, first.relPath, 'page.json'))
   assert(verifyChecksum(saved), 'saved page has a valid checksum')
   assert(JSON.stringify(saved.objects).includes('Hello from the e2e test.'), 'typed text is in page.json')
@@ -79,9 +86,7 @@ async function main(): Promise<void> {
   await page.keyboard.press('Shift+Home')
   await page.locator('.tb.bold').click()
   await page.waitForTimeout(100)
-  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+s' : 'Control+s')
-  await page.waitForSelector('.save-status.saved')
-  await page.waitForTimeout(300)
+  await saveViaMenu(page)
   const bolded = await readDoc(join(root, first.relPath, 'page.json'))
   assert(JSON.stringify(bolded.objects).includes('"type":"bold"'), 'bold mark saved')
   step('toolbar formatting is applied and saved')
@@ -90,9 +95,7 @@ async function main(): Promise<void> {
   await newBox(page, 560, 520)
   await page.waitForTimeout(200)
   await page.keyboard.type('Second container')
-  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+s' : 'Control+s')
-  await page.waitForSelector('.save-status.saved')
-  await page.waitForTimeout(300)
+  await saveViaMenu(page)
   const two = await readDoc(join(root, first.relPath, 'page.json'))
   assert(two.objects.length === 2, `two containers on the page (got ${two.objects.length})`)
   assert(two.objects[1]!.x > 400, 'second container placed where clicked')
@@ -149,7 +152,7 @@ async function main(): Promise<void> {
   await fs.writeFile(join(root, renamedRel, 'page.json.autosave'), JSON.stringify(withChecksum(draft)))
   const text = await fs.readFile(docPath, 'utf8')
   await fs.writeFile(docPath, text.slice(0, text.length / 2))
-  ;({ page, close } = await launch(root))
+  ;({ app, page, close } = await launch(root))
   // The damaged page was the last one open, so it opens automatically.
   await page.waitForSelector('.notice.recovered-from-history')
   await page.waitForSelector('.notice.draft-available')

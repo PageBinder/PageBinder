@@ -4,6 +4,7 @@
  *   npx tsx scripts/e2e-phase3.ts
  */
 import { _electron as electron, type Page } from 'playwright'
+import { useApp, saveViaMenu } from './e2e-save'
 import { promises as fs } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -24,9 +25,7 @@ function assert(cond: unknown, msg: string): asserts cond {
 }
 const mod = process.platform === 'darwin' ? 'Meta' : 'Control'
 async function save(page: Page): Promise<void> {
-  await page.keyboard.press(`${mod}+s`)
-  await page.waitForSelector('.save-status.saved')
-  await page.waitForTimeout(300)
+  await saveViaMenu(page)
 }
 
 async function main(): Promise<void> {
@@ -58,6 +57,7 @@ async function main(): Promise<void> {
     env: { ...process.env, PAGEBINDER_OPEN: root, PAGEBINDER_TEST_PICK_FILES: `${eml}\n${txt}` }
   })
   const page = await app.firstWindow()
+  useApp(app)
   await page.waitForSelector('.section-tabs')
 
   // 1. Page number shows in the editor, lower right of the sheet.
@@ -199,8 +199,7 @@ async function main(): Promise<void> {
   await page.locator('.context-item', { hasText: 'File attachment' }).click()
   await page.waitForSelector('.file-card')
   await page.waitForFunction(() => document.querySelectorAll('.file-card').length === 2)
-  await page.waitForSelector('.save-status.saved')
-  await page.waitForTimeout(300)
+  await saveViaMenu(page)
   const d5 = await doc()
   const files = d5.objects.filter((o) => o.kind === 'file')
   assert(files.length === 2, 'two file objects on the page')

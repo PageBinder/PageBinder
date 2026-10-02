@@ -4,6 +4,7 @@
  *   npx tsx scripts/e2e-phase4.ts
  */
 import { _electron as electron, type Page } from 'playwright'
+import { useApp, saveViaMenu } from './e2e-save'
 import { promises as fs } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -52,6 +53,7 @@ async function main(): Promise<void> {
 
   const app = await electron.launch({ args: [resolve(process.env['E2E_OUT'] ?? 'out-e2e', 'main/index.js'), `--user-data-dir=${join(tmpdir(), 'pagebinder-e2e-userdata')}`], cwd: resolve('.'), env: { ...process.env, PAGEBINDER_OPEN: root } })
   const page = await app.firstWindow()
+  useApp(app)
   await page.waitForSelector('.section-tabs')
 
   // 1. Index is built on open (background), and the file lives in .index.
@@ -106,9 +108,7 @@ async function main(): Promise<void> {
   await newBox(page, 560, 600)
   await page.waitForTimeout(150)
   await page.keyboard.type('Zebra crossing repairs')
-  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+s' : 'Control+s')
-  await page.waitForSelector('.save-status.saved')
-  await page.waitForTimeout(400)
+  await saveViaMenu(page)
   await page.locator('.search-field input').fill('zebra')
   await page.waitForSelector('.search-hit:has-text("Drainage notes")')
   step('a saved edit is searchable immediately')

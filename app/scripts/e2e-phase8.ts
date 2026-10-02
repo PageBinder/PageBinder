@@ -4,6 +4,7 @@
  *   npx tsx scripts/e2e-phase8.ts
  */
 import { _electron as electron, type Page } from 'playwright'
+import { useApp, saveViaMenu } from './e2e-save'
 import { promises as fs } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -18,9 +19,7 @@ function assert(cond: unknown, msg: string): asserts cond {
 }
 const mod = process.platform === 'darwin' ? 'Meta' : 'Control'
 async function save(page: Page): Promise<void> {
-  await page.keyboard.press(`${mod}+s`)
-  await page.waitForSelector('.save-status.saved')
-  await page.waitForTimeout(300)
+  await saveViaMenu(page)
 }
 async function newBox(page: Page, x: number, y: number): Promise<void> {
   await page.locator('.canvas').click({ button: 'right', position: { x, y } })
@@ -53,6 +52,7 @@ async function main(): Promise<void> {
   await fs.writeFile(picturePath, tealPng())
   const app = await electron.launch({ args: [resolve(process.env['E2E_OUT'] ?? 'out-e2e', 'main/index.js'), `--user-data-dir=${userData}`], cwd: resolve('.'), env: { ...process.env, PAGEBINDER_OPEN: root, PAGEBINDER_TEST_SAVE_PATH: exportOut, PAGEBINDER_TEST_PICK_IMAGES: picturePath } })
   const page = await app.firstWindow()
+  useApp(app)
   await page.waitForSelector('.section-tabs')
 
   // 1. Tab inserts a tab stop; to-do items keep their text style when checked.
@@ -102,6 +102,8 @@ async function main(): Promise<void> {
   const editorBox = (await page.locator('.text-container .tiptap').first().boundingBox())!
   await page.mouse.click(editorBox.x + 40, editorBox.y + editorBox.height - 10, { button: 'right' })
   await page.locator('.context-item', { hasText: 'Insert signature' }).click()
+  // The signature arrives a moment later (it asks the system for the user's name first).
+  await page.waitForFunction((n) => Array.from(document.querySelectorAll('.canvas .tiptap')).some((e) => (e.textContent ?? '').includes(n)), expectedName)
   await save(page)
   const withSig = JSON.stringify((await doc(a)).objects)
   assert(withSig.includes(expectedName), `signature carries the user name (${expectedName})`)
@@ -763,6 +765,7 @@ async function main(): Promise<void> {
   delete env2['PAGEBINDER_OPEN']
   const app2 = await electron.launch({ args: [resolve(process.env['E2E_OUT'] ?? 'out-e2e', 'main/index.js'), `--user-data-dir=${userData}`], cwd: resolve('.'), env: env2 })
   const page2 = await app2.firstWindow()
+  useApp(app2)
   await page2.waitForSelector('.page-row.on', { timeout: 20000 })
   const reopened = await page2.locator('.page-row.on').innerText()
   assert(reopened.includes('Pasture log 2026'), `the last page is open again after a restart (${reopened})`)
@@ -940,7 +943,7 @@ async function main(): Promise<void> {
   // 20. Page border and grid belong to each page. With the border off, text runs on across sheet
   //     boundaries with no gaps (on screen only).
   await page2.keyboard.press('Escape')
-  await page2.waitForSelector('.preview.history', { state: 'detached' }).catch(() => undefined)
+  await page2.waitForSelector('.preview.history', { state: 'detached' })
   await page2.locator('.page-row.add').click()
   await page2.waitForSelector('.page-row.renaming input')
   await page2.locator('.page-row.renaming input').fill('Endless')

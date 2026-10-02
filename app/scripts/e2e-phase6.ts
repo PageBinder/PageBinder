@@ -4,6 +4,7 @@
  *   npx tsx scripts/e2e-phase6.ts
  */
 import { _electron as electron, type Page } from 'playwright'
+import { useApp, saveViaMenu } from './e2e-save'
 import { promises as fs } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -24,9 +25,7 @@ function assert(cond: unknown, msg: string): asserts cond {
 }
 const mod = process.platform === 'darwin' ? 'Meta' : 'Control'
 async function save(page: Page): Promise<void> {
-  await page.keyboard.press(`${mod}+s`)
-  await page.waitForSelector('.save-status.saved')
-  await page.waitForTimeout(300)
+  await saveViaMenu(page)
 }
 
 /** The window, kept so a failure can be photographed (E2E_SHOTS) with its size on record. */
@@ -55,6 +54,7 @@ async function main(): Promise<void> {
     env: { ...process.env, PAGEBINDER_OPEN: root }
   })
   const page = await app.firstWindow()
+  useApp(app)
   shownPage = page
   await page.waitForSelector('.section-tabs')
 

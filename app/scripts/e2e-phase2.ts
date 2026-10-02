@@ -4,6 +4,7 @@
  *   npx tsx scripts/e2e-phase2.ts
  */
 import { _electron as electron, type Page, type ElectronApplication } from 'playwright'
+import { useApp, saveViaMenu } from './e2e-save'
 import { promises as fs } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -59,9 +60,7 @@ function makePng(width: number, height: number, rgb: [number, number, number]): 
 }
 
 async function save(page: Page): Promise<void> {
-  await page.keyboard.press(`${mod}+s`)
-  await page.waitForSelector('.save-status.saved')
-  await page.waitForTimeout(300)
+  await saveViaMenu(page)
 }
 
 async function main(): Promise<void> {
@@ -81,6 +80,7 @@ async function main(): Promise<void> {
 
   const app: ElectronApplication = await electron.launch({ args: [resolve(process.env['E2E_OUT'] ?? 'out-e2e', 'main/index.js'), `--user-data-dir=${join(tmpdir(), 'pagebinder-e2e-userdata')}`], cwd: resolve('.'), env: { ...process.env, PAGEBINDER_OPEN: root } })
   const page = await app.firstWindow()
+  useApp(app)
   await page.waitForSelector('.section-tabs')
 
   // 1. page.html exists for a brand new page.
@@ -148,8 +148,7 @@ async function main(): Promise<void> {
     const img = document.querySelector<HTMLImageElement>('.image-object img')
     return !!img && img.naturalWidth === 160
   })
-  await page.waitForSelector('.save-status.saved')
-  await page.waitForTimeout(400)
+  await saveViaMenu(page)
   d = await doc()
   const imgObj = d.objects.find((o) => o.kind === 'image')
   assert(imgObj && imgObj.kind === 'image' && imgObj.width === 160 && imgObj.height === 100, 'image object sized from the file')

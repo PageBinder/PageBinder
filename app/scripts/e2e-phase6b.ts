@@ -4,6 +4,7 @@
  *   npx tsx scripts/e2e-phase6b.ts
  */
 import { _electron as electron, type Page } from 'playwright'
+import { useApp, saveViaMenu } from './e2e-save'
 import { promises as fs } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -18,9 +19,7 @@ function assert(cond: unknown, msg: string): asserts cond {
 }
 const mod = process.platform === 'darwin' ? 'Meta' : 'Control'
 async function save(page: Page): Promise<void> {
-  await page.keyboard.press(`${mod}+s`)
-  await page.waitForSelector('.save-status.saved')
-  await page.waitForTimeout(300)
+  await saveViaMenu(page)
 }
 
 async function main(): Promise<void> {
@@ -39,6 +38,7 @@ async function main(): Promise<void> {
 
   const app = await electron.launch({ args: [resolve(process.env['E2E_OUT'] ?? 'out-e2e', 'main/index.js'), `--user-data-dir=${userData}`], cwd: resolve('.'), env: { ...process.env, PAGEBINDER_OPEN: root } })
   const page = await app.firstWindow()
+  useApp(app)
   await page.waitForSelector('.section-tabs')
 
   // 1. The Templates notebook is a system notebook on the switch screen: one section per library.
