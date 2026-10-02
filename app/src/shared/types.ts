@@ -212,6 +212,11 @@ export interface PageDoc {
   parentPageId?: string
   /** The account name of whoever saved the page last (optional; pages from 1.1.1 and earlier lack it). */
   modifiedBy?: string
+  /** The paper border on screen (View > Toggle Page Border). Missing means on. With it off, the
+   *  editor lets text run on with no gaps at sheet boundaries; printing is unchanged. */
+  pageBorder?: boolean
+  /** The alignment grid on screen (View > Toggle Grid). Missing means off. */
+  pageGrid?: boolean
   paper: PaperSettings
   print?: PrintSettings
   objects: CanvasObject[]

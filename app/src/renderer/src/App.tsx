@@ -75,8 +75,6 @@ export function App(): JSX.Element {
   const [sectionRel, setSectionRel] = useState<string | null>(null)
   const [page, setPage] = useState<PageState | null>(null)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
-  const [showBorder, setShowBorder] = useState(true)
-  const [showGrid, setShowGrid] = useState(false)
   const [pageSetupOpen, setPageSetupOpen] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [zoom, setZoom] = useState(1)
@@ -579,6 +577,16 @@ export function App(): JSX.Element {
     } catch (err) {
       fail(err)
     }
+  }
+
+  /** The open page's border and grid: saved with the page (border on and grid off when not set). */
+  const showBorder = page?.doc.pageBorder !== false
+  const showGrid = page?.doc.pageGrid === true
+  const togglePageView = (key: 'pageBorder' | 'pageGrid'): void => {
+    const p = pageRef.current
+    if (!p) return
+    const on = key === 'pageBorder' ? p.doc.pageBorder !== false : p.doc.pageGrid === true
+    onPageChange({ ...p.doc, [key]: !on }, { history: 'push' })
   }
 
   /** The page just created and not yet named (its first name also goes into its title block). */
@@ -1418,8 +1426,8 @@ export function App(): JSX.Element {
       window.pagebinder.onMenu('menu:openNotebook', () => void openNotebookFolder()),
       window.pagebinder.onMenu('menu:newPage', () => void addPage()),
       window.pagebinder.onMenu('menu:save', () => void savePage()),
-      window.pagebinder.onMenu('menu:togglePageBorder', () => setShowBorder((v) => !v)),
-      window.pagebinder.onMenu('menu:toggleGrid', () => setShowGrid((v) => !v)),
+      window.pagebinder.onMenu('menu:togglePageBorder', () => togglePageView('pageBorder')),
+      window.pagebinder.onMenu('menu:toggleGrid', () => togglePageView('pageGrid')),
       window.pagebinder.onMenu('menu:insertImage', () => {
         // Typing in a text box: the pictures go into it, at the cursor.
         const box = textBoxAtCursor()

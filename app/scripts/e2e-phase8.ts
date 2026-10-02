@@ -936,6 +936,48 @@ async function main(): Promise<void> {
   }
   assert(histView === 'canvas', `Page History previews a version as the whole canvas (${histView})`)
   step('Page History previews versions as the whole canvas')
+
+  // 20. Page border and grid belong to each page. With the border off, text runs on across sheet
+  //     boundaries with no gaps (on screen only).
+  await page2.keyboard.press('Escape')
+  await page2.waitForSelector('.preview.history', { state: 'detached' }).catch(() => undefined)
+  await page2.locator('.page-row.add').click()
+  await page2.waitForSelector('.page-row.renaming input')
+  await page2.locator('.page-row.renaming input').fill('Endless')
+  await page2.keyboard.press('Enter')
+  await page2.waitForSelector('.page-row.on:has-text("Endless")')
+  const eRel = `${sec}/Endless.page`
+  await page2.locator('.canvas').click({ button: 'right', position: { x: 140, y: 820 } })
+  await page2.locator('.context-item', { hasText: /^Text box$/ }).click()
+  await page2.waitForTimeout(300)
+  await page2.keyboard.type(Array.from({ length: 14 }, () => 'A long line of field notes that runs on past the bottom of the first sheet.').join(' '))
+  const gaps = async (): Promise<number> => page2.locator('.canvas [data-sheet-spacer], .canvas [data-sheet-break]').count()
+  await page2.waitForFunction(() => document.querySelectorAll('.canvas [data-sheet-spacer], .canvas [data-sheet-break]').length > 0)
+  assert((await page2.locator('.canvas .paper').count()) > 0, 'a new page starts with the page border')
+  assert(!(await page2.locator('.canvas.grid').count()), 'a new page starts without the grid')
+  await menu2('menu:togglePageBorder')
+  await page2.waitForFunction(() => !document.querySelector('.canvas .paper'))
+  await page2.waitForTimeout(300)
+  assert((await gaps()) === 0, 'with the border off, text runs on across the sheet boundary with no gap')
+  await menu2('menu:toggleGrid')
+  await page2.waitForSelector('.canvas.grid')
+  await save(page2)
+  const eDoc = JSON.parse(await fs.readFile(join(root, eRel, 'page.json'), 'utf8')) as PageDoc
+  assert(eDoc.pageBorder === false && eDoc.pageGrid === true, `the border and grid settings are saved with the page (${eDoc.pageBorder}, ${eDoc.pageGrid})`)
+  // Another page keeps its own settings; coming back restores this page's.
+  await page2.locator('.page-row', { hasText: 'Moving pictures' }).click()
+  await page2.waitForSelector('.page-row.on:has-text("Moving pictures")')
+  await page2.waitForSelector('.canvas .paper')
+  assert(!(await page2.locator('.canvas.grid').count()), 'another page keeps its border and has no grid')
+  await page2.locator('.page-row', { hasText: 'Endless' }).click()
+  await page2.waitForSelector('.page-row.on:has-text("Endless")')
+  await page2.waitForSelector('.canvas.grid')
+  assert(!(await page2.locator('.canvas .paper').count()) && (await gaps()) === 0, 'coming back, the page is still borderless and endless')
+  // Turning the border back on brings the sheet breaks back.
+  await menu2('menu:togglePageBorder')
+  await page2.waitForSelector('.canvas .paper')
+  await page2.waitForFunction(() => document.querySelectorAll('.canvas [data-sheet-spacer], .canvas [data-sheet-break]').length > 0)
+  step('the page border and grid are saved with each page, and with the border off text runs on with no gaps between sheets')
   await app2.close()
   process.stdout.write(`\nPASS. Notebook kept at ${root}\n`)
 }

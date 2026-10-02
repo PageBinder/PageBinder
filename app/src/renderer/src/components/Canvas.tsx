@@ -821,7 +821,7 @@ export function Canvas({
               onPicturesChange={onPicturesChange}
               onCopyPicture={onCopyPicture}
               onMeasure={onMeasure}
-              sheet={{ height: paper.height, marginTop: paper.margins.top, marginBottom: paper.margins.bottom }}
+              sheet={{ height: paper.height, marginTop: paper.margins.top, marginBottom: paper.margins.bottom, continuous: !showBorder }}
               imageBase={window.pagebinder.fileUrl(`${pageRel}/images/`)}
             />
           ) : obj.kind === 'shape' ? (

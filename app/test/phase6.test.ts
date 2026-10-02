@@ -27,6 +27,24 @@ async function pageWithText(section: string, title: string, text: string): Promi
 }
 
 describe('templates', () => {
+  it('a template carries its page border and grid settings to the pages made from it', async () => {
+    const s = await createSection(root, '', 'Plans')
+    const rel = await pageWithText(s, 'Sketch', 'Field sketch')
+    const loaded = await loadPage(root, rel)
+    await savePage(root, rel, { ...loaded.doc, pageBorder: false, pageGrid: true })
+    const lib = libraryDir(root, 'notebook', join(dir, 'global'))
+    const t = await saveAsTemplate(root, rel, lib, 'notebook', 'Sketch page', '')
+    const made = await createPageFromTemplate(root, s, join(lib, t.folder), 'New sketch', { section: 'Plans', notebook: 'nb' })
+    expect(made.doc.pageBorder).toBe(false)
+    expect(made.doc.pageGrid).toBe(true)
+    // A template without the settings gives pages without them (border on, grid off).
+    const plainRel = await pageWithText(s, 'Plain', 'Plain text')
+    const t2 = await saveAsTemplate(root, plainRel, lib, 'notebook', 'Plain page', '')
+    const plain = await createPageFromTemplate(root, s, join(lib, t2.folder), 'From plain', { section: 'Plans', notebook: 'nb' })
+    expect(plain.doc.pageBorder).toBeUndefined()
+    expect(plain.doc.pageGrid).toBeUndefined()
+  })
+
   it('saves a page as a template, fills placeholders, and refuses pages with attachments', async () => {
     const s = await createSection(root, '', 'Surveys')
     const rel = await pageWithText(s, 'Survey form', 'Survey of {{section}} on {{date}} in {{notebook}}: {{title}}')
