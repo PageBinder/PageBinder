@@ -17,6 +17,13 @@ Entry format:
 
 ---
 
+## 2026-10-01 · lead (macOS, Apple silicon) · main (later)
+**Changed:** Page border and grid are saved with each page (`pageBorder`, `pageGrid`, optional); View > Toggle Page Border and Toggle Grid change only the open page; with the border off the editor shows one endless canvas (no sheet-break gaps), while printing is unchanged; templates carry both settings. The v1.1.3 draft was rebuilt from this commit at the user's request.
+**Found:** Nothing new.
+**Checked:** Type check; 94 unit tests; every end-to-end suite on this Mac (phase 5 needed a rerun after a one-off closed window).
+**Next platform must check:** Windows, in addition to the earlier note: on a page with text past the first sheet, turn the border off (the gap closes, text runs on), turn the grid on, switch pages and back (each page keeps its own); Print Preview still shows separate sheets; a page made from a borderless template starts borderless.
+**Open:** v1.1.3 stays a draft until the user says to publish.
+
 ## 2026-10-01 · lead (macOS, Apple silicon) · main
 **Changed:** Version 1.1.3 work so far, pushed with a draft release (v1.1.3, not published): Paste picture on a text box's right-click menu; File > Export Pages > "Web page with attachments (.zip)" writes one shareable zip (HTML plus every picture and attachment, relative links; `exportHtmlPackage` in `app/src/main/export.ts`, new dependency `fflate`); the Export dialog explains each format and its drop-downs fit. Future features: infinite canvas with the page border off, and border and grid stored per page (decisions recorded).
 **Found:** The installed 1.1.2 on the lead Mac was the Intel build (`-x64.dmg`) running under Rosetta, which caused macOS's "will not open in macOS 28" warning; the release log shows both Mac installers were built from the right app.

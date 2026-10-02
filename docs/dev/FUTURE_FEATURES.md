@@ -47,7 +47,8 @@ Reworked 2026-09-29 at the user's request, to replace today's separate commands 
 ## Page breaks
 
 - **Split tall tables between rows.** A table that fits on a sheet moves whole to the next sheet, but one taller than a sheet runs through the margins at the page break. Splitting it between rows, perhaps repeating a header row, would complete line-by-line page breaks. About 1 to 2 days.
-- **Widow and orphan control.** Word keeps at least two lines of a paragraph together at a page break. Line-by-line breaks currently allow a single line on either side. Small once wanted.
+- **Widow and orphan control.** Word keeps at least two lines of a paragraph together at a page break. Line-by-line breaks currently allow a single line on either side. Small once wanted.- **The HTML backup copy follows the page border setting** (suggested 2026-10-01). Since 1.1.3 a page's border is its own setting, and with it off the editor shows one endless canvas, but the page's `page.html` backup still shows the paper, the margin lines, and the gaps where text moves to the next sheet. For a borderless page, its screen view would drop the paper and margin lines and show the text without breaks; printing it from a browser would still break at each sheet. Needs the pagination script to keep an unbroken copy of the canvas for the screen and the broken one for print. Derived file only, so no compatibility concern; existing copies update on their page's next save. About half a day.
+
 ## Gaps noted in the feature comparison
 
 From `docs/PageBinder-feature-comparison.xlsx`, features most other note-taking programs have and PageBinder does not. Listed for consideration only; some may not suit a program built around printable documents.
