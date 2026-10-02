@@ -150,7 +150,10 @@ input { font: inherit; color: inherit; }
 /* ---------- page setup and print preview ---------- */
 .dialog.wide { width: 520px; }
 .dialog h3 { font-size: 12px; color: var(--muted); margin: 16px 0 6px; text-transform: uppercase; letter-spacing: 0.04em; }
-.setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
+.setup-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 16px; }
+/* Long option names must not push a drop-down past the dialog's edge. */
+.setup-grid > label { min-width: 0; }
+.setup-grid select { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
 .setup-grid.four { grid-template-columns: repeat(4, 1fr); }
 .dialog select { padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: var(--radius); font: inherit; background: var(--surface); }
 .dialog label.inline input { width: 100%; }

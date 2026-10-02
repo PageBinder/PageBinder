@@ -25,7 +25,7 @@ Pictures anchored in text boxes, with text flowing beside them, were built on 20
 
 ## Sharing and export
 
-Reworked 2026-09-29 at the user's request, to replace today's separate commands with one consistent set.
+Reworked 2026-09-29 at the user's request, to replace today's separate commands with one consistent set. On 2026-10-01 the user chose to keep the existing dialog and menus for now; only the HTML option changed, into the web-page package described under 2 below (built in 1.1.3). The rest stays for consideration.
 
 **Today.** The File menu has *Export This Page as PDF…* (the open page, straight to a file) and *Export Pages…* (Cmd+Shift+E: a dialog choosing this page, its section, its group, or the whole notebook, as one PDF or one HTML file). Print (Cmd+P) can also save a PDF through the system dialog. The PDF is self-contained but carries attachments only as cards. The HTML export links to pictures and attachments in the notebook, by relative paths when saved inside the notebook and by absolute paths on this computer otherwise, so it breaks when sent to anyone else. Each page's own `page.html` backup shows only what prints.
 

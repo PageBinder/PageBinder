@@ -48,12 +48,14 @@ export function ExportDialog({ scopes, onExport, onClose }: { scopes: ExportScop
             <span>Format</span>
             <select value={format} onChange={(e) => setFormat(e.target.value as 'html' | 'pdf')}>
               <option value="pdf">One PDF file</option>
-              <option value="html">One HTML file (opens in any browser)</option>
+              <option value="html">Web page with attachments (.zip)</option>
             </select>
           </label>
         </div>
-        <p className="muted small" style={{ marginTop: 12 }}>
-          Pages are exported in notebook order, each starting on a new sheet, using each page's own paper size. The HTML file links to pictures and attachments on this computer; the PDF is self-contained.
+        <p className="muted small export-explain" style={{ marginTop: 12 }}>
+          {format === 'pdf'
+            ? "One PDF with the pages exactly as they print, in notebook order, each starting on a new sheet with its own paper size. Pictures and printouts are included; other attachments appear only as cards, without the files themselves."
+            : "One .zip file to share with anyone, even without PageBinder. It holds a web page of the pages, in notebook order, together with every picture and attached file. Unzip it anywhere and open the .html file inside with any web browser; clicking an attachment opens it (some browsers save it to Downloads first). Large attachments make the .zip large."}
         </p>
         {result && <p className="small">{result}</p>}
         <div className="dialog-actions">
