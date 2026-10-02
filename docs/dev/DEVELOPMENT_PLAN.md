@@ -191,7 +191,9 @@ Published as a pre-release on 30 September 2026.
 - **Recent list remove button.** `.recent-list button { width: 100% }` also stretched the × (`.recent-forget`); it now has its own 28 px size. Phase 8 measures it.
 - **Outlook email text is searchable.** `.msg` bodies were read only from the plain-text body (PidTagBody). Outlook often saves just the HTML body (PidTagHtml, bytes) or only compressed RTF, so their text never reached the index. `msgBodyText` in `app/src/main/search/mail.ts` now falls back to the HTML bytes (decoded with the message's code page) and then to compressed RTF (`@kenjiuno/decompressrtf`, now a direct dependency), turned into text by `rtfToText`, which also handles Outlook's HTML-in-RTF form (`\fromhtml`, `\htmltag`, `\htmlrtf`). `INDEX_VERSION` is 5, so every notebook rebuilds its index once and emails added before the fix become searchable. Unit tests in `test/mail.test.ts` cover each body form; a real Outlook drag still needs checking on Windows.
 
-## Version 1.1.3 (in development)
+## Version 1.1.3
+
+Published as a pre-release on 2 October 2026.
 
 - **Test suites about ten times faster.** Tests now save with `saveViaMenu` (`app/scripts/e2e-save.ts`), which sends File > Save's command and waits for the write (re-saving if a late change arrives), instead of pressing Cmd/Ctrl+S, which a test cannot deliver to a menu shortcut and which therefore waited for the 20-second autosave each time. Full local run: about 21 minutes before, 133–137 seconds after, three passes in a row. `e2e.ts` checks that File > Save carries the CmdOrCtrl+S shortcut. The Insert signature step waits for the signature before saving, and the history panel step no longer swallows a 30-second timeout. Step 1 of the local build plan (see HANDOFF.md).
 - **Paste picture in a text box's right-click menu**, when a cut or copied picture is waiting (`canPastePicture`).
