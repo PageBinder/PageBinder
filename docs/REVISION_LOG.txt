@@ -10,7 +10,11 @@ earlier ones. Nothing ever needs converting.
 Version 1.1.4 - in development (not yet released)
 -------------------------------------------------
 
-Nothing yet.
+Templates
+- Pictures now show on template pages in the Templates notebook: pictures in
+  a page saved as a template, pictures inserted while editing a template, and
+  pictures in a template's text boxes. Before, only an empty frame showed.
+  Pages made from a template always had their pictures.
 
 
 Version 1.1.3 - 2 October 2026 (pre-release)
