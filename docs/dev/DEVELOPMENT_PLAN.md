@@ -193,7 +193,7 @@ Published as a pre-release on 30 September 2026.
 
 ## Version 1.1.4 (in development)
 
-Nothing yet.
+- **Pictures on template pages.** The Templates notebook is opened from the Welcome screen, which closes the regular notebook, and the `pagebinder://` handler (`app/src/main/protocol.ts`) refused every request with no notebook open, so template pages showed empty picture frames. Paths into a template library (`@global/…`, `@nb/…`) are now served without an open notebook; everything else still needs one. Phase 6b gives its template a picture on the page and one in a text box and checks both load, a picture inserted while editing a template, and the picture on a page made from the template.
 
 ## Version 1.1.3
 

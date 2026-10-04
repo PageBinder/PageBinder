@@ -13,6 +13,7 @@ import { createSection } from '../src/main/storage/section'
 import { createPage, savePage } from '../src/main/storage/page'
 import { saveAsTemplate, libraryDir } from '../src/main/storage/templates'
 import type { PageDoc, TextContainer } from '../src/shared/types'
+import { tealPng } from './png'
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(`ASSERT: ${msg}`)
@@ -30,13 +31,23 @@ async function main(): Promise<void> {
   const sec = await createSection(root, '', 'Work', '#1D9E75')
   const { relPath, doc } = await createPage(root, sec, 'Visit form')
   const obj = doc.objects[0] as TextContainer
-  await savePage(root, relPath, { ...doc, objects: [{ ...obj, content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Original template text' }] }] } }] })
+  // The template carries a picture on the page and one inside its text box.
+  await fs.writeFile(join(root, relPath, 'images', 'logo.png'), tealPng())
+  await savePage(root, relPath, {
+    ...doc,
+    objects: [
+      { ...obj, content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Original template text' }] }] }, pictures: [{ id: 'p1', name: 'logo.png', originalName: 'logo.png', x: 0, y: 0, width: 40, height: 40 }] },
+      { kind: 'image', id: 'i1', x: 400, y: 300, width: 64, height: 64, name: 'logo.png', originalName: 'logo.png' }
+    ]
+  })
+  const picturePath = join(base, 'stamp.png')
+  await fs.writeFile(picturePath, tealPng())
   await saveAsTemplate(root, relPath, libraryDir(root, 'notebook', ''), 'notebook', 'Visit form', '')
   const step = (s: string): void => {
     process.stdout.write(`  ✓ ${s}\n`)
   }
 
-  const app = await electron.launch({ args: [resolve(process.env['E2E_OUT'] ?? 'out-e2e', 'main/index.js'), `--user-data-dir=${userData}`], cwd: resolve('.'), env: { ...process.env, PAGEBINDER_OPEN: root } })
+  const app = await electron.launch({ args: [resolve(process.env['E2E_OUT'] ?? 'out-e2e', 'main/index.js'), `--user-data-dir=${userData}`], cwd: resolve('.'), env: { ...process.env, PAGEBINDER_OPEN: root, PAGEBINDER_TEST_PICK_IMAGES: picturePath } })
   const page = await app.firstWindow()
   useApp(app)
   await page.waitForSelector('.section-tabs')
@@ -53,7 +64,28 @@ async function main(): Promise<void> {
   assert(tabs.includes('Templates test') && tabs.includes('Global templates'), `library sections shown (${tabs.join(', ')})`)
   await page.waitForSelector('.page-row.on:has-text("Visit form")')
   assert(await page.locator('.text-container', { hasText: 'Original template text' }).count(), 'template opens as a page')
-  step('the Templates notebook shows both libraries with templates as pages')
+  // Its pictures show (they load from the template library, with no notebook open).
+  const loaded = async (sel: string): Promise<boolean> => {
+    for (let i = 0; i < 50; i++) {
+      const ok = await page.evaluate((q) => {
+        const imgs = Array.from(document.querySelectorAll<HTMLImageElement>(q))
+        return imgs.length > 0 && imgs.every((im) => im.complete && im.naturalWidth > 0)
+      }, sel)
+      if (ok) return true
+      await page.waitForTimeout(100)
+    }
+    return false
+  }
+  assert(await loaded('.canvas .image-object img'), 'a picture on a template page shows')
+  assert(await loaded('.canvas .anchored-picture-frame img'), 'a picture in a text box on a template page shows')
+  // A picture inserted while editing a template shows too.
+  await page.locator('.canvas').click({ position: { x: 700, y: 900 } })
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.webContents.send('menu:insertImage'))
+  await page.waitForFunction(() => document.querySelectorAll('.canvas .image-object img').length === 2)
+  assert(await loaded('.canvas .image-object img'), 'a picture inserted into a template page shows')
+  await saveViaMenu(page)
+  step('the Templates notebook shows both libraries with templates as pages, pictures included')
 
   // 2. Edit the template in place: the template file changes; pages made later carry the edit.
   await page.locator('.text-container .tiptap').first().click()
@@ -99,6 +131,8 @@ async function main(): Promise<void> {
   await page.waitForTimeout(300)
   const made = JSON.parse(await fs.readFile(join(root, sec, 'Visit form v2.page', 'page.json'), 'utf8')) as PageDoc
   assert(JSON.stringify(made.objects).includes('plus an edit'), 'pages made after the edit carry it')
+  await page.waitForSelector('.page-row.on:has-text("Visit form v2")')
+  assert(await loaded('.canvas .image-object img'), "a page made from the template shows the template's pictures")
   step('templates moved to the global library are offered everywhere with their latest content')
 
   // 6. Deleting a template page removes it from the library.

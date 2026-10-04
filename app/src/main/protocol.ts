@@ -25,9 +25,10 @@ const ALLOWED = /(^|\/)(images\/[^/]+|attachments\/[^/]+|page\.html|\.history\/[
 export function registerProtocolHandler(): void {
   protocol.handle(SCHEME, async (request) => {
     const url = new URL(request.url)
-    const root = currentNotebookRoot()
-    if (url.host !== 'notebook' || !root) return new Response('No notebook open', { status: 404 })
     const relIn = decodeURIComponent(url.pathname).replace(/^\/+/, '')
+    // Template pages (@global/…, @nb/…) live in a template library, which the Templates notebook
+    // shows with no regular notebook open; everything else needs the open notebook.
+    if (url.host !== 'notebook' || (!relIn.startsWith('@') && !currentNotebookRoot())) return new Response('No notebook open', { status: 404 })
     if (!ALLOWED.test(relIn) || relIn.includes('..')) return new Response('Forbidden', { status: 403 })
     const resolved = resolveRel(relIn)
     const rel = resolved.rel
