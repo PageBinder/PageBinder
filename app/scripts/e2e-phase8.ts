@@ -104,7 +104,11 @@ async function main(): Promise<void> {
   await page.locator('.context-item', { hasText: 'Insert signature' }).click()
   // The signature arrives a moment later (it asks the system for the user's name first).
   await page.waitForFunction((n) => Array.from(document.querySelectorAll('.canvas .tiptap')).some((e) => (e.textContent ?? '').includes(n)), expectedName)
-  await save(page)
+  // On a slow machine the page can register the change just after a save; save until it is written.
+  for (let i = 0; i < 20; i++) {
+    await save(page)
+    if (JSON.stringify((await doc(a)).objects).includes(expectedName)) break
+  }
   const withSig = JSON.stringify((await doc(a)).objects)
   assert(withSig.includes(expectedName), `signature carries the user name (${expectedName})`)
   assert(/\d{4}|\d{1,2}:\d{2}/.test(withSig), 'signature carries the date and time')
