@@ -65,7 +65,9 @@ async function main(): Promise<void> {
   assert(!(await page.locator('.dialog select').count()), 'Save as template offers no library choice')
   await page.locator('.dialog button[type=submit]').click()
   await page.waitForSelector('.dialog', { state: 'detached' })
-  assert(await fs.stat(join(userData, 'templates', 'Survey page.template', 'page.json')).then(() => true, () => false), 'template written to the global library')
+  const templateFile = join(userData, 'templates', 'Survey page.template', 'page.json')
+  for (let i = 0; i < 50 && !(await fs.stat(templateFile).then(() => true, () => false)); i++) await page.waitForTimeout(100)
+  assert(await fs.stat(templateFile).then(() => true, () => false), 'template written to the global library')
   assert(!(await fs.stat(join(root, 'templates', 'Survey page.template')).then(() => true, () => false)), 'nothing written to the notebook\'s own template folder')
   await page.locator('.page-list-head .icon').click()
   await page.locator('.context-item', { hasText: 'From template: Survey page' }).click()
@@ -83,7 +85,12 @@ async function main(): Promise<void> {
   // 2. Default template for the section: the plain + button uses it.
   await page.locator('.tab', { hasText: 'Surveys' }).click({ button: 'right' })
   await page.locator('.context-item', { hasText: 'Use “Survey page”' }).click()
-  await page.waitForTimeout(300)
+  // Wait until the section has saved its new default (slow on some Windows runners).
+  for (let i = 0; i < 100; i++) {
+    const meta = JSON.parse(await fs.readFile(join(root, surveys, 'section.json'), 'utf8')) as { defaultTemplate?: string }
+    if (meta.defaultTemplate) break
+    await page.waitForTimeout(100)
+  }
   await page.locator('.page-row.add').click()
   await page.waitForSelector('.page-row.renaming input')
   await page.locator('.page-row.renaming input').fill('North Field')
