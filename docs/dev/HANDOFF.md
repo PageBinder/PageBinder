@@ -22,6 +22,8 @@ Entry format:
 **Found:** The Templates notebook is reached through the Welcome screen, which closes the regular notebook; every picture request was refused in that state.
 **Checked:** Type check; 94 unit tests; every end-to-end suite (137 s). Phase 6b now checks pictures on a template page, in its text box, inserted while editing, and on a page made from the template. The user tried it in the running app.
 **Next platform must check:** Windows: save a page with a picture as a template, open it in the Templates notebook, and check the picture shows.
+**Also changed:** Templates are global only (the user's decision with explicit permission under the compatibility rule): no library choice in Save as Template, only Global templates in the Templates notebook and menus, and section defaults naming old notebook-only templates are ignored. The v1.1.4 draft was rebuilt with it.
+**Next platform must check (also):** Windows: Save as Template asks only for a name; the Templates notebook shows only Global templates.
 **Open:** v1.1.4 stays a draft until the user says to publish.
 
 ## 2026-10-02 · lead (macOS, Apple silicon) · main
