@@ -50,7 +50,7 @@ export function SectionTabs({
               { separator: true },
               { label: `Default template: ${allTemplates.find((t) => t.ref === menu.node.kind && false) ? '' : allTemplates.find((t) => menu.node.kind === 'section' && t.ref === menu.node.defaultTemplate)?.name ?? 'blank page'}`, onClick: () => {} },
               { label: '   Use a blank page', onClick: () => onSetDefaultTemplate(menu.node.relPath, null) },
-              ...allTemplates.map((t) => ({ label: `   Use “${t.name}”${t.scope === 'global' ? ' (global)' : ''}`, onClick: () => onSetDefaultTemplate(menu.node.relPath, t.ref) }))
+              ...allTemplates.map((t) => ({ label: `   Use “${t.name}”`, onClick: () => onSetDefaultTemplate(menu.node.relPath, t.ref) }))
             ]
           : []),
         { separator: true },

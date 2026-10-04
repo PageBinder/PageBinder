@@ -33,3 +33,6 @@ Choices that should outlive any one session. Add a line when a decision is made 
 - **Git is the shared state** between machines (2026-09-25). Sessions are disposable: start each task in a fresh session, run `/sync` first and `/handoff` last.
 - **This Mac is the lead** (2026-09-25). Core, platform-neutral work happens there, on `main`. Other machines and cloud sessions work on short-lived `fix/<platform>-<topic>` branches that are merged back to `main` within the task and then deleted.
 - **The macOS and Windows workflow runs on every push** to `main` and `fix/**` (2026-09-25), because Actions minutes are free while the repository is public. If the repository ever becomes private again, return the workflow to start-by-hand first: private Mac minutes count ten times against a 2,000-minute month.
+
+## Templates are global only (2026-10-03)
+The user chose to offer only global templates (kept in the app's settings folder, available in every notebook) and to drop templates kept inside a single notebook. Notebook-only templates saved by earlier versions are hidden and no longer used, with the user's explicit permission under the backward-compatibility rule; their files are left in the notebook's `templates` folder, and pages made from them are unaffected. A section's default template setting stays, for global templates.
