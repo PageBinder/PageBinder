@@ -58,13 +58,15 @@ async function main(): Promise<void> {
   shownPage = page
   await page.waitForSelector('.section-tabs')
 
-  // 1. Save the page as a notebook template, then make a page from it: placeholders filled.
+  // 1. Save the page as a template (always global), then make a page from it: placeholders filled.
   await page.locator('.page-row', { hasText: 'Survey form' }).click({ button: 'right' })
   await page.locator('.context-item', { hasText: 'Save as template' }).click()
   await page.locator('.dialog input').first().fill('Survey page')
+  assert(!(await page.locator('.dialog select').count()), 'Save as template offers no library choice')
   await page.locator('.dialog button[type=submit]').click()
   await page.waitForSelector('.dialog', { state: 'detached' })
-  assert(await fs.stat(join(root, 'templates', 'Survey page.template', 'page.json')).then(() => true, () => false), 'template folder written in the notebook')
+  assert(await fs.stat(join(userData, 'templates', 'Survey page.template', 'page.json')).then(() => true, () => false), 'template written to the global library')
+  assert(!(await fs.stat(join(root, 'templates', 'Survey page.template')).then(() => true, () => false)), 'nothing written to the notebook\'s own template folder')
   await page.locator('.page-list-head .icon').click()
   await page.locator('.context-item', { hasText: 'From template: Survey page' }).click()
   await page.waitForSelector('.page-row.renaming input')

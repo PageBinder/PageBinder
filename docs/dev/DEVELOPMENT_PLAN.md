@@ -193,6 +193,7 @@ Published as a pre-release on 30 September 2026.
 
 ## Version 1.1.4 (in development)
 
+- **Global templates only** (the user's decision, 2026-10-03, with explicit permission for the compatibility rule). Save as Template has no library choice and always writes to the global library; `template:list` returns no notebook templates; the Templates notebook shows only Global templates; a section default naming a `notebook:` template is ignored (new pages start blank). Notebook libraries from earlier versions stay on disk untouched; the storage code still reads them, but nothing in the interface offers them. Section default templates (global) are unchanged. Phase 6 and 6b updated.
 - **Pictures on template pages.** The Templates notebook is opened from the Welcome screen, which closes the regular notebook, and the `pagebinder://` handler (`app/src/main/protocol.ts`) refused every request with no notebook open, so template pages showed empty picture frames. Paths into a template library (`@global/…`, `@nb/…`) are now served without an open notebook; everything else still needs one. Phase 6b gives its template a picture on the page and one in a text box and checks both load, a picture inserted while editing a template, and the picture on a page made from the template.
 
 ## Version 1.1.3

@@ -42,7 +42,13 @@ async function main(): Promise<void> {
   })
   const picturePath = join(base, 'stamp.png')
   await fs.writeFile(picturePath, tealPng())
-  await saveAsTemplate(root, relPath, libraryDir(root, 'notebook', ''), 'notebook', 'Visit form', '')
+  const globalDir = join(userData, 'templates')
+  await saveAsTemplate(root, relPath, globalDir, 'global', 'Visit form', '')
+  // A notebook-only template from an earlier version, used as a section's default: neither is shown or used now.
+  await saveAsTemplate(root, relPath, libraryDir(root, 'notebook', ''), 'notebook', 'Old notebook form', '')
+  const oldSec = await createSection(root, '', 'Old default', '#D85A30')
+  const secMetaPath = join(root, oldSec, 'section.json')
+  await fs.writeFile(secMetaPath, JSON.stringify({ ...JSON.parse(await fs.readFile(secMetaPath, 'utf8')), defaultTemplate: 'notebook:Old notebook form.template' }))
   const step = (s: string): void => {
     process.stdout.write(`  ✓ ${s}\n`)
   }
@@ -61,7 +67,8 @@ async function main(): Promise<void> {
   await page.locator('.recent-list button', { hasText: 'Templates' }).first().click()
   await page.waitForSelector('.notebook-button.templates')
   const tabs = await page.locator('.section-tabs .tab').allTextContents()
-  assert(tabs.includes('Templates test') && tabs.includes('Global templates'), `library sections shown (${tabs.join(', ')})`)
+  assert(tabs.length === 1 && tabs[0]!.includes('Global templates'), `only the Global templates section is shown (${tabs.join(', ')})`)
+  assert(!(await page.locator('.page-row', { hasText: 'Old notebook form' }).count()), 'a notebook-only template from an earlier version is not shown')
   await page.waitForSelector('.page-row.on:has-text("Visit form")')
   assert(await page.locator('.text-container', { hasText: 'Original template text' }).count(), 'template opens as a page')
   // Its pictures show (they load from the template library, with no notebook open).
@@ -85,16 +92,16 @@ async function main(): Promise<void> {
   await page.waitForFunction(() => document.querySelectorAll('.canvas .image-object img').length === 2)
   assert(await loaded('.canvas .image-object img'), 'a picture inserted into a template page shows')
   await saveViaMenu(page)
-  step('the Templates notebook shows both libraries with templates as pages, pictures included')
+  step('the Templates notebook shows only global templates as pages, pictures included')
 
   // 2. Edit the template in place: the template file changes; pages made later carry the edit.
   await page.locator('.text-container .tiptap').first().click()
   await page.keyboard.press('End')
   await page.keyboard.type(' plus an edit')
   await save(page)
-  const tdoc = JSON.parse(await fs.readFile(join(root, 'templates', 'Visit form.template', 'page.json'), 'utf8')) as PageDoc
+  const tdoc = JSON.parse(await fs.readFile(join(globalDir, 'Visit form.template', 'page.json'), 'utf8')) as PageDoc
   assert(JSON.stringify(tdoc.objects).includes('plus an edit'), 'template page.json updated in place')
-  assert(!(await fs.readdir(join(root, 'templates'))).some((n) => n.endsWith('.page')), 'template folder kept its .template name')
+  assert(!(await fs.readdir(globalDir)).some((n) => n.endsWith('.page')), 'template folder kept its .template name')
   step('editing a template page changes the template itself')
 
   // 3. Rename the template from the list; template.json follows.
@@ -103,18 +110,9 @@ async function main(): Promise<void> {
   await page.keyboard.press('Enter')
   await page.waitForSelector('.page-row.on:has-text("Visit form v2")')
   await page.waitForTimeout(300)
-  const tmeta = JSON.parse(await fs.readFile(join(root, 'templates', 'Visit form.template', 'template.json'), 'utf8')) as { name: string }
+  const tmeta = JSON.parse(await fs.readFile(join(globalDir, 'Visit form.template', 'template.json'), 'utf8')) as { name: string }
   assert(tmeta.name === 'Visit form v2', 'template name follows the page title')
   step('renaming a template page renames the template')
-
-  // 4. Drag the template onto the Global tab: it moves to the global library.
-  await page.locator('.page-row', { hasText: 'Visit form v2' }).dragTo(page.locator('.tab', { hasText: 'Global templates' }))
-  await page.waitForSelector('.tab.on:has-text("Global templates")')
-  await page.waitForTimeout(400)
-  const globalDir = join(userData, 'templates')
-  assert((await fs.readdir(globalDir)).includes('Visit form.template'), 'template moved to the global library')
-  assert(!(await fs.readdir(join(root, 'templates'))).includes('Visit form.template'), 'template left the notebook library')
-  step('dragging a template to the other library tab moves it')
 
   // 5. Back in the notebook, the global template is offered and carries the edit.
   await page.locator('.notebook-button').click()
@@ -124,7 +122,9 @@ async function main(): Promise<void> {
   await page.waitForSelector('.notebook-button:not(.templates)')
   await page.locator('.tab', { hasText: 'Work' }).click()
   await page.locator('.page-list-head .icon').click()
-  await page.locator('.context-item', { hasText: 'From global template: Visit form v2' }).click()
+  const offered = await page.locator('.context-item').allTextContents()
+  assert(!offered.some((t) => t.includes('Old notebook form')), `the Add page menu offers no notebook-only template (${offered.join(' | ')})`)
+  await page.locator('.context-item', { hasText: 'From template: Visit form v2' }).click()
   await page.waitForSelector('.page-row.renaming input')
   assert((await page.locator('.page-row.renaming input').inputValue()) === 'Visit form v2', 'new page named after the template')
   await page.keyboard.press('Enter')
@@ -133,7 +133,23 @@ async function main(): Promise<void> {
   assert(JSON.stringify(made.objects).includes('plus an edit'), 'pages made after the edit carry it')
   await page.waitForSelector('.page-row.on:has-text("Visit form v2")')
   assert(await loaded('.canvas .image-object img'), "a page made from the template shows the template's pictures")
-  step('templates moved to the global library are offered everywhere with their latest content')
+  step('global templates are offered in the notebook with their latest content and pictures')
+
+  // A section whose default is an old notebook-only template makes blank pages; the menu shows no default.
+  await page.locator('.tab', { hasText: 'Old default' }).click()
+  await page.locator('.tab', { hasText: 'Old default' }).click({ button: 'right' })
+  const secMenu = await page.locator('.context-item').allTextContents()
+  assert(secMenu.some((t) => t.startsWith('Default template: blank page')) && !secMenu.some((t) => t.includes('Old notebook form')), `the section menu shows no notebook-only template (${secMenu.join(' | ')})`)
+  await page.keyboard.press('Escape')
+  await page.locator('.page-row.add').click()
+  await page.waitForSelector('.page-row.renaming input')
+  await page.locator('.page-row.renaming input').fill('Fresh page')
+  await page.keyboard.press('Enter')
+  await page.waitForSelector('.page-row.on:has-text("Fresh page")')
+  await page.waitForTimeout(300)
+  const fresh = JSON.parse(await fs.readFile(join(root, oldSec, 'Fresh page.page', 'page.json'), 'utf8')) as PageDoc
+  assert(!JSON.stringify(fresh.objects).includes('Original template text'), 'a notebook-only default template is no longer used: the new page is blank')
+  step('notebook-only templates from earlier versions are no longer shown or used')
 
   // 6. Deleting a template page removes it from the library.
   await page.locator('.notebook-button').click()

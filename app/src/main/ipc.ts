@@ -189,9 +189,6 @@ function globalTemplatesDir(): string {
 export const GLOBAL_PREFIX = '@global/'
 export const NB_PREFIX = '@nb/'
 
-function encodeRoot(root: string): string {
-  return Buffer.from(root, 'utf8').toString('base64url')
-}
 function decodeRoot(token: string): string {
   return Buffer.from(token, 'base64url').toString('utf8')
 }
@@ -215,11 +212,6 @@ export function resolveRel(rel: string): { root: string; rel: string; template: 
   return { root: requireRoot(), rel, template: null }
 }
 
-/** Section rel for a notebook's template library inside the Templates notebook. */
-function libraryRel(nbRoot: string): string {
-  return `${NB_PREFIX}${encodeRoot(nbRoot)}`
-}
-
 /** The Templates notebook: Global templates plus one section per known notebook that has a library. */
 async function templatesTree(): Promise<NotebookTree> {
   const sections: import('../shared/types').SectionNode[] = []
@@ -232,23 +224,8 @@ async function templatesTree(): Promise<NotebookTree> {
     relPath: '@global',
     pages: globalList.map((t) => ({ id: t.id, title: t.name, relPath: `${GLOBAL_PREFIX}${t.folder}`, modified: t.created }))
   })
-  const roots: { root: string; name: string }[] = []
-  if (currentRoot) {
-    const meta = await readJson<NotebookTree['meta']>(joinPath(currentRoot, 'notebook.json'))
-    roots.push({ root: currentRoot, name: meta?.name ?? basename(currentRoot) })
-  }
-  for (const r of await readRecent()) if (!roots.some((x) => x.root === r.root)) roots.push({ root: r.root, name: r.name })
-  for (const nb of roots) {
-    const list = await listTemplates(joinPath(nb.root, 'templates'), 'notebook')
-    sections.push({
-      kind: 'section',
-      id: `templates-${encodeRoot(nb.root)}`,
-      name: nb.name,
-      color: '#7F77DD',
-      relPath: libraryRel(nb.root),
-      pages: list.map((t) => ({ id: t.id, title: t.name, relPath: `${libraryRel(nb.root)}/${t.folder}`, modified: t.created }))
-    })
-  }
+  // Only global templates are offered (the user's choice, 2026-10-03). Templates saved inside a
+  // notebook by earlier versions stay in its templates folder but are no longer shown or used.
   return {
     root: '',
     meta: { format: 1, id: 'templates', name: 'Templates', created: '', modified: '', order: [], settings: { paper: { size: 'letter', orientation: 'portrait', margins: { top: 1, right: 1, bottom: 1, left: 1 } } } },
@@ -388,8 +365,9 @@ export function registerIpc(): void {
     const root = requireRoot()
     const meta = await readJson<NotebookTree['meta']>(joinPath(root, 'notebook.json'))
     const def = await sectionDefaultTemplate(root, sectionRel)
+    // A section default that names a notebook-only template (from an earlier version) is ignored.
     const parsed = def ? parseRef(def) : null
-    if (parsed) {
+    if (parsed && parsed.scope === 'global') {
       const dir = joinPath(libraryDir(root, parsed.scope, globalTemplatesDir()), parsed.folder)
       try {
         const tmeta = await readJson<TemplateMeta>(joinPath(dir, TEMPLATE_META))
@@ -578,11 +556,13 @@ export function registerIpc(): void {
   /* ---------- templates ---------- */
   ipcMain.handle('template:list', async () => {
     const root = requireRoot()
-    return { notebook: await listTemplates(libraryDir(root, 'notebook', globalTemplatesDir()), 'notebook'), global: await listTemplates(globalTemplatesDir(), 'global'), globalDir: globalTemplatesDir() }
+    requireRoot()
+    return { notebook: [], global: await listTemplates(globalTemplatesDir(), 'global'), globalDir: globalTemplatesDir() }
   })
-  ipcMain.handle('template:save', async (_e, pageRel: string, scope: TemplateScope, name: string, description: string) => {
+  ipcMain.handle('template:save', async (_e, pageRel: string, _scope: TemplateScope, name: string, description: string) => {
     const root = requireRoot()
-    return saveAsTemplate(root, pageRel, libraryDir(root, scope, globalTemplatesDir()), scope, name, description)
+    // Templates are always global now; the scope argument is kept for older callers.
+    return saveAsTemplate(root, pageRel, globalTemplatesDir(), 'global', name, description)
   })
   ipcMain.handle('template:delete', async (_e, ref: string) => {
     const root = requireRoot()

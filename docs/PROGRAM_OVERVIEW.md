@@ -47,7 +47,7 @@ Press Cmd+F (Ctrl+F on Windows) and start typing. Results appear as you type, co
 
 ## Templates and copying
 
-- **Templates.** Save any page as a template, for this notebook or for every notebook. Templates hold text, tables, and pictures, but no attached files. The + menu in the page list creates a page from any template, and a section can be given a default template. The Templates entry on the notebook switch screen shows every template as an editable page.
+- **Templates.** Save any page as a template; every template is available in every notebook on this computer. Templates hold text, tables, and pictures, but no attached files. The + menu in the page list creates a page from any template, and a section can be given a default template. The Templates entry on the notebook switch screen shows every template as an editable page.
 - **Copying pages.** Right-click a page, choose Copy page, then Paste page here in another section's + menu, in this notebook or another. A copy is complete and independent, including every attached file.
 
 ## Where your notes live

@@ -79,7 +79,7 @@ export function PageList({
     { label: 'New page', onClick: onAdd },
     ...(copiedPageTitle ? [{ label: `Paste page here: ${copiedPageTitle}`, onClick: onPastePage }] : []),
     ...(templates.notebook.length ? [{ separator: true }, ...templates.notebook.map((t) => ({ label: `From template: ${t.name}`, onClick: () => onAddFromTemplate(t.ref) }))] : []),
-    ...(templates.global.length ? [{ separator: true }, ...templates.global.map((t) => ({ label: `From global template: ${t.name}`, onClick: () => onAddFromTemplate(t.ref) }))] : [])
+    ...(templates.global.length ? [{ separator: true }, ...templates.global.map((t) => ({ label: `From template: ${t.name}`, onClick: () => onAddFromTemplate(t.ref) }))] : [])
   ]
   const parents = new Set(pages.map((p) => p.id))
   return (
