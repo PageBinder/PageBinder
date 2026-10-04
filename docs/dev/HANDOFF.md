@@ -17,6 +17,13 @@ Entry format:
 
 ---
 
+## 2026-10-03 · lead (macOS, Apple silicon) · main
+**Changed:** 1.1.4 work: pictures show on template pages in the Templates notebook (the `pagebinder://` handler now serves `@global/…` and `@nb/…` paths with no regular notebook open). Pushed with a v1.1.4 draft release at the user's request.
+**Found:** The Templates notebook is reached through the Welcome screen, which closes the regular notebook; every picture request was refused in that state.
+**Checked:** Type check; 94 unit tests; every end-to-end suite (137 s). Phase 6b now checks pictures on a template page, in its text box, inserted while editing, and on a page made from the template. The user tried it in the running app.
+**Next platform must check:** Windows: save a page with a picture as a template, open it in the Templates notebook, and check the picture shows.
+**Open:** v1.1.4 stays a draft until the user says to publish.
+
 ## 2026-10-02 · lead (macOS, Apple silicon) · main
 **Changed:** End-to-end tests save through File > Save's command (`saveViaMenu`, `app/scripts/e2e-save.ts`) instead of pressing Cmd/Ctrl+S, which tests cannot deliver to a menu shortcut; every save had been waiting for the 20-second autosave. `e2e.ts` checks the Save shortcut by reading the File menu. This is step 1 of a local build plan the user asked for (build and test Mac and Windows on the lead Mac, GitHub private, no Actions minutes; the plan itself is an artifact in the lead session, not in the repository).
 **Found:** The processor sat idle 97% of the test time. Full local end-to-end run: about 21 minutes before, 133–137 seconds after (phase 8: 7.5–8.7 minutes to 40 seconds). Faster tests exposed one hidden race: Insert signature fills in its text a moment after the click, so the step now waits for it before saving.
