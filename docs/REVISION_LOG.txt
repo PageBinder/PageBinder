@@ -11,33 +11,48 @@ Version 1.1.4 - in development (not yet released)
 -------------------------------------------------
 
 Templates
-- Pictures now show on template pages in the Templates notebook: pictures in
-  a page saved as a template, pictures inserted while editing a template, and
-  pictures in a template's text boxes. Before, only an empty frame showed.
-  Pages made from a template always had their pictures.
-- Templates are now always available in every notebook: Save as Template no
-  longer asks whether a template is for one notebook only, and the Templates
-  notebook shows one Global templates section. Templates saved for a single
-  notebook by earlier versions are no longer shown or used (their files stay
-  in that notebook's templates folder), and a section that used one as its
-  default template now starts new pages blank. Pages already made from a
-  template are not affected: each is its own copy.
-- Templates can be copied and pasted like pages: right-click a template >
-  Copy template, then Paste template here from the + menu. The copy is named
-  "<name> (copy)". The leftover "Move to the other library" item is gone.
+- Templates now live in a Templates notebook that works like any other
+  notebook. Open it from the start screen (Switch notebook > Templates). Add
+  sections and section groups to arrange templates; rename, cut, copy, paste,
+  and delete templates, with Undo (a deleted template goes to the notebook's
+  recycle folder); search finds the text inside templates; and Page History,
+  Notebook Properties, Export Notebook, and Verify Notebook work there too.
+  Editing a template changes the pages made from it later. Pages already
+  made from it are their own copies and do not change.
+- Save as Template copies the page, attached files included, into the
+  Templates notebook. When that notebook has more than one section, it asks
+  which section to use. A page made from a template now gets the template's
+  attached files as well as its pictures.
+- The + menu in the page list offers every template, listed under its
+  section in the Templates notebook, and any of them can be a section's
+  default template.
+- Pictures show on template pages, including pictures in text boxes.
+- Templates kept by earlier versions are not brought into the Templates
+  notebook and are no longer offered, and a section whose default template
+  was one of them now starts new pages blank. Their files are left where
+  they are. Pages already made from them are not affected.
 
 Pages
 - Select several pages at once in the page list: Ctrl-click (Cmd-click on a
   Mac) adds or removes a page, and Shift-click selects every page between the
   last one clicked and this one, as in File Explorer and Finder. Right-click
   the selection to cut, copy, or delete them all; paste them from the + menu.
-  One Undo reverses the whole paste or delete. Copy and delete work for
-  templates too. Every selected page stays highlighted, including the one
-  under the pointer.
+  One Undo reverses the whole paste or delete. The same works for templates
+  in the Templates notebook. Every selected page stays highlighted,
+  including the one under the pointer.
 - Cut pages: right-click a page (or a selection) > Cut, then Paste page here
   from the + menu in another section. The pages move there, keeping their
   saved versions; cut pages look dimmed until pasted, and one Undo moves them
   back.
+- Pages copied in one notebook can now be pasted into another, the Templates
+  notebook included (where they become templates). Before, Paste page here
+  was offered in the other notebook but did not work. Cut pages move within
+  their own notebook.
+- Pictures and attached files copied on a page in one notebook can now be
+  pasted into a page in another notebook, including a template.
+- Search now finds pages that were moved, pasted, or restored from the
+  recycle folder. Before, such a page could be missed until it was next
+  edited or the search index was rebuilt.
 
 
 Version 1.1.3 - 2 October 2026 (pre-release)

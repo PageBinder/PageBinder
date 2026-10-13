@@ -61,17 +61,20 @@ async function main(): Promise<void> {
   shownPage = page
   await page.waitForSelector('.section-tabs')
 
-  // 1. Save the page as a template (always global), then make a page from it: placeholders filled.
+  // 1. Save the page as a template (a copy in the Templates notebook), then make a page from it:
+  //    the template keeps its placeholders, and the new page has them filled.
   await page.locator('.page-row', { hasText: 'Survey form' }).click({ button: 'right' })
   await page.locator('.context-item', { hasText: 'Save as template' }).click()
   await page.locator('.dialog input').first().fill('Survey page')
-  assert(!(await page.locator('.dialog select').count()), 'Save as template offers no library choice')
+  await page.waitForFunction(() => !(document.querySelector('.dialog button[type=submit]') as HTMLButtonElement | null)?.disabled)
+  assert(!(await page.locator('.dialog select').count()), 'with one section in the Templates notebook, Save as template asks only for a name')
   await page.locator('.dialog button[type=submit]').click()
   await page.waitForSelector('.dialog', { state: 'detached' })
-  const templateFile = join(userData, 'templates', 'Survey page.template', 'page.json')
+  const templateFile = join(userData, 'Templates notebook', 'General', 'Survey page.page', 'page.json')
   for (let i = 0; i < 50 && !(await fs.stat(templateFile).then(() => true, () => false)); i++) await page.waitForTimeout(100)
-  assert(await fs.stat(templateFile).then(() => true, () => false), 'template written to the global library')
-  assert(!(await fs.stat(join(root, 'templates', 'Survey page.template')).then(() => true, () => false)), 'nothing written to the notebook\'s own template folder')
+  assert(await fs.stat(templateFile).then(() => true, () => false), 'template written to the Templates notebook')
+  assert(JSON.stringify((JSON.parse(await fs.readFile(templateFile, 'utf8')) as PageDoc).objects).includes('{{section}}'), 'the template keeps its placeholders')
+  assert(!(await fs.stat(join(root, 'templates')).then(() => true, () => false)), 'nothing written to a template folder in the notebook')
   await page.locator('.page-list-head .icon').click()
   await page.locator('.context-item', { hasText: 'From template: Survey page' }).click()
   await page.waitForSelector('.page-row.renaming input')
@@ -128,6 +131,15 @@ async function main(): Promise<void> {
   await page.keyboard.press(`Shift+${mod}+z`)
   await page.waitForSelector('.page-row.on:has-text("Ridge Road")')
   step('pasting a page is undoable')
+  // Search finds the pasted page's text: the paste, and the redo that restored it, both index it.
+  await page.waitForFunction(() => !(document.querySelector('.search-field input') as HTMLInputElement).placeholder.startsWith('Indexing'), undefined, { timeout: 30000 })
+  await page.locator('.search-field input').fill('Phase 6 notebook')
+  await page.waitForFunction(() => Array.from(document.querySelectorAll('.search-group')).some((g) => g.textContent?.includes('In pages') && g.querySelectorAll('.search-hit').length >= 3), undefined, { timeout: 5000 }).catch(() => undefined)
+  const found = (await page.locator('.search-group', { hasText: 'In pages' }).locator('.search-hit-where').allTextContents()).map((w) => w.replace(/^\W+/, ''))
+  assert(found.includes('Old'), `search finds the pasted page's text (${found.join(', ')})`)
+  await page.locator('.search-field input').fill('')
+  await page.keyboard.press('Escape')
+  step('search finds the text of a pasted and restored page')
   await page.locator('.crumb', { hasText: 'Phase 6 notebook' }).first().click()
   await page.locator('.tab.add').click()
   await page.locator('.context-item', { hasText: /^New section…$/ }).click()

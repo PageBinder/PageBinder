@@ -36,14 +36,15 @@ export interface IndexProgress {
   message?: string
 }
 
+/** A template: a page of the Templates notebook. */
 export interface TemplateInfo {
   id: string
-  name: string
-  description: string
-  created: string
-  scope: 'notebook' | 'global'
-  folder: string
+  /** `template:<id>`, kept as a section's default template. */
   ref: string
+  name: string
+  /** Its section in the Templates notebook, after any groups ("Group › Section"). */
+  section: string
+  rel: string
 }
 
 export interface RecycledPage {
@@ -124,6 +125,7 @@ export interface PageBinderApi {
     create(parentDir: string, name: string): Promise<NotebookTree>
     open(root: string): Promise<NotebookTree>
     reload(): Promise<NotebookTree>
+    /** Open the Templates notebook (made on first use) as the current notebook. */
     openTemplates(): Promise<NotebookTree>
     rescan(): Promise<void>
     onTreeChanged(handler: () => void): () => void
@@ -147,15 +149,18 @@ export interface PageBinderApi {
     onProgress(handler: (p: { done: number; total: number }) => void): () => void
   }
   template: {
-    list(): Promise<{ notebook: TemplateInfo[]; global: TemplateInfo[]; globalDir: string }>
-    save(pageRel: string, scope: 'notebook' | 'global', name: string, description: string): Promise<TemplateInfo>
-    delete(ref: string): Promise<void>
+    list(): Promise<TemplateInfo[]>
+    /** The Templates notebook's sections, for Save as template. */
+    sections(): Promise<{ rel: string; name: string }[]>
+    /** Copy a page into a section of the Templates notebook; returns the templates afterwards. */
+    save(pageRel: string, sectionRel: string, name: string): Promise<TemplateInfo[]>
     createPage(sectionRel: string, ref: string, title?: string): Promise<{ relPath: string; tree: NotebookTree }>
     setSectionDefault(rel: string, ref: string | null): Promise<NotebookTree>
   }
   move: {
     page(rel: string, targetSectionRel: string): Promise<{ rel: string; tree: NotebookTree }>
-    copyPage(rel: string, targetSectionRel: string): Promise<{ rel: string; tree: NotebookTree }>
+    /** Copy a page into a section; `fromRoot` names the notebook it was copied in, when that is not the open one. */
+    copyPage(rel: string, targetSectionRel: string, fromRoot?: string): Promise<{ rel: string; tree: NotebookTree }>
     container(rel: string, targetContainerRel: string): Promise<{ rel: string; tree: NotebookTree }>
     copyContainer(rel: string, targetContainerRel: string): Promise<{ rel: string; tree: NotebookTree }>
     deleteContainer(rel: string): Promise<NotebookTree>
@@ -203,7 +208,8 @@ export interface PageBinderApi {
     addImagePaths(rel: string, paths: string[]): Promise<FileEntry[]>
     addFiles(rel: string, paths: string[]): Promise<{ entry: FileEntry; mail?: MailMeta }[]>
     pickFiles(rel: string): Promise<{ entry: FileEntry; mail?: MailMeta }[]>
-    copyFilesBetween(fromRel: string, toRel: string, items: { sub: 'images' | 'attachments'; name: string; originalName?: string }[]): Promise<{ sub: 'images' | 'attachments'; from: string; entry: FileEntry }[]>
+    /** Copy files from one page's folder into another's; `fromRoot` names the notebook copied from, when it is not the open one. */
+    copyFilesBetween(fromRel: string, toRel: string, items: { sub: 'images' | 'attachments'; name: string; originalName?: string }[], fromRoot?: string): Promise<{ sub: 'images' | 'attachments'; from: string; entry: FileEntry }[]>
     readAttachment(rel: string, sub: 'images' | 'attachments', name: string): Promise<ArrayBuffer>
     delete(rel: string): Promise<{ name: string; tree: NotebookTree }>
   }

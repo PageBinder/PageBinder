@@ -73,14 +73,14 @@ const api = {
   },
   template: {
     list: () => invoke('template:list'),
-    save: (pageRel: string, scope: 'notebook' | 'global', name: string, description: string) => invoke('template:save', pageRel, scope, name, description),
-    delete: (ref: string) => invoke('template:delete', ref),
+    sections: () => invoke('template:sections'),
+    save: (pageRel: string, sectionRel: string, name: string) => invoke('template:save', pageRel, sectionRel, name),
     createPage: (sectionRel: string, ref: string, title?: string) => invoke('template:createPage', sectionRel, ref, title),
     setSectionDefault: (rel: string, ref: string | null) => invoke('section:setDefaultTemplate', rel, ref)
   },
   move: {
     page: (rel: string, targetSectionRel: string) => invoke('page:move', rel, targetSectionRel),
-    copyPage: (rel: string, targetSectionRel: string) => invoke('page:copy', rel, targetSectionRel),
+    copyPage: (rel: string, targetSectionRel: string, fromRoot?: string) => invoke('page:copy', rel, targetSectionRel, fromRoot),
     container: (rel: string, targetContainerRel: string) => invoke('section:move', rel, targetContainerRel),
     copyContainer: (rel: string, targetContainerRel: string) => invoke('section:copy', rel, targetContainerRel),
     deleteContainer: (rel: string) => invoke('section:delete', rel)
@@ -138,7 +138,7 @@ const api = {
     addImagePaths: (rel: string, paths: string[]) => invoke('page:addImagePaths', rel, paths),
     addFiles: (rel: string, paths: string[]) => invoke('page:addFiles', rel, paths),
     pickFiles: (rel: string) => invoke('page:pickFiles', rel),
-    copyFilesBetween: (fromRel: string, toRel: string, items: { sub: 'images' | 'attachments'; name: string; originalName?: string }[]) => invoke('page:copyFilesBetween', fromRel, toRel, items),
+    copyFilesBetween: (fromRel: string, toRel: string, items: { sub: 'images' | 'attachments'; name: string; originalName?: string }[], fromRoot?: string) => invoke('page:copyFilesBetween', fromRel, toRel, items, fromRoot),
     readAttachment: (rel: string, sub: 'images' | 'attachments', name: string) => invoke('page:readAttachment', rel, sub, name),
     delete: (rel: string) => invoke('page:delete', rel)
   },

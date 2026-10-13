@@ -5,7 +5,7 @@
 import { protocol, net } from 'electron'
 import { pathToFileURL } from 'node:url'
 import { resolveInside } from './storage/paths'
-import { currentNotebookRoot, resolveRel } from './ipc'
+import { currentNotebookRoot } from './ipc'
 import { readSnapshot, readValidPage } from './storage/page'
 import { PAGE_DOC } from './storage/paths'
 import { join } from 'node:path'
@@ -25,19 +25,16 @@ const ALLOWED = /(^|\/)(images\/[^/]+|attachments\/[^/]+|page\.html|\.history\/[
 export function registerProtocolHandler(): void {
   protocol.handle(SCHEME, async (request) => {
     const url = new URL(request.url)
-    const relIn = decodeURIComponent(url.pathname).replace(/^\/+/, '')
-    // Template pages (@global/…, @nb/…) live in a template library, which the Templates notebook
-    // shows with no regular notebook open; everything else needs the open notebook.
-    if (url.host !== 'notebook' || (!relIn.startsWith('@') && !currentNotebookRoot())) return new Response('No notebook open', { status: 404 })
-    if (!ALLOWED.test(relIn) || relIn.includes('..')) return new Response('Forbidden', { status: 403 })
-    const resolved = resolveRel(relIn)
-    const rel = resolved.rel
+    const rel = decodeURIComponent(url.pathname).replace(/^\/+/, '')
+    const root = currentNotebookRoot()
+    if (url.host !== 'notebook' || !root) return new Response('No notebook open', { status: 404 })
+    if (!ALLOWED.test(rel) || rel.includes('..')) return new Response('Forbidden', { status: 403 })
     // A history snapshot is served as a rendered page, so the history panel can preview it, showing
     // the whole canvas as the page.html backup does.
     const snap = /^(.*)\/\.history\/([^/]+\.json)$/.exec(rel)
     if (snap) {
       try {
-        const doc = await readSnapshot(resolved.root, snap[1]!, snap[2]!)
+        const doc = await readSnapshot(root, snap[1]!, snap[2]!)
         if (!doc) return new Response('Version not readable', { status: 404 })
         const html = renderPageHtml(doc, { imageBase: '../images/', attachmentBase: '../attachments/', view: 'canvas' })
         return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } })
@@ -47,7 +44,7 @@ export function registerProtocolHandler(): void {
     }
     let abs: string
     try {
-      abs = resolveInside(resolved.root, rel)
+      abs = resolveInside(root, rel)
     } catch {
       return new Response('Forbidden', { status: 403 })
     }

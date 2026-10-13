@@ -55,7 +55,6 @@ export async function createNotebook(parentDir: string, name: string, paper: Pap
   const folder = await uniqueName(parentDir, sanitizeName(name))
   const root = join(parentDir, folder)
   await fs.mkdir(root, { recursive: true })
-  await fs.mkdir(join(root, TEMPLATES_DIR), { recursive: true })
   const meta: NotebookMeta = {
     format: FORMAT_VERSION,
     id: newId(),
@@ -66,11 +65,11 @@ export async function createNotebook(parentDir: string, name: string, paper: Pap
     settings: { paper }
   }
   await writeJson(join(root, NOTEBOOK_META), meta)
-  await fs.writeFile(join(root, 'README.txt'), README, 'utf8')
+  await fs.writeFile(join(root, 'README.txt'), NOTEBOOK_README, 'utf8')
   return root
 }
 
-const README = `This folder is a PageBinder notebook.
+export const NOTEBOOK_README = `This folder is a PageBinder notebook.
 
 Every section is a folder, every section group is a folder containing sections,
 and every page is a folder ending in ".page". Inside a page folder:
@@ -177,6 +176,7 @@ export async function scanContainer(
 ): Promise<TreeChild[]> {
   await cleanTempFiles(dir)
   const entries = await fs.readdir(dir, { withFileTypes: true })
+  // A notebook's own "templates" folder, kept by earlier versions, is not a section.
   const candidates = entries.filter((e) => e.isDirectory() && !isHiddenEntry(e.name) && !(dir === root && e.name === TEMPLATES_DIR) && !e.name.endsWith(PAGE_SUFFIX))
   // Children are scanned in parallel batches; small-file reads are latency-bound, not bandwidth-bound.
   const found: TreeChild[] = []
@@ -315,7 +315,7 @@ export async function refreshReadme(root: string): Promise<void> {
   try {
     const path = join(root, 'README.txt')
     const text = await fs.readFile(path, 'utf8')
-    if (text.replace('This folder is a DigiNote notebook.', 'This folder is a PageBinder notebook.') === README) await atomicWriteFile(path, README)
+    if (text.replace('This folder is a DigiNote notebook.', 'This folder is a PageBinder notebook.') === NOTEBOOK_README) await atomicWriteFile(path, NOTEBOOK_README)
   } catch {
     /* no README or not writable: nothing to do */
   }

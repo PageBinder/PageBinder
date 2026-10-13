@@ -26,9 +26,14 @@ afterEach(async () => {
   await removeDir(appData)
 })
 
-/** Settings as a user (or development) leaves them: recent notebooks and a global template. */
+/**
+ * Settings as a user (or development) leaves them: recent notebooks, a template in the Templates
+ * notebook (and one in its recycle folder), and the template library of an earlier version.
+ */
 async function leaveSettings(dir: string, recent = 2): Promise<void> {
-  await fs.mkdir(join(dir, 'templates', 'Meeting notes.template'), { recursive: true })
+  await fs.mkdir(join(dir, 'Templates notebook', 'General', 'Meeting notes.page'), { recursive: true })
+  await fs.mkdir(join(dir, 'Templates notebook', '.recycle', 'Old agenda.page'), { recursive: true })
+  await fs.mkdir(join(dir, 'templates', 'Old form.template'), { recursive: true })
   const list = Array.from({ length: recent }, (_, i) => ({ root: `/notes/Notebook ${i}`, name: `Notebook ${i}`, opened: '2026-09-24' }))
   await fs.writeFile(join(dir, 'recent-notebooks.json'), JSON.stringify(list))
   // Chromium's own files, which Start fresh leaves alone.
@@ -57,12 +62,13 @@ describe('keep or start fresh: when to ask', () => {
 })
 
 describe('keep or start fresh: what happens', () => {
-  it('finds what a user would recognise, and nothing when the list and library are empty', async () => {
+  it('finds what a user would recognise, and nothing when the list and the Templates notebook are empty', async () => {
     expect(earlierSettings(shared)).toBeNull()
     await leaveSettings(shared, 3)
     expect(earlierSettings(shared)).toEqual({ recentCount: 3, templateCount: 1 })
     await fs.writeFile(join(shared, 'recent-notebooks.json'), '[]')
-    await fs.rm(join(shared, 'templates'), { recursive: true })
+    await fs.rm(join(shared, 'Templates notebook'), { recursive: true })
+    // An earlier version's template library is no longer used, so it alone is nothing to ask about.
     expect(earlierSettings(shared)).toBeNull()
   })
 
@@ -71,7 +77,8 @@ describe('keep or start fresh: what happens', () => {
     const backup = setAsideEarlierSettings(shared)
     expect(backup.startsWith(join(shared, 'Earlier settings '))).toBe(true)
     expect(existsSync(join(backup, 'recent-notebooks.json'))).toBe(true)
-    expect(existsSync(join(backup, 'templates', 'Meeting notes.template'))).toBe(true)
+    expect(existsSync(join(backup, 'Templates notebook', 'General', 'Meeting notes.page'))).toBe(true)
+    expect(existsSync(join(backup, 'templates', 'Old form.template'))).toBe(true)
     expect(earlierSettings(shared)).toBeNull()
     expect(existsSync(join(shared, 'Cache'))).toBe(true)
   })
@@ -86,7 +93,7 @@ describe('keep or start fresh: what happens', () => {
 
   it('the question names what was found and says nothing is lost', () => {
     const q = firstRunQuestion({ recentCount: 1, templateCount: 3 }, '/Users/me/Library/Application Support/PageBinder')
-    expect(q.detail).toContain('1 recent notebook and 3 global templates')
+    expect(q.detail).toContain('1 recent notebook and 3 templates')
     expect(q.detail).toContain('nothing is lost')
     expect(q.buttons).toEqual(['Keep my settings', 'Start fresh'])
   })

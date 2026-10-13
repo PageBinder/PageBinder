@@ -1,11 +1,19 @@
 import type { JSX } from 'react'
 import { useEffect, useRef, useState } from 'react'
 
-export function TemplateDialog({ initialName, onSave, onClose }: { initialName: string; onSave: (scope: 'notebook' | 'global', name: string, description: string) => Promise<void>; onClose: () => void }): JSX.Element {
+/** Save as template: the page is copied into a section of the Templates notebook under a name. */
+export function TemplateDialog({ initialName, onSave, onClose }: { initialName: string; onSave: (sectionRel: string, name: string) => Promise<void>; onClose: () => void }): JSX.Element {
   const [name, setName] = useState(initialName)
-  const [description, setDescription] = useState('')
+  const [sections, setSections] = useState<{ rel: string; name: string }[] | null>(null)
+  const [sectionRel, setSectionRel] = useState('')
   const [busy, setBusy] = useState(false)
   const ref = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    void window.pagebinder.template.sections().then((list) => {
+      setSections(list)
+      setSectionRel(list[0]?.rel ?? '')
+    })
+  }, [])
   useEffect(() => {
     ref.current?.focus()
     ref.current?.select()
@@ -22,9 +30,9 @@ export function TemplateDialog({ initialName, onSave, onClose }: { initialName: 
         onMouseDown={(e) => e.stopPropagation()}
         onSubmit={(e) => {
           e.preventDefault()
-          if (!name.trim()) return
+          if (!name.trim() || !sectionRel) return
           setBusy(true)
-          void onSave('global', name.trim(), description.trim())
+          void onSave(sectionRel, name.trim())
             .then(onClose)
             .finally(() => setBusy(false))
         }}
@@ -34,18 +42,26 @@ export function TemplateDialog({ initialName, onSave, onClose }: { initialName: 
           <span>Template name</span>
           <input ref={ref} value={name} onChange={(e) => setName(e.target.value)} />
         </label>
-        <label style={{ marginTop: 10 }}>
-          <span>Description (optional)</span>
-          <input value={description} onChange={(e) => setDescription(e.target.value)} />
-        </label>
+        {sections && sections.length > 1 && (
+          <label style={{ marginTop: 10 }}>
+            <span>Section in the Templates notebook</span>
+            <select value={sectionRel} onChange={(e) => setSectionRel(e.target.value)}>
+              {sections.map((s) => (
+                <option key={s.rel} value={s.rel}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <p className="muted small" style={{ marginTop: 10 }}>
-          The template is available in every notebook on this computer. Text, tables, and pictures are kept. Placeholders such as {'{{date}}'}, {'{{section}}'}, {'{{notebook}}'}, and {'{{title}}'} are filled in when a page is made from the template. Attachments are not allowed in templates.
+          A copy of the page goes into the Templates notebook, and the template is offered in every notebook on this computer. Placeholders such as {'{{date}}'}, {'{{section}}'}, {'{{notebook}}'}, and {'{{title}}'} are filled in when a page is made from the template.
         </p>
         <div className="dialog-actions">
           <button type="button" onClick={onClose} disabled={busy}>
             Cancel
           </button>
-          <button type="submit" className="primary" disabled={busy}>
+          <button type="submit" className="primary" disabled={busy || !sectionRel}>
             Save template
           </button>
         </div>

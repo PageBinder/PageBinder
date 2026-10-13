@@ -1,7 +1,7 @@
 /**
- * Where the app keeps its own settings (the recent-notebooks list, the global template library,
- * and browser storage), and what happens to settings left by an earlier installation. Notebooks
- * never live here and are never affected.
+ * Where the app keeps its own settings (the recent-notebooks list, the Templates notebook, and
+ * browser storage), and what happens to settings left by an earlier installation. The user's
+ * notebooks never live here and are never affected.
  *
  * - The installed app uses "<appData>/PageBinder"; the development build (npm run dev, e2e builds)
  *   uses "<appData>/PageBinder Dev", so development never shows in an installed copy.
@@ -16,11 +16,15 @@
  */
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { TEMPLATES_NOTEBOOK } from './storage/paths'
 
 export const INSTALL_RECORD = 'install.json'
 export const DEV_FOLDER_NAME = 'PageBinder Dev'
-/** The app's own files in the settings folder: what Keep keeps and Start fresh sets aside. */
-export const OWN_FILES = ['recent-notebooks.json', 'templates', 'renderer-errors.log']
+/**
+ * The app's own files in the settings folder: what Keep keeps and Start fresh sets aside. The
+ * Templates notebook replaced the "templates" library of earlier versions, which is set aside too.
+ */
+export const OWN_FILES = ['recent-notebooks.json', TEMPLATES_NOTEBOOK, 'templates', 'renderer-errors.log']
 const PREVIOUS_NAME = 'diginote'
 const MIGRATED_MARKER = '.migrated-from-diginote'
 /** Written by an unreleased 1.1.0 draft; treated as unconfirmed and removed. */
@@ -98,12 +102,23 @@ export function earlierSettings(dir: string): EarlierSettings | null {
   } catch {
     /* no list */
   }
-  try {
-    templateCount = readdirSync(join(dir, 'templates')).filter((n) => !n.startsWith('.')).length
-  } catch {
-    /* no library */
-  }
+  templateCount = countPages(join(dir, TEMPLATES_NOTEBOOK))
   return recentCount || templateCount ? { recentCount, templateCount } : null
+}
+
+/** Pages in a notebook folder (its sections and groups; not the recycle folder). */
+function countPages(dir: string): number {
+  let n = 0
+  try {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      if (!e.isDirectory() || e.name.startsWith('.')) continue
+      if (e.name.endsWith('.page')) n += 1
+      else n += countPages(join(dir, e.name))
+    }
+  } catch {
+    /* no notebook */
+  }
+  return n
 }
 
 export function readInstallRecord(dir: string): InstallRecord | null {
@@ -148,7 +163,7 @@ export function setAsideEarlierSettings(dir: string): string {
 export function firstRunQuestion(earlier: EarlierSettings, backupParent: string): { message: string; detail: string; buttons: string[] } {
   const parts: string[] = []
   if (earlier.recentCount) parts.push(`${earlier.recentCount} recent notebook${earlier.recentCount === 1 ? '' : 's'}`)
-  if (earlier.templateCount) parts.push(`${earlier.templateCount} global template${earlier.templateCount === 1 ? '' : 's'}`)
+  if (earlier.templateCount) parts.push(`${earlier.templateCount} template${earlier.templateCount === 1 ? '' : 's'}`)
   return {
     message: 'Keep the settings from an earlier installation?',
     detail:

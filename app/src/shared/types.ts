@@ -265,6 +265,8 @@ export interface NotebookTree {
   children: TreeChild[]
   /** Metadata files that were missing and regenerated with defaults. */
   regenerated: string[]
+  /** Set when the notebook opened is the Templates notebook (never stored). */
+  templates?: boolean
 }
 
 /* ---------- Results of loading and saving ---------- */

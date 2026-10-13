@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { SECTION_COLORS, type TreeChild } from '@shared/types'
 import { ContextMenu, type MenuItem } from './ContextMenu'
 import type { TemplateInfo } from '../../../preload/api'
@@ -17,7 +17,6 @@ export function SectionTabs({
   onSetDefaultTemplate,
   onMoveCopy,
   onDelete,
-  onDropPage,
   templateMode
 }: {
   children: TreeChild[]
@@ -28,17 +27,20 @@ export function SectionTabs({
   onAddGroup: () => void
   onRename: (rel: string) => void
   onSetColor: (rel: string, color: string) => void
-  templates: { notebook: TemplateInfo[]; global: TemplateInfo[] }
+  templates: TemplateInfo[]
   onSetDefaultTemplate: (rel: string, ref: string | null) => void
   onMoveCopy: (node: TreeChild) => void
   onDelete: (node: TreeChild) => void
-  onDropPage: (pageRel: string, sectionRel: string, copy: boolean) => void
+  /** The Templates notebook is open: its sections take no default template. */
   templateMode?: boolean
 }): JSX.Element {
   const [menu, setMenu] = useState<{ x: number; y: number; node: TreeChild } | null>(null)
   const [addMenu, setAddMenu] = useState<{ x: number; y: number } | null>(null)
 
-  const allTemplates = [...templates.notebook, ...templates.global]
+  // Two templates with the same name are told apart by their section.
+  const named = (t: TemplateInfo): string => (templates.some((o) => o !== t && o.name === t.name) ? `${t.name} (${t.section})` : t.name)
+  const defaultRef = menu?.node.kind === 'section' ? menu.node.defaultTemplate : undefined
+  const current = defaultRef ? templates.find((t) => t.ref === defaultRef) : undefined
   const items: MenuItem[] = menu
     ? [
         { label: 'Rename…', onClick: () => onRename(menu.node.relPath) },
@@ -47,35 +49,20 @@ export function SectionTabs({
           ? [
               { separator: true },
               { swatches: { color: SECTION_COLORS.join(','), current: menu.node.color, onPick: (c: string) => onSetColor(menu.node.relPath, c) } },
-              { separator: true },
-              { label: `Default template: ${allTemplates.find((t) => t.ref === menu.node.kind && false) ? '' : allTemplates.find((t) => menu.node.kind === 'section' && t.ref === menu.node.defaultTemplate)?.name ?? 'blank page'}`, onClick: () => {} },
-              { label: '   Use a blank page', onClick: () => onSetDefaultTemplate(menu.node.relPath, null) },
-              ...allTemplates.map((t) => ({ label: `   Use “${t.name}”`, onClick: () => onSetDefaultTemplate(menu.node.relPath, t.ref) }))
+              ...(templateMode
+                ? []
+                : [
+                    { separator: true },
+                    { label: `Default template: ${current ? named(current) : 'blank page'}`, heading: true },
+                    { label: '   Use a blank page', onClick: () => onSetDefaultTemplate(menu.node.relPath, null) },
+                    ...templates.map((t) => ({ label: `   Use “${named(t)}”`, onClick: () => onSetDefaultTemplate(menu.node.relPath, t.ref) }))
+                  ])
             ]
           : []),
         { separator: true },
         { label: menu.node.kind === 'section' ? 'Delete section…' : 'Delete section group…', onClick: () => onDelete(menu.node) }
       ]
     : []
-  const [dropRel, setDropRel] = useState<string | null>(null)
-  const dragProps = (rel: string) => ({
-    onDragOver: (e: React.DragEvent) => {
-      if (templateMode && e.dataTransfer.types.includes('application/x-pagebinder-page')) {
-        e.preventDefault()
-        e.dataTransfer.dropEffect = e.altKey ? 'copy' : 'move'
-        setDropRel(rel)
-      }
-    },
-    onDragLeave: () => setDropRel((r) => (r === rel ? null : r)),
-    onDrop: (e: React.DragEvent) => {
-      const pageRel = e.dataTransfer.getData('application/x-pagebinder-page')
-      setDropRel(null)
-      if (!pageRel) return
-      e.preventDefault()
-      onDropPage(pageRel, rel, e.altKey)
-    }
-  })
-
   return (
     <div className="section-tabs">
       {children.map((node) =>
@@ -83,14 +70,13 @@ export function SectionTabs({
           <button
             key={node.relPath}
             type="button"
-            className={`tab${node.relPath === activeSectionRel ? ' on' : ''}${dropRel === node.relPath ? ' drop' : ''}`}
+            className={`tab${node.relPath === activeSectionRel ? ' on' : ''}`}
             style={{ borderTopColor: node.color }}
-            {...dragProps(node.relPath)}
             onClick={() => onSelectSection(node.relPath)}
             onDoubleClick={() => onRename(node.relPath)}
             onContextMenu={(e) => {
               e.preventDefault()
-              if (!templateMode) setMenu({ x: e.clientX, y: e.clientY, node })
+              setMenu({ x: e.clientX, y: e.clientY, node })
             }}
           >
             {node.name}
@@ -113,11 +99,9 @@ export function SectionTabs({
           </button>
         )
       )}
-      {!templateMode && (
-        <button type="button" className="tab add" onClick={(e) => setAddMenu({ x: e.clientX, y: e.clientY })} title="Add section or group">
-          +
-        </button>
-      )}
+      <button type="button" className="tab add" onClick={(e) => setAddMenu({ x: e.clientX, y: e.clientY })} title="Add section or group">
+        +
+      </button>
       {children.length === 0 && <span className="muted small tabs-hint">No sections yet. Use + to add one.</span>}
       {menu && <ContextMenu x={menu.x} y={menu.y} items={items} onClose={() => setMenu(null)} />}
       {addMenu && (

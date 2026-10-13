@@ -25,16 +25,16 @@ import { applyTreeToIndex } from './search/tree'
 import { DEFAULT_HISTORY_POLICY, type HistoryPolicy } from './storage/history'
 import { listRecycled, restoreRecycled, purgeRecycled, purgeOld, DEFAULT_RECYCLE_DAYS } from './storage/recycle'
 import { verifyNotebook, repairFinding, type Finding } from './storage/verify'
-import { restoreSnapshot, copySnapshotToNewPage } from './storage/page'
+import { restoreSnapshot, copySnapshotToNewPage, readValidPage } from './storage/page'
 import { renderPageHtml } from '../shared/render/renderPage'
 import { notebookUrl } from './protocol'
 import { readDoc, aboutInfo, userFullName, type DocName } from './about'
-import { listTemplates, saveAsTemplate, deleteTemplate, createPageFromTemplate, libraryDir, parseRef, setSectionDefaultTemplate, sectionDefaultTemplate, createBlankTemplate, moveTemplate, duplicateTemplate, TEMPLATE_META, type TemplateScope, type TemplateMeta } from './storage/templates'
+import { listTemplates, saveAsTemplate, createPageFromTemplate, setSectionDefaultTemplate, sectionDefaultTemplate, ensureTemplatesNotebook, templateSections, findTemplate, templateIdOf, TEMPLATES_NOTEBOOK } from './storage/templates'
 import { movePage, copyPage, moveContainer, copyContainer, recycleContainer } from './storage/copymove'
 import { readJson, writeJson } from './storage/notebook'
 import type { SectionMeta } from '../shared/types'
-import { dirname, basename, join as joinPath } from 'node:path'
-import { SECTION_META } from './storage/paths'
+import { dirname, basename, join as joinPath, resolve as resolvePath } from 'node:path'
+import { SECTION_META, PAGE_DOC } from './storage/paths'
 import { createSection, createGroup, renameContainer, setSectionColor } from './storage/section'
 import {
   createPage,
@@ -91,6 +91,17 @@ async function reindexPage(rel: string, doc: PageDoc, oldRel?: string): Promise<
   }
 }
 
+/**
+ * Index the text of a page that arrived somewhere new (moved, pasted, or restored). A section refresh
+ * records only where a page is, and a later folder check skips a page whose file has not changed,
+ * so without this its text would not be found by search.
+ */
+async function indexArrivedPage(rel: string): Promise<void> {
+  if (!currentRoot) return
+  const doc = await readValidPage(joinPath(resolveInside(currentRoot, rel), PAGE_DOC)).catch(() => undefined)
+  if (doc) await reindexPage(rel, doc)
+}
+
 /** Full background reconcile from a fresh folder scan; used after wide changes. */
 function reconcileSoon(): void {
   if (!currentRoot || !indexer) return
@@ -125,14 +136,16 @@ async function openAndLock(root: string): Promise<NotebookTree> {
   indexer.onTreeChanged = () => broadcast('tree:changed', null)
   void refreshReadme(root)
   const tree = await currentTree()
-  await rememberRecent(root, tree.meta.name)
+  // The Templates notebook opens from the start screen's System list, so it stays out of Recent.
+  const templates = isTemplatesNotebook(root)
+  if (!templates) await rememberRecent(root, tree.meta.name)
   // The folder scan runs in the background: it is the ground truth that corrects the index.
   void openNotebook(root).then((scanned) => {
     lastTree = scanned
     return indexer?.reconcile(scanned)
   })
   void purgeOld(root, tree.meta.settings.recycleDays ?? DEFAULT_RECYCLE_DAYS).catch(() => undefined)
-  return tree
+  return templates ? { ...tree, templates: true } : tree
 }
 
 /**
@@ -182,69 +195,26 @@ function parentOf(rel: string): string {
   return rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/')) : ''
 }
 
-function globalTemplatesDir(): string {
-  return joinPath(app.getPath('userData'), 'templates')
+/** The Templates notebook: an ordinary notebook in the settings folder, made on first use. */
+function templatesNotebookDir(): string {
+  return joinPath(app.getPath('userData'), TEMPLATES_NOTEBOOK)
 }
 
-export const GLOBAL_PREFIX = '@global/'
-export const NB_PREFIX = '@nb/'
+function isSameRoot(a: string, b: string): boolean {
+  return resolvePath(a) === resolvePath(b)
+}
 
-function decodeRoot(token: string): string {
-  return Buffer.from(token, 'base64url').toString('utf8')
+function isTemplatesNotebook(root: string): boolean {
+  return isSameRoot(root, templatesNotebookDir())
 }
 
 /**
- * Storage root and relative path for a page rel. Template rels point into a
- * library rather than the open notebook:
- *   @global/<folder>.template            the global library
- *   @nb/<encoded notebook root>/<folder>.template   a notebook's own library
+ * A notebook other than the open one that pages, pictures, and files may be pasted from: the
+ * Templates notebook, or one in the Recent list. Anything else is refused.
  */
-export function resolveRel(rel: string): { root: string; rel: string; template: 'notebook' | 'global' | null } {
-  if (rel === '@global' || rel.startsWith(GLOBAL_PREFIX)) return { root: globalTemplatesDir(), rel: rel.slice(GLOBAL_PREFIX.length), template: 'global' }
-  if (rel.startsWith(NB_PREFIX)) {
-    const rest = rel.slice(NB_PREFIX.length)
-    const slash = rest.indexOf('/')
-    const token = slash < 0 ? rest : rest.slice(0, slash)
-    const inner = slash < 0 ? '' : rest.slice(slash + 1)
-    const nbRoot = decodeRoot(token)
-    return { root: joinPath(nbRoot, 'templates'), rel: inner, template: 'notebook' }
-  }
-  return { root: requireRoot(), rel, template: null }
-}
-
-/** The Templates notebook: Global templates plus one section per known notebook that has a library. */
-async function templatesTree(): Promise<NotebookTree> {
-  const sections: import('../shared/types').SectionNode[] = []
-  const globalList = await listTemplates(globalTemplatesDir(), 'global')
-  sections.push({
-    kind: 'section',
-    id: 'templates-global',
-    name: 'Global templates',
-    color: '#888780',
-    relPath: '@global',
-    pages: globalList.map((t) => ({ id: t.id, title: t.name, relPath: `${GLOBAL_PREFIX}${t.folder}`, modified: t.created }))
-  })
-  // Only global templates are offered (the user's choice, 2026-10-03). Templates saved inside a
-  // notebook by earlier versions stay in its templates folder but are no longer shown or used.
-  return {
-    root: '',
-    meta: { format: 1, id: 'templates', name: 'Templates', created: '', modified: '', order: [], settings: { paper: { size: 'letter', orientation: 'portrait', margins: { top: 1, right: 1, bottom: 1, left: 1 } } } },
-    children: sections,
-    regenerated: []
-  }
-}
-
-/** Library folder for a Templates-notebook section rel. */
-function libraryForSection(sectionRel: string): string {
-  if (sectionRel === '@global') return globalTemplatesDir()
-  if (sectionRel.startsWith(NB_PREFIX)) return joinPath(decodeRoot(sectionRel.slice(NB_PREFIX.length)), 'templates')
-  throw new Error('Not a template library')
-}
-
-/** After saving a template page, keep template.json in step with the page title. */
-async function syncTemplateMeta(dir: string, title: string): Promise<void> {
-  const meta = await readJson<TemplateMeta>(joinPath(dir, TEMPLATE_META))
-  if (meta && meta.name !== title) await writeJson(joinPath(dir, TEMPLATE_META), { ...meta, name: title })
+async function knownNotebookRoot(root: string): Promise<string> {
+  if (isTemplatesNotebook(root) || (await readRecent()).some((r) => isSameRoot(r.root, root))) return root
+  throw new Error('Only what was copied in a notebook opened on this computer can be pasted here.')
 }
 
 function historyPolicy(): HistoryPolicy {
@@ -357,25 +327,19 @@ export function registerIpc(): void {
 
   /* ---------- pages ---------- */
   ipcMain.handle('page:create', async (_e, sectionRel: string, title?: string, opts?: { titleBlock?: boolean }) => {
-    if (sectionRel.startsWith('@')) {
-      const scope: TemplateScope = sectionRel === '@global' ? 'global' : 'notebook'
-      const info = await createBlankTemplate(libraryForSection(sectionRel), scope, title ?? 'New template')
-      return { relPath: `${sectionRel}/${info.folder}`, tree: await templatesTree() }
-    }
     const root = requireRoot()
     const meta = await readJson<NotebookTree['meta']>(joinPath(root, 'notebook.json'))
-    const def = await sectionDefaultTemplate(root, sectionRel)
-    // A section default that names a notebook-only template (from an earlier version) is ignored.
-    const parsed = def ? parseRef(def) : null
-    if (parsed && parsed.scope === 'global') {
-      const dir = joinPath(libraryDir(root, parsed.scope, globalTemplatesDir()), parsed.folder)
+    // The section's default template, if it has one. A default naming a template kept by an earlier
+    // version is ignored, and new pages in the Templates notebook itself always start blank.
+    const templateId = isTemplatesNotebook(root) ? null : templateIdOf(await sectionDefaultTemplate(root, sectionRel))
+    const template = templateId ? await findTemplate(templatesNotebookDir(), templateId).catch(() => undefined) : undefined
+    if (template) {
       try {
-        const tmeta = await readJson<TemplateMeta>(joinPath(dir, TEMPLATE_META))
-        const made = await createPageFromTemplate(root, sectionRel, dir, title ?? tmeta?.name ?? 'Untitled page', { section: (await sectionOf(root, `${sectionRel}/x`)).name, notebook: meta?.name ?? '' }, historyPolicy())
+        const made = await createPageFromTemplate(root, sectionRel, resolveInside(templatesNotebookDir(), template.rel), title ?? template.name, { section: (await sectionOf(root, `${sectionRel}/x`)).name, notebook: meta?.name ?? '' }, historyPolicy())
         await reindexPage(made.relPath, made.doc)
         return { relPath: made.relPath, tree: await afterSectionChange(sectionRel) }
       } catch {
-        /* template missing: fall back to a blank page */
+        /* the template could not be read: fall back to a blank page */
       }
     }
     // A new blank page starts with a title block dated in the computer's regional format.
@@ -383,62 +347,41 @@ export function registerIpc(): void {
     const { relPath } = await createPage(root, sectionRel, title, meta?.settings.paper, dateText ? { dateText } : {})
     return { relPath, tree: await afterSectionChange(sectionRel) }
   })
-  ipcMain.handle('notebook:openTemplates', async () => templatesTree())
-  ipcMain.handle('page:load', async (_e, relIn: string) => {
-    const { root, rel, template } = resolveRel(relIn)
+  ipcMain.handle('notebook:openTemplates', async () => {
+    const dir = templatesNotebookDir()
+    await ensureTemplatesNotebook(dir)
+    return openAndLock(dir)
+  })
+  ipcMain.handle('page:load', async (_e, rel: string) => {
+    const root = requireRoot()
     const result = await loadPage(root, rel)
-    if (!template) rememberLastPage(root, rel)
+    rememberLastPage(root, rel)
     // A page restored from history on load may have a different title than the index knows.
-    if (!template && result.notices.some((n) => n.kind === 'recovered-from-history' || n.kind === 'no-valid-version')) {
+    if (result.notices.some((n) => n.kind === 'recovered-from-history' || n.kind === 'no-valid-version')) {
       await indexer?.refreshSection(parentOf(rel)).catch(() => undefined)
       await reindexPage(rel, result.doc)
     }
-    return { ...result, relPath: relIn }
+    return { ...result, relPath: rel }
   })
-  ipcMain.handle('page:save', async (_e, relIn: string, doc: PageDoc) => {
-    const { root, rel, template } = resolveRel(relIn)
-    if (template) {
-      // Template folders keep their names; the template's display name follows the page title.
-      const result = await savePage(root, rel, doc, historyPolicy())
-      await syncTemplateMeta(resolveInside(root, rel), result.doc.title)
-      return { ...result, relPath: relIn }
-    }
-    const result = await savePage(root, rel, doc, historyPolicy())
+  ipcMain.handle('page:save', async (_e, rel: string, doc: PageDoc) => {
+    const result = await savePage(requireRoot(), rel, doc, historyPolicy())
     await reindexPage(result.relPath, result.doc, rel)
     return result
   })
-  ipcMain.handle('page:saveDraft', async (_e, relIn: string, doc: PageDoc) => {
-    const { root, rel } = resolveRel(relIn)
-    return saveDraft(root, rel, doc)
-  })
-  ipcMain.handle('page:discardDraft', async (_e, relIn: string) => {
-    const { root, rel } = resolveRel(relIn)
-    return discardDraft(root, rel)
-  })
-  ipcMain.handle('page:listHistory', async (_e, relIn: string) => {
-    const { root, rel } = resolveRel(relIn)
-    return listHistory(root, rel)
-  })
-  ipcMain.handle('page:readSnapshot', async (_e, relIn: string, name: string) => {
-    const { root, rel } = resolveRel(relIn)
-    return readSnapshot(root, rel, name)
-  })
-  ipcMain.handle('page:rename', async (_e, relIn: string, title: string, opts?: { firstName?: boolean }) => {
-    const { root, rel, template } = resolveRel(relIn)
-    if (template) {
-      const result = await renamePage(root, rel, title)
-      await syncTemplateMeta(resolveInside(root, rel), result.doc.title)
-      return { ...result, relPath: relIn, tree: await templatesTree() }
-    }
+  ipcMain.handle('page:saveDraft', async (_e, rel: string, doc: PageDoc) => saveDraft(requireRoot(), rel, doc))
+  ipcMain.handle('page:discardDraft', async (_e, rel: string) => discardDraft(requireRoot(), rel))
+  ipcMain.handle('page:listHistory', async (_e, rel: string) => listHistory(requireRoot(), rel))
+  ipcMain.handle('page:readSnapshot', async (_e, rel: string, name: string) => readSnapshot(requireRoot(), rel, name))
+  ipcMain.handle('page:rename', async (_e, rel: string, title: string, opts?: { firstName?: boolean }) => {
+    const root = requireRoot()
     const result = await renamePage(root, rel, title, opts ?? {})
     rememberLastPage(root, result.relPath)
     await reindexPage(result.relPath, result.doc, rel)
     return { ...result, tree: await afterSectionChange(parentOf(rel)) }
   })
-  ipcMain.handle('page:addImage', async (_e, relIn: string, originalName: string, bytes: ArrayBuffer | Uint8Array) => {
-    const { root, rel } = resolveRel(relIn)
-    return addImageBytes(root, rel, originalName, Buffer.from(bytes as Uint8Array))
-  })
+  ipcMain.handle('page:addImage', async (_e, rel: string, originalName: string, bytes: ArrayBuffer | Uint8Array) =>
+    addImageBytes(requireRoot(), rel, originalName, Buffer.from(bytes as Uint8Array))
+  )
   ipcMain.handle('page:pickImages', async (_e, rel: string) => {
     // Test seam: automated checks cannot drive the native dialog (the same one Attach files uses).
     const preset = process.env['PAGEBINDER_TEST_PICK_IMAGES']
@@ -450,13 +393,13 @@ export function registerIpc(): void {
           filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'avif'] }]
         })
     if (result.canceled) return []
-    const { root, rel: r } = resolveRel(rel)
+    const root = requireRoot()
     const entries = []
-    for (const file of result.filePaths) entries.push(await addImageFile(root, r, file))
+    for (const file of result.filePaths) entries.push(await addImageFile(root, rel, file))
     return entries
   })
-  ipcMain.handle('page:addImagePaths', async (_e, relIn: string, paths: string[]) => {
-    const { root, rel } = resolveRel(relIn)
+  ipcMain.handle('page:addImagePaths', async (_e, rel: string, paths: string[]) => {
+    const root = requireRoot()
     const entries = []
     for (const p of paths) entries.push(await addImageFile(root, rel, p))
     return entries
@@ -485,19 +428,21 @@ export function registerIpc(): void {
     }
     return results
   })
-  ipcMain.handle('page:copyFilesBetween', async (_e, fromRel: string, toRel: string, items: { sub: 'images' | 'attachments'; name: string; originalName?: string }[]) => {
-    const from = resolveRel(fromRel)
-    const to = resolveRel(toRel)
+  // Files for objects pasted from another page; `fromRoot` names the notebook they were copied in,
+  // when that is not the open one.
+  ipcMain.handle('page:copyFilesBetween', async (_e, fromRel: string, toRel: string, items: { sub: 'images' | 'attachments'; name: string; originalName?: string }[], fromRoot?: string) => {
+    const root = requireRoot()
+    const sourceRoot = fromRoot && !isSameRoot(fromRoot, root) ? await knownNotebookRoot(fromRoot) : root
     const out: { sub: 'images' | 'attachments'; from: string; entry: import('../shared/types').FileEntry }[] = []
     for (const it of items) {
-      const src = resolveInside(from.root, `${from.rel}/${it.sub}/${it.name}`)
-      const entry = await copyFileIntoPage(to.root, to.rel, src, it.sub, it.originalName ?? it.name)
+      const src = resolveInside(sourceRoot, `${fromRel}/${it.sub}/${it.name}`)
+      const entry = await copyFileIntoPage(root, toRel, src, it.sub, it.originalName ?? it.name)
       out.push({ sub: it.sub, from: it.name, entry })
     }
     return out
   })
-  ipcMain.handle('page:readAttachment', async (_e, relIn: string, sub: 'images' | 'attachments', name: string) => {
-    const { root, rel } = resolveRel(relIn)
+  ipcMain.handle('page:readAttachment', async (_e, rel: string, sub: 'images' | 'attachments', name: string) => {
+    const root = requireRoot()
     const { promises: fsp } = await import('node:fs')
     const data = await fsp.readFile(resolveInside(root, `${rel}/${sub}/${name}`))
     return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
@@ -532,6 +477,7 @@ export function registerIpc(): void {
   ipcMain.handle('recycle:restore', async (_e, name: string, fallbackSection: string) => {
     const root = requireRoot()
     const rel = await restoreRecycled(root, name, fallbackSection)
+    if (rel.endsWith('.page')) await indexArrivedPage(rel)
     const tree = rel.endsWith('.page') ? await afterSectionChange(parentOf(rel)) : await afterContainerChange(parentOf(rel))
     if (!rel.endsWith('.page')) reconcileSoon()
     return { rel, tree }
@@ -553,33 +499,29 @@ export function registerIpc(): void {
     return tree
   })
 
-  /* ---------- templates ---------- */
-  ipcMain.handle('template:list', async () => {
-    const root = requireRoot()
-    requireRoot()
-    return { notebook: [], global: await listTemplates(globalTemplatesDir(), 'global'), globalDir: globalTemplatesDir() }
+  /* ---------- templates (the pages of the Templates notebook) ---------- */
+  ipcMain.handle('template:list', async () => listTemplates(templatesNotebookDir()))
+  // Where Save as template can put a page; a Templates notebook left with no sections gets one.
+  ipcMain.handle('template:sections', async () => {
+    const dir = templatesNotebookDir()
+    await ensureTemplatesNotebook(dir, { section: true })
+    return templateSections(dir)
   })
-  ipcMain.handle('template:save', async (_e, pageRel: string, _scope: TemplateScope, name: string, description: string) => {
-    const root = requireRoot()
-    // Templates are always global now; the scope argument is kept for older callers.
-    return saveAsTemplate(root, pageRel, globalTemplatesDir(), 'global', name, description)
-  })
-  ipcMain.handle('template:delete', async (_e, ref: string) => {
-    const root = requireRoot()
-    const parsed = parseRef(ref)
-    if (!parsed) throw new Error('Not a template')
-    await deleteTemplate(libraryDir(root, parsed.scope, globalTemplatesDir()), parsed.folder)
+  ipcMain.handle('template:save', async (_e, pageRel: string, sectionRel: string, name: string) => {
+    const dir = templatesNotebookDir()
+    await ensureTemplatesNotebook(dir)
+    await saveAsTemplate(requireRoot(), pageRel, dir, sectionRel, name)
+    return listTemplates(dir)
   })
   ipcMain.handle('template:createPage', async (_e, sectionRel: string, ref: string, title?: string) => {
     const root = requireRoot()
-    const parsed = parseRef(ref)
-    if (!parsed) throw new Error('Not a template')
-    const tree = await openNotebook(root)
-    const dir = joinPath(libraryDir(root, parsed.scope, globalTemplatesDir()), parsed.folder)
-    const tmeta = await readJson<TemplateMeta>(joinPath(dir, TEMPLATE_META))
-    const made = await createPageFromTemplate(root, sectionRel, dir, title ?? tmeta?.name ?? 'Untitled page', { section: (await sectionOf(root, `${sectionRel}/x`)).name, notebook: tree.meta.name }, historyPolicy())
+    const id = templateIdOf(ref)
+    const template = id ? await findTemplate(templatesNotebookDir(), id) : undefined
+    if (!template) throw new Error('That template is no longer in the Templates notebook.')
+    const meta = await readJson<NotebookTree['meta']>(joinPath(root, 'notebook.json'))
+    const made = await createPageFromTemplate(root, sectionRel, resolveInside(templatesNotebookDir(), template.rel), title ?? template.name, { section: (await sectionOf(root, `${sectionRel}/x`)).name, notebook: meta?.name ?? '' }, historyPolicy())
     await reindexPage(made.relPath, made.doc)
-    return { relPath: made.relPath, tree: await openNotebook(root) }
+    return { relPath: made.relPath, tree: await afterSectionChange(sectionRel) }
   })
   ipcMain.handle('section:setDefaultTemplate', async (_e, rel: string, ref: string | null) => {
     const root = requireRoot()
@@ -588,28 +530,20 @@ export function registerIpc(): void {
   })
 
   /* ---------- move and copy ---------- */
-  ipcMain.handle('page:move', async (_e, relIn: string, targetSectionRel: string) => {
-    const src = resolveRel(relIn)
-    if (src.template) {
-      const folder = await moveTemplate(resolveInside(src.root, src.rel), libraryForSection(targetSectionRel))
-      return { rel: `${targetSectionRel}/${folder}`, tree: await templatesTree() }
-    }
+  ipcMain.handle('page:move', async (_e, rel: string, targetSectionRel: string) => {
     const root = requireRoot()
-    const rel = relIn
     const newRel = await movePage(root, rel, targetSectionRel)
     indexer?.remove(rel)
+    await indexArrivedPage(newRel)
     const tree = await afterSectionChange(parentOf(rel), targetSectionRel)
     return { rel: newRel, tree }
   })
-  ipcMain.handle('page:copy', async (_e, rel: string, targetSectionRel: string) => {
-    // A template is copied within the global library.
-    const src = resolveRel(rel)
-    if (src.template) {
-      const folder = await duplicateTemplate(resolveInside(src.root, src.rel), globalTemplatesDir())
-      return { rel: `${GLOBAL_PREFIX}${folder}`, tree: await templatesTree() }
-    }
+  // `fromRoot` names the notebook the page was copied in, when it is not the open one.
+  ipcMain.handle('page:copy', async (_e, rel: string, targetSectionRel: string, fromRoot?: string) => {
     const root = requireRoot()
-    const newRel = await copyPage(root, rel, targetSectionRel)
+    const source = fromRoot && !isSameRoot(fromRoot, root) ? await knownNotebookRoot(fromRoot) : root
+    const newRel = await copyPage(source, rel, targetSectionRel, source === root ? {} : { root })
+    await indexArrivedPage(newRel)
     const tree = await afterSectionChange(targetSectionRel)
     return { rel: newRel, tree }
   })
@@ -667,13 +601,8 @@ export function registerIpc(): void {
   ipcMain.handle('print:pdf', async (_e, rel: string, paper: PaperSettings, title: string, outPath?: string) =>
     exportPdf(rel, paper, title, outPath, focusedWindow())
   )
-  ipcMain.handle('page:delete', async (_e, relIn: string) => {
-    const { root, rel, template } = resolveRel(relIn)
-    if (template) {
-      // Deleting a template removes it from the library (kept in that library's recycle folder).
-      const name = await deletePage(root, rel)
-      return { name, tree: await templatesTree() }
-    }
+  ipcMain.handle('page:delete', async (_e, rel: string) => {
+    const root = requireRoot()
     const name = await deletePage(root, rel)
     indexer?.remove(rel)
     return { name, tree: await afterSectionChange(parentOf(rel)) }

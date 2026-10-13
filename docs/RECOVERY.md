@@ -17,8 +17,9 @@ My notebook/
       .history/          earlier versions of page.json, one per save
   .index/                search index: a cache, safe to delete
   .recycle/              deleted pages, kept for 30 days
-  templates/             page templates
 ```
+
+Templates are kept in a notebook of their own, the Templates notebook, in PageBinder's settings folder. It has the same layout and recovers the same way. A notebook made by a version before 1.1.4 may also hold a `templates` folder, which is no longer used.
 
 ## A page will not open, or looks wrong
 

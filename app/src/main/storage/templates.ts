@@ -1,99 +1,119 @@
 /**
- * Page templates: a notebook library in <notebook>/templates and a global
- * library in the app's data folder, both in the same format.
+ * Page templates. Templates are the pages of the Templates notebook: an ordinary notebook kept in
+ * the app's settings folder, with sections, groups, search, the recycle folder, and undo like any
+ * other. A page made from a template is a copy with its placeholders filled in and no link back to
+ * the template. A section may name a default template by the template page's id ("template:<id>").
  * See PROGRAM_DESCRIPTION.md section 12.
+ *
+ * Templates kept by earlier versions (".template" folders in the settings folder or in a notebook's
+ * own "templates" folder), and section defaults naming them, are not shown or used: the user chose
+ * not to carry them over (2026-10-13). Their files are left where they are.
  */
 import { promises as fs } from 'node:fs'
-import { join, basename } from 'node:path'
-import { renameDurable } from './atomic'
-import { FORMAT_VERSION, type PageDoc, type EditorJSON, type SectionMeta, type CanvasObject, type PaperSettings } from '../../shared/types'
-import { readJson, writeJson } from './notebook'
+import { join } from 'node:path'
+import { FORMAT_VERSION, NEW_NOTEBOOK_PAPER, type PageDoc, type EditorJSON, type SectionMeta, type CanvasObject, type PaperSettings, type NotebookMeta, type TreeChild } from '../../shared/types'
+import { readJson, writeJson, openNotebook, notebookExists, NOTEBOOK_README } from './notebook'
 import { newId, now } from './ids'
-import { sanitizeName, uniqueName } from './names'
-import { loadPage, createPage, savePage, readValidPage, newPageDoc } from './page'
+import { createPage, savePage, readValidPage } from './page'
+import { createSection } from './section'
 import { copyDir } from './copy'
-import { PAGE_DOC, SECTION_META, TEMPLATES_DIR, resolveInside } from './paths'
-import { withChecksum } from './checksum'
+import { copyPage } from './copymove'
+import { NOTEBOOK_META, PAGE_DOC, SECTION_META, resolveInside } from './paths'
+export { TEMPLATES_NOTEBOOK } from './paths'
 import type { HistoryPolicy } from './history'
 
-export const TEMPLATE_SUFFIX = '.template'
-export const TEMPLATE_META = 'template.json'
+/** The section a new Templates notebook starts with. */
+export const FIRST_TEMPLATES_SECTION = 'General'
+const REF_PREFIX = 'template:'
 
-export type TemplateScope = 'notebook' | 'global'
-
-export interface TemplateMeta {
-  format: number
+export interface TemplateInfo {
+  /** The template page's id. */
   id: string
-  name: string
-  description: string
-  created: string
-}
-
-export interface TemplateInfo extends TemplateMeta {
-  scope: TemplateScope
-  /** Folder name inside the library. */
-  folder: string
-  /** `${scope}:${folder}`, stored as a section's default template. */
+  /** `template:<id>`, stored as a section's default template. */
   ref: string
+  name: string
+  /** Where the template is in the Templates notebook: its groups and section, as "Group › Section". */
+  section: string
+  /** The template page's folder, relative to the Templates notebook. */
+  rel: string
 }
 
-export function libraryDir(root: string, scope: TemplateScope, globalDir: string): string {
-  return scope === 'notebook' ? join(root, TEMPLATES_DIR) : globalDir
+export function templateRef(id: string): string {
+  return `${REF_PREFIX}${id}`
 }
 
-export function parseRef(ref: string): { scope: TemplateScope; folder: string } | null {
-  const i = ref.indexOf(':')
-  if (i < 0) return null
-  const scope = ref.slice(0, i)
-  const folder = ref.slice(i + 1)
-  if ((scope !== 'notebook' && scope !== 'global') || !folder || folder.includes('/') || folder.includes('..')) return null
-  return { scope, folder }
+/** The template page id a section default names, or null (no default, or one from an earlier version). */
+export function templateIdOf(ref: string | null | undefined): string | null {
+  return ref && ref.startsWith(REF_PREFIX) && ref.length > REF_PREFIX.length ? ref.slice(REF_PREFIX.length) : null
 }
 
-export async function listTemplates(dir: string, scope: TemplateScope): Promise<TemplateInfo[]> {
-  let names: string[]
-  try {
-    names = await fs.readdir(dir)
-  } catch {
-    return []
+const making = new Map<string, Promise<unknown>>()
+
+/**
+ * Make the Templates notebook on first use: a notebook called Templates with one section. With
+ * `section`, a Templates notebook left with no sections gets that first section back. Calls for one
+ * folder run one at a time, so two at once (a dialog opening twice) never make two sections.
+ */
+export function ensureTemplatesNotebook(dir: string, opts: { section?: boolean } = {}): Promise<void> {
+  const run = (making.get(dir) ?? Promise.resolve()).then(() => makeTemplatesNotebook(dir, opts.section ?? false))
+  const settled = run.catch(() => undefined)
+  making.set(dir, settled)
+  void settled.then(() => {
+    if (making.get(dir) === settled) making.delete(dir)
+  })
+  return run
+}
+
+async function makeTemplatesNotebook(dir: string, needSection: boolean): Promise<void> {
+  const fresh = !(await notebookExists(dir))
+  if (fresh) {
+    await fs.mkdir(dir, { recursive: true })
+    const meta: NotebookMeta = { format: FORMAT_VERSION, id: newId(), name: 'Templates', created: now(), modified: now(), order: [], settings: { paper: NEW_NOTEBOOK_PAPER } }
+    await writeJson(join(dir, NOTEBOOK_META), meta)
+    await fs.writeFile(join(dir, 'README.txt'), NOTEBOOK_README, 'utf8')
   }
+  if ((fresh || needSection) && !(await templateSections(dir)).length) await createSection(dir, '', FIRST_TEMPLATES_SECTION)
+}
+
+/** Every template, in the order the Templates notebook shows them. */
+export async function listTemplates(templatesRoot: string): Promise<TemplateInfo[]> {
+  if (!(await notebookExists(templatesRoot))) return []
+  const tree = await openNotebook(templatesRoot)
   const out: TemplateInfo[] = []
-  for (const folder of names) {
-    if (!folder.endsWith(TEMPLATE_SUFFIX)) continue
-    const meta = await readJson<TemplateMeta>(join(dir, folder, TEMPLATE_META))
-    if (!meta) continue
-    out.push({ ...meta, scope, folder, ref: `${scope}:${folder}` })
+  const walk = (children: TreeChild[], path: string[]): void => {
+    for (const c of children) {
+      if (c.kind === 'group') walk(c.children, [...path, c.name])
+      else for (const p of c.pages) out.push({ id: p.id, ref: templateRef(p.id), name: p.title || 'Untitled template', section: [...path, c.name].join(' › '), rel: p.relPath })
+    }
   }
-  return out.sort((a, b) => a.name.localeCompare(b.name))
+  walk(tree.children, [])
+  return out
+}
+
+/** The Templates notebook's sections, for choosing where Save as template puts a page. */
+export async function templateSections(templatesRoot: string): Promise<{ rel: string; name: string }[]> {
+  const tree = await openNotebook(templatesRoot)
+  const out: { rel: string; name: string }[] = []
+  const walk = (children: TreeChild[], path: string[]): void => {
+    for (const c of children) {
+      if (c.kind === 'group') walk(c.children, [...path, c.name])
+      else out.push({ rel: c.relPath, name: [...path, c.name].join(' › ') })
+    }
+  }
+  walk(tree.children, [])
+  return out
+}
+
+export async function findTemplate(templatesRoot: string, id: string): Promise<TemplateInfo | undefined> {
+  return (await listTemplates(templatesRoot)).find((t) => t.id === id)
 }
 
 /**
- * Save a page as a template. Refuses when the page has attachments: a template
- * may hold only text, tables, and pictures that print with the document.
+ * Save a page as a template: a copy of it, attachments included, goes into a section of the
+ * Templates notebook under the given name. Returns the new template page's path there.
  */
-export async function saveAsTemplate(root: string, pageRel: string, dir: string, scope: TemplateScope, name: string, description: string): Promise<TemplateInfo> {
-  const { doc } = await loadPage(root, pageRel)
-  const files = doc.objects.filter((o) => o.kind === 'file').map((o) => (o as { originalName: string }).originalName)
-  if (files.length || doc.manifest.attachments.length) {
-    const names = [...new Set([...files, ...doc.manifest.attachments.map((a) => a.originalName)])]
-    throw new Error(`A template can hold only text, tables, and pictures. Remove ${names.length === 1 ? 'the attachment' : 'these attachments'} first: ${names.join(', ')}`)
-  }
-  await fs.mkdir(dir, { recursive: true })
-  const folder = await uniqueName(dir, sanitizeName(name), TEMPLATE_SUFFIX)
-  const dest = join(dir, folder)
-  const pageDir = resolveInside(root, pageRel)
-  // Copy only the page document and its pictures.
-  await copyDir(pageDir, dest, (n, rel) => n === '.history' || n === 'attachments' || n === 'page.html' || n === 'page.json.autosave' || rel.startsWith('.tmp-'))
-  const meta: TemplateMeta = { format: FORMAT_VERSION, id: newId(), name: name.trim() || folder, description: description.trim(), created: now() }
-  await writeJson(join(dest, TEMPLATE_META), meta)
-  const tdoc: PageDoc = withChecksum({ ...doc, id: meta.id, title: meta.name, manifest: { images: doc.manifest.images, attachments: [] } })
-  await writeJson(join(dest, PAGE_DOC), tdoc)
-  return { ...meta, scope, folder, ref: `${scope}:${folder}` }
-}
-
-export async function deleteTemplate(dir: string, folder: string): Promise<void> {
-  if (!folder.endsWith(TEMPLATE_SUFFIX) || folder.includes('/') || folder.includes('..')) throw new Error('Not a template')
-  await fs.rm(join(dir, folder), { recursive: true, force: true })
+export async function saveAsTemplate(root: string, pageRel: string, templatesRoot: string, sectionRel: string, name: string): Promise<string> {
+  return copyPage(root, pageRel, sectionRel, { root: templatesRoot, title: name.trim() || 'Untitled template' })
 }
 
 const PLACEHOLDERS: Record<string, (ctx: PlaceholderContext) => string> = {
@@ -128,7 +148,10 @@ export function fillObjects(objects: CanvasObject[], ctx: PlaceholderContext): C
   return objects.map((o) => (o.kind === 'text' ? { ...o, id: newId(), content: fillNode(o.content, ctx) } : { ...o, id: newId() }))
 }
 
-/** Create a page in `sectionRel` from a template folder. Pictures are copied so the page owns them. */
+/**
+ * Create a page in `sectionRel` from a template page's folder. Its pictures and attached files are
+ * copied so the page owns them, and its placeholders are filled in.
+ */
 export async function createPageFromTemplate(
   root: string,
   sectionRel: string,
@@ -142,17 +165,19 @@ export async function createPageFromTemplate(
   if (!tdoc) throw new Error('The template could not be read.')
   const created = await createPage(root, sectionRel, title, paper ?? tdoc.paper)
   const dest = resolveInside(root, created.relPath)
-  try {
-    await fs.rm(join(dest, 'images'), { recursive: true, force: true })
-    await copyDir(join(templateDir, 'images'), join(dest, 'images'))
-  } catch {
-    await fs.mkdir(join(dest, 'images'), { recursive: true })
+  for (const sub of ['images', 'attachments']) {
+    try {
+      await fs.rm(join(dest, sub), { recursive: true, force: true })
+      await copyDir(join(templateDir, sub), join(dest, sub))
+    } catch {
+      await fs.mkdir(join(dest, sub), { recursive: true })
+    }
   }
   const full: PlaceholderContext = { ...ctx, date: new Date(), title }
   const saved = await savePage(
     root,
     created.relPath,
-    { ...created.doc, title, paper: paper ?? tdoc.paper, ...(tdoc.print ? { print: tdoc.print } : {}), ...(tdoc.pageBorder !== undefined ? { pageBorder: tdoc.pageBorder } : {}), ...(tdoc.pageGrid !== undefined ? { pageGrid: tdoc.pageGrid } : {}), objects: fillObjects(tdoc.objects, full), manifest: { images: tdoc.manifest.images, attachments: [] } },
+    { ...created.doc, title, paper: paper ?? tdoc.paper, ...(tdoc.print ? { print: tdoc.print } : {}), ...(tdoc.pageBorder !== undefined ? { pageBorder: tdoc.pageBorder } : {}), ...(tdoc.pageGrid !== undefined ? { pageGrid: tdoc.pageGrid } : {}), objects: fillObjects(tdoc.objects, full), manifest: { images: tdoc.manifest.images, attachments: tdoc.manifest.attachments } },
     policy
   )
   return { relPath: saved.relPath, doc: saved.doc }
@@ -169,54 +194,4 @@ export async function setSectionDefaultTemplate(root: string, sectionRel: string
 export async function sectionDefaultTemplate(root: string, sectionRel: string): Promise<string | undefined> {
   const meta = await readJson<SectionMeta>(join(resolveInside(root, sectionRel), SECTION_META))
   return meta?.defaultTemplate
-}
-
-export { basename }
-
-/** A new, empty template in a library. */
-export async function createBlankTemplate(dir: string, scope: TemplateScope, name: string): Promise<TemplateInfo> {
-  await fs.mkdir(dir, { recursive: true })
-  const folder = await uniqueName(dir, sanitizeName(name), TEMPLATE_SUFFIX)
-  const dest = join(dir, folder)
-  await fs.mkdir(dest)
-  await fs.mkdir(join(dest, 'images'))
-  await fs.mkdir(join(dest, '.history'))
-  const meta: TemplateMeta = { format: FORMAT_VERSION, id: newId(), name: name.trim() || folder, description: '', created: now() }
-  await writeJson(join(dest, TEMPLATE_META), meta)
-  const doc = newPageDoc(meta.name)
-  await writeJson(join(dest, PAGE_DOC), { ...doc, id: meta.id })
-  return { ...meta, scope, folder, ref: `${scope}:${folder}` }
-}
-
-/** Move a template folder into another library (notebook <-> global). Returns the folder name in the target. */
-export async function moveTemplate(srcDir: string, targetLibrary: string): Promise<string> {
-  await fs.mkdir(targetLibrary, { recursive: true })
-  const folder = await uniqueName(targetLibrary, basename(srcDir).replace(new RegExp(`${TEMPLATE_SUFFIX}$`), ''), TEMPLATE_SUFFIX)
-  const dest = join(targetLibrary, folder)
-  try {
-    await renameDurable(srcDir, dest)
-  } catch {
-    // Different volume: copy, then remove the source.
-    await copyDir(srcDir, dest)
-    await fs.rm(srcDir, { recursive: true, force: true })
-  }
-  return folder
-}
-
-/**
- * Duplicate a template within its library: the copy is named "<name> (copy)" and gets its own id.
- * Its saved versions are not copied, as with a copied page.
- */
-export async function duplicateTemplate(srcDir: string, library: string): Promise<string> {
-  const meta = await readJson<TemplateMeta>(join(srcDir, TEMPLATE_META))
-  const base = meta?.name ?? basename(srcDir).replace(new RegExp(`${TEMPLATE_SUFFIX}$`), '')
-  const name = `${base} (copy)`
-  const folder = await uniqueName(library, sanitizeName(name), TEMPLATE_SUFFIX)
-  const dest = join(library, folder)
-  await copyDir(srcDir, dest, (n) => n === '.history' || n === 'page.json.autosave' || n.startsWith('.tmp-') || n.startsWith('page.json.corrupt-'))
-  const fresh: TemplateMeta = { format: meta?.format ?? FORMAT_VERSION, id: newId(), name, description: meta?.description ?? '', created: now() }
-  await writeJson(join(dest, TEMPLATE_META), fresh)
-  const doc = await readValidPage(join(srcDir, PAGE_DOC))
-  if (doc) await writeJson(join(dest, PAGE_DOC), withChecksum({ ...doc, id: fresh.id, title: name, created: now(), modified: now() }))
-  return folder
 }

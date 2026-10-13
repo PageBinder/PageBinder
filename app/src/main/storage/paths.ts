@@ -4,7 +4,10 @@ export const PAGE_SUFFIX = '.page'
 export const HISTORY_DIR = '.history'
 export const INDEX_DIR = '.index'
 export const RECYCLE_DIR = '.recycle'
+/** A notebook's own template folder, kept by earlier versions and no longer used. */
 export const TEMPLATES_DIR = 'templates'
+/** The Templates notebook's folder in the app's settings folder. */
+export const TEMPLATES_NOTEBOOK = 'Templates notebook'
 export const NOTEBOOK_META = 'notebook.json'
 export const GROUP_META = 'group.json'
 export const SECTION_META = 'section.json'

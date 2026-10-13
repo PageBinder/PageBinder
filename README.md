@@ -24,7 +24,7 @@ PageBinder organises notes into **notebooks**, **section groups**, **sections**,
 - **Rich pages.** Fonts, colours, lists, to-do lists, headings, and tables. Pictures, lines, arrows, and shapes. Any file can be attached, and saved emails (`.eml` and `.msg`) show their subject, sender, and date.
 - **Fast search.** Search page text, page and section names, attachment names, and the text of attached emails as you type, even across tens of thousands of pages.
 - **Print and export.** Pages print on real sheets of paper (Letter, A4, Tabloid, and more). A page, section, or whole notebook exports to one PDF or HTML file.
-- **Templates.** Save any page as a template, available in every notebook on this computer.
+- **Templates.** Save any page as a template, available in every notebook on this computer. Templates live in a Templates notebook of their own, arranged in sections like any notebook.
 - **Simple backups.** Copy the notebook folder to a NAS, an external drive, or any backup service. A notebook made on a Mac opens on Windows, and the other way round, with no conversion.
 
 ## Download and install
@@ -69,7 +69,7 @@ PageBinder is added to the Start menu and the desktop.
 
 ### Updating
 
-Download the new installer and install it over the old version, as above. The first time the new version starts, it asks whether to keep your settings (the recent-notebook list and global templates) or start fresh. Starting fresh moves them to a backup folder, so nothing is lost. The same question appears after any reinstall. Your notebooks are never affected either way.
+Download the new installer and install it over the old version, as above. The first time the new version starts, it asks whether to keep your settings (the recent-notebook list and the Templates notebook) or start fresh. Starting fresh moves them to a backup folder, so nothing is lost. The same question appears after any reinstall. Your notebooks are never affected either way.
 
 ### Uninstalling
 

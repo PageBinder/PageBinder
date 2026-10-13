@@ -81,25 +81,28 @@ export function App(): JSX.Element {
   const [panel, setPanel] = useState<'history' | 'recycle' | 'verify' | 'export' | 'properties' | null>(null)
   const [drawTool, setDrawTool] = useState<DrawTool | null>(null)
   const [selectionInfo, setSelectionInfo] = useState({ shapes: 0, total: 0 })
-  /** App clipboard for page objects; files are copied between page folders on paste. */
-  const objectClipboard = useRef<{ objects: CanvasObject[]; fromRel: string } | null>(null)
+  /** App clipboard for page objects; files are copied between page folders (and notebooks) on paste. */
+  const objectClipboard = useRef<{ objects: CanvasObject[]; fromRel: string; fromRoot: string } | null>(null)
   /** What copying objects put on the system clipboard, to recognise it at paste time. */
   const clipMarker = useRef<string | null>(null)
   const [canPaste, setCanPaste] = useState(false)
   /** The object clipboard holds a picture that can go into a text box. */
   const [canPastePicture, setCanPastePicture] = useState(false)
-  /** Pages (or templates) copied or cut, to paste into a section of the same kind. Cut pages move. */
-  const [copiedPages, setCopiedPages] = useState<{ pages: PageRef[]; templates: boolean; cut: boolean } | null>(null)
+  /** Pages copied or cut. Copied pages paste into any notebook; cut pages move within their own. */
+  const [copiedPages, setCopiedPages] = useState<{ pages: PageRef[]; root: string; cut: boolean } | null>(null)
   const onSelectionInfo = useCallback((i: { shapes: number; total: number }) => setSelectionInfo((cur) => (cur.shapes === i.shapes && cur.total === i.total ? cur : i)), [])
   const [about, setAbout] = useState<DocName | 'about' | 'dependencies' | null>(null)
-  const [templates, setTemplates] = useState<{ notebook: TemplateInfo[]; global: TemplateInfo[] }>({ notebook: [], global: [] })
+  /** The pages of the Templates notebook, offered by Add page and as section defaults. */
+  const [templates, setTemplates] = useState<TemplateInfo[]>([])
   const [moveCopy, setMoveCopy] = useState<{ mode: 'page'; page: PageRef } | { mode: 'container'; node: TreeChild } | null>(null)
   const [templateFor, setTemplateFor] = useState<PageRef | null>(null)
+  /** The open notebook is the Templates notebook. */
   const [templateMode, setTemplateMode] = useState(false)
   const templateModeRef = useRef(false)
   templateModeRef.current = templateMode
-  /** The tree for whichever notebook is showing: the real one or the Templates notebook. */
-  const reloadTree = useCallback((): Promise<NotebookTree> => (templateModeRef.current ? window.pagebinder.notebook.openTemplates() : window.pagebinder.notebook.reload()), [])
+  const treeRef = useRef<NotebookTree | null>(null)
+  treeRef.current = tree
+  const reloadTree = useCallback((): Promise<NotebookTree> => window.pagebinder.notebook.reload(), [])
   const [search, setSearch] = useState<{ terms: string[]; active: number } | null>(null)
   const [matchCount, setMatchCount] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -137,10 +140,9 @@ export function App(): JSX.Element {
 
   const refreshTemplates = useCallback(async (): Promise<void> => {
     try {
-      const list = await window.pagebinder.template.list()
-      setTemplates({ notebook: list.notebook, global: list.global })
+      setTemplates(await window.pagebinder.template.list())
     } catch {
-      setTemplates({ notebook: [], global: [] })
+      setTemplates([])
     }
   }, [])
 
@@ -364,6 +366,8 @@ export function App(): JSX.Element {
   const loadNotebook = useCallback(
     async (t: NotebookTree): Promise<void> => {
       setTree(t)
+      setTemplateMode(!!t.templates)
+      templateModeRef.current = !!t.templates
       setError(null)
       undoStack.current = []
       redoStack.current = []
@@ -432,25 +436,15 @@ export function App(): JSX.Element {
     [loadNotebook, savePage]
   )
 
+  /** The Templates notebook opens like any other notebook. */
   const openTemplatesNotebook = useCallback(async (): Promise<void> => {
     try {
       await savePage()
-      clearTimers()
-      setPage(null)
-      setSearch(null)
-      const t = await window.pagebinder.notebook.openTemplates()
-      setTemplateMode(true)
-      templateModeRef.current = true
-      undoStack.current = []
-      redoStack.current = []
-      setError(null)
-      setTree(t)
-      setGroupRel('')
-      await selectSection(t, t.children.find((c) => c.kind === 'section' && c.pages.length)?.relPath ?? t.children[0]?.relPath ?? null)
+      await loadNotebook(await window.pagebinder.notebook.openTemplates())
     } catch (err) {
       fail(err)
     }
-  }, [savePage, selectSection])
+  }, [loadNotebook, savePage])
 
   const switchNotebook = useCallback(async (): Promise<void> => {
     await savePage()
@@ -482,7 +476,7 @@ export function App(): JSX.Element {
 
   /** Undoable creation of several pages at once (a paste): one undo recycles them all. */
   const recordCreateMany = (rels: string[], label: string): void => {
-    if (templateModeRef.current || !rels.length) return
+    if (!rels.length) return
     if (rels.length === 1) {
       recordCreate(rels[0]!, label)
       return
@@ -523,7 +517,6 @@ export function App(): JSX.Element {
 
   /** Undoable creation: undo recycles the page, redo restores it. */
   const recordCreate = (relPath: string, label: string): void => {
-    if (templateModeRef.current) return
     let recycled = ''
     pushHistory({
       kind: 'notebook',
@@ -676,7 +669,7 @@ export function App(): JSX.Element {
     setDialog({
       kind: 'confirm',
       title: templateMode ? 'Delete template' : 'Delete page',
-      message: templateMode ? `Remove the template "${target.title}" from the library? Pages already made from it are not affected.` : `Move "${target.title || 'Untitled page'}" to the notebook's recycle folder?`,
+      message: `Move "${target.title || 'Untitled page'}" to the notebook's recycle folder?${templateMode ? ' Pages already made from it are not affected.' : ''}`,
       confirmLabel: 'Delete',
       danger: true,
       onConfirm: () => {
@@ -691,7 +684,7 @@ export function App(): JSX.Element {
             setTree(r.tree)
             if (pageRef.current === null) await selectSection(r.tree, sectionRel)
             let recycled = r.name
-            if (!templateModeRef.current) pushHistory({
+            pushHistory({
               kind: 'notebook',
               label: 'delete page',
               pageRel: target.relPath,
@@ -733,7 +726,7 @@ export function App(): JSX.Element {
   const copyObjects = useCallback((objects: CanvasObject[]): void => {
     const p = pageRef.current
     if (!p || !objects.length) return
-    objectClipboard.current = { objects: JSON.parse(JSON.stringify(objects)) as CanvasObject[], fromRel: p.relPath }
+    objectClipboard.current = { objects: JSON.parse(JSON.stringify(objects)) as CanvasObject[], fromRel: p.relPath, fromRoot: treeRef.current?.root ?? '' }
     setCanPaste(true)
     setCanPastePicture(objects.some((o) => o.kind === 'image' && o.display !== 'card'))
     // The system clipboard gets a marker, so a paste in a text box can tell whether these objects
@@ -774,9 +767,10 @@ export function App(): JSX.Element {
       const p = pageRef.current
       if (!clip || !p) return
       try {
-        // Files that live in another page's folder are copied into this one first.
+        // Files that live in another page's folder (perhaps in another notebook) are copied into this one first.
+        const otherNotebook = clip.fromRoot !== treeRef.current?.root
         const needed: { sub: 'images' | 'attachments'; name: string; originalName?: string }[] = []
-        if (clip.fromRel !== p.relPath) {
+        if (otherNotebook || clip.fromRel !== p.relPath) {
           for (const o of clip.objects) {
             if (o.kind === 'image') needed.push({ sub: 'images', name: o.name, originalName: o.originalName })
             else if (o.kind === 'text') {
@@ -786,7 +780,7 @@ export function App(): JSX.Element {
             else if (o.kind === 'file') needed.push({ sub: 'attachments', name: o.name, originalName: o.originalName })
           }
         }
-        const copied = needed.length ? await window.pagebinder.page.copyFilesBetween(clip.fromRel, p.relPath, needed) : []
+        const copied = needed.length ? await window.pagebinder.page.copyFilesBetween(clip.fromRel, p.relPath, needed, otherNotebook ? clip.fromRoot : undefined) : []
         const rename = new Map(copied.map((c) => [`${c.sub}/${c.from}`, c.entry]))
         const minX = Math.min(...clip.objects.map((o) => o.x))
         const minY = Math.min(...clip.objects.map((o) => o.y))
@@ -838,9 +832,10 @@ export function App(): JSX.Element {
 
   const pastePage = useCallback(async (): Promise<void> => {
     const clip = copiedPages
-    if (!clip || !sectionRel || clip.templates !== templateModeRef.current) return
+    if (!clip || !sectionRel) return
+    const here = clip.root === treeRef.current?.root
     if (clip.cut) {
-      await pasteCutPages(clip.pages, sectionRel)
+      if (here) await pasteCutPages(clip.pages, sectionRel)
       return
     }
     try {
@@ -848,7 +843,7 @@ export function App(): JSX.Element {
       const made: string[] = []
       let t: NotebookTree | null = null
       for (const p of clip.pages) {
-        const r = await window.pagebinder.move.copyPage(p.relPath, sectionRel)
+        const r = await window.pagebinder.move.copyPage(p.relPath, sectionRel, here ? undefined : clip.root)
         made.push(r.rel)
         t = r.tree
       }
@@ -885,7 +880,6 @@ export function App(): JSX.Element {
       if (t) setTree(t)
       if (!moved.length) return
       await openPage(moved[moved.length - 1]!.rel)
-      if (templateModeRef.current) return
       const moveAll = async (to: (m: { rel: string; from: string }) => string): Promise<void> => {
         const next: { rel: string; from: string }[] = []
         let tree2: NotebookTree | null = null
@@ -923,7 +917,7 @@ export function App(): JSX.Element {
     setDialog({
       kind: 'confirm',
       title: templateMode ? `Delete ${n} templates` : `Delete ${n} pages`,
-      message: templateMode ? `Remove these ${n} templates from the library? Pages already made from them are not affected.` : `Move these ${n} pages to the notebook's recycle folder?`,
+      message: `Move these ${n} ${templateMode ? 'templates' : 'pages'} to the notebook's recycle folder?${templateMode ? ' Pages already made from them are not affected.' : ''}`,
       confirmLabel: 'Delete',
       danger: true,
       onConfirm: () => {
@@ -942,38 +936,36 @@ export function App(): JSX.Element {
             }
             if (last) setTree(last)
             if (pageRef.current === null && last) await selectSection(last, sectionRel)
-            if (!templateModeRef.current) {
-              let current: string[] = []
-              pushHistory({
-                kind: 'notebook',
-                label: `delete ${n} pages`,
-                pageRel: targets[0]!.relPath,
-                undo: async () => {
-                  current = []
-                  let t: NotebookTree | null = null
-                  for (const r of recycled) {
-                    const back = await window.pagebinder.recycle.restore(r.name, r.section)
-                    current.push(back.rel)
-                    t = back.tree
-                  }
-                  if (t) await showPage(t, current[0] ?? null)
-                },
-                redo: async () => {
-                  recycled = []
-                  let t: NotebookTree | null = null
-                  for (const rel of current) {
-                    if (pageRef.current?.relPath === rel) {
-                      clearTimers()
-                      setPage(null)
-                    }
-                    const again = await window.pagebinder.page.delete(rel)
-                    recycled.push({ name: again.name, section: rel.slice(0, rel.lastIndexOf('/')) })
-                    t = again.tree
-                  }
-                  if (t) await showPage(t, null, current[0]!.slice(0, current[0]!.lastIndexOf('/')))
+            let current: string[] = []
+            pushHistory({
+              kind: 'notebook',
+              label: `delete ${n} pages`,
+              pageRel: targets[0]!.relPath,
+              undo: async () => {
+                current = []
+                let t: NotebookTree | null = null
+                for (const r of recycled) {
+                  const back = await window.pagebinder.recycle.restore(r.name, r.section)
+                  current.push(back.rel)
+                  t = back.tree
                 }
-              })
-            }
+                if (t) await showPage(t, current[0] ?? null)
+              },
+              redo: async () => {
+                recycled = []
+                let t: NotebookTree | null = null
+                for (const rel of current) {
+                  if (pageRef.current?.relPath === rel) {
+                    clearTimers()
+                    setPage(null)
+                  }
+                  const again = await window.pagebinder.page.delete(rel)
+                  recycled.push({ name: again.name, section: rel.slice(0, rel.lastIndexOf('/')) })
+                  t = again.tree
+                }
+                if (t) await showPage(t, null, current[0]!.slice(0, current[0]!.lastIndexOf('/')))
+              }
+            })
           } catch (err) {
             fail(err)
           }
@@ -1055,11 +1047,10 @@ export function App(): JSX.Element {
     }
   }
 
-  const saveTemplate = async (page: PageRef, scope: 'notebook' | 'global', name: string, description: string): Promise<void> => {
+  const saveTemplate = async (page: PageRef, templateSectionRel: string, name: string): Promise<void> => {
     try {
       await savePage()
-      await window.pagebinder.template.save(page.relPath, scope, name, description)
-      await refreshTemplates()
+      setTemplates(await window.pagebinder.template.save(page.relPath, templateSectionRel, name))
     } catch (err) {
       fail(err)
       throw err
@@ -1080,7 +1071,7 @@ export function App(): JSX.Element {
       setSectionRel(targetSectionRel)
       await openPage(rel)
       if (copy) recordCreate(rel, 'copy page')
-      else if (!templateModeRef.current) {
+      else {
         pushHistory({
           kind: 'notebook',
           label: 'move page',
@@ -1391,8 +1382,9 @@ export function App(): JSX.Element {
       if (!images.length) return
       try {
         let entries: (FileEntry & { width?: number; height?: number })[]
-        if (clip.fromRel !== p.relPath) {
-          const copied = await window.pagebinder.page.copyFilesBetween(clip.fromRel, p.relPath, images.map((o) => ({ sub: 'images' as const, name: o.name, originalName: o.originalName })))
+        const otherNotebook = clip.fromRoot !== treeRef.current?.root
+        if (otherNotebook || clip.fromRel !== p.relPath) {
+          const copied = await window.pagebinder.page.copyFilesBetween(clip.fromRel, p.relPath, images.map((o) => ({ sub: 'images' as const, name: o.name, originalName: o.originalName })), otherNotebook ? clip.fromRoot : undefined)
           const byName = new Map(copied.map((c) => [c.from, c.entry]))
           entries = images.flatMap((o) => {
             const entry = byName.get(o.name)
@@ -1577,7 +1569,7 @@ export function App(): JSX.Element {
   // The background folder check may find changes made outside the app; refresh the tree when it does.
   useEffect(() => {
     return window.pagebinder.notebook.onTreeChanged(() => {
-      if (!templateModeRef.current && tree) void window.pagebinder.notebook.reload().then(setTree).catch(() => undefined)
+      if (tree) void window.pagebinder.notebook.reload().then(setTree).catch(() => undefined)
     })
   }, [tree])
 
@@ -1700,13 +1692,14 @@ export function App(): JSX.Element {
           path={groupPath(tree, groupRel)}
           counts={counts}
           right={
-            templateMode ? (
-              <span className="muted small template-hint" title="Edit a template here to change every page made from it later. Pages already made from it keep their own content.">
-                Templates notebook · edits apply to pages made later
-              </span>
-            ) : (
+            <>
+              {templateMode && (
+                <span className="muted small template-hint" title="Edit a template here to change every page made from it later. Pages already made from it keep their own content.">
+                  Edits apply to pages made later
+                </span>
+              )}
               <SearchBox sectionRel={sectionRel} sectionName={section?.name} onOpen={(hit, q) => void openSearchHit(hit, q)} />
-            )
+            </>
           }
           onNavigate={(rel) => void navigateGroup(tree, rel)}
         />
@@ -1723,7 +1716,6 @@ export function App(): JSX.Element {
           onSetDefaultTemplate={(rel, ref) => void window.pagebinder.template.setSectionDefault(rel, ref).then(setTree).catch(fail)}
           onMoveCopy={(node) => setMoveCopy({ mode: 'container', node })}
           onDelete={deleteContainer}
-          onDropPage={(pageRel, secRel, copy) => void movePageTo(pageRel, secRel, templateMode ? false : copy)}
           templateMode={templateMode}
         />
         {error && (
@@ -1841,12 +1833,12 @@ export function App(): JSX.Element {
             templateMode={templateMode}
             onAddFromTemplate={(ref) => void addPageFromTemplate(ref)}
             onSaveAsTemplate={(p) => setTemplateFor(p)}
-            onCopyPages={(pages) => setCopiedPages({ pages, templates: templateMode, cut: false })}
-            onCutPages={(pages) => setCopiedPages({ pages, templates: templateMode, cut: true })}
-            cutRels={copiedPages?.cut && copiedPages.templates === templateMode ? new Set(copiedPages.pages.map((p) => p.relPath)) : null}
+            onCopyPages={(pages) => setCopiedPages({ pages, root: tree.root, cut: false })}
+            onCutPages={(pages) => setCopiedPages({ pages, root: tree.root, cut: true })}
+            cutRels={copiedPages?.cut && copiedPages.root === tree.root ? new Set(copiedPages.pages.map((p) => p.relPath)) : null}
             onDeletePages={deletePages}
             onPastePage={() => void pastePage()}
-            copiedPageTitle={copiedPages && copiedPages.templates === templateMode ? (copiedPages.pages.length === 1 ? copiedPages.pages[0]!.title || 'Untitled page' : `${copiedPages.pages.length} ${templateMode ? 'templates' : 'pages'}`) : null}
+            copiedPageTitle={copiedPages && (copiedPages.root === tree.root || !copiedPages.cut) ? (copiedPages.pages.length === 1 ? copiedPages.pages[0]!.title || 'Untitled page' : `${copiedPages.pages.length} ${templateMode ? 'templates' : 'pages'}`) : null}
           />
         </div>
         {dialog && <Dialog spec={dialog} onClose={() => setDialog(null)} />}
@@ -1872,11 +1864,11 @@ export function App(): JSX.Element {
             currentRel={moveCopy.mode === 'page' ? moveCopy.page.relPath.slice(0, moveCopy.page.relPath.lastIndexOf('/')) : parentGroupRel(moveCopy.node.relPath)}
             excludeRel={moveCopy.mode === 'container' ? moveCopy.node.relPath : undefined}
             onMove={(target) => (moveCopy.mode === 'page' ? movePageTo(moveCopy.page.relPath, target, false) : moveContainerTo(moveCopy.node, target, false))}
-            onCopy={(target) => (moveCopy.mode === 'page' ? movePageTo(moveCopy.page.relPath, target, templateMode ? false : true) : moveContainerTo(moveCopy.node, target, true))}
+            onCopy={(target) => (moveCopy.mode === 'page' ? movePageTo(moveCopy.page.relPath, target, true) : moveContainerTo(moveCopy.node, target, true))}
             onClose={() => setMoveCopy(null)}
           />
         )}
-        {templateFor && <TemplateDialog initialName={templateFor.title || 'Untitled page'} onSave={(scope, name, desc) => saveTemplate(templateFor, scope, name, desc)} onClose={() => setTemplateFor(null)} />}
+        {templateFor && <TemplateDialog initialName={templateFor.title || 'Untitled page'} onSave={(templateSectionRel, name) => saveTemplate(templateFor, templateSectionRel, name)} onClose={() => setTemplateFor(null)} />}
         {panel === 'export' && (
           <ExportDialog
             scopes={exportScopes}
@@ -1890,7 +1882,7 @@ export function App(): JSX.Element {
             onClose={() => setPanel(null)}
           />
         )}
-        {panel === 'properties' && tree && !templateMode && <NotebookPropertiesDialog name={tree.meta.name} onClose={() => setPanel(null)} />}
+        {panel === 'properties' && tree && <NotebookPropertiesDialog name={tree.meta.name} onClose={() => setPanel(null)} />}
         {panel === 'verify' && <VerifyPanel onClose={() => setPanel(null)} onRebuildIndex={() => void window.pagebinder.search.rebuild()} />}
         {previewUrl && page && (
           <PrintPreview

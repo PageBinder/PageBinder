@@ -56,7 +56,7 @@ export function Welcome({
           <li>
             <button type="button" onClick={onOpenTemplates}>
               <span className="recent-name">▦ Templates</span>
-              <span className="recent-path">Every page template, in one section per notebook plus Global templates. Edit, rename, move, or delete templates here.</span>
+              <span className="recent-path">Your page templates, in a notebook of their own. Arrange them in sections, and edit, copy, or delete them as you would pages.</span>
             </button>
           </li>
         </ul>

@@ -65,7 +65,8 @@ export function PageList({
   onRename: (rel: string, title: string) => void
   onCancelRename: () => void
   onHistory: (rel: string) => void
-  templates: { notebook: TemplateInfo[]; global: TemplateInfo[] }
+  /** Templates offered by the + menu (not in the Templates notebook itself). */
+  templates: TemplateInfo[]
   templateMode: boolean
   onAddFromTemplate: (ref: string) => void
   onSaveAsTemplate: (page: PageRef) => void
@@ -133,18 +134,24 @@ export function PageList({
     onOpen(rel)
   }
   const selectedPages = (around: PageRef): PageRef[] => (selected.has(around.relPath) && selected.size > 1 ? pages.filter((p) => selected.has(p.relPath)) : [around])
+  // Templates are listed by their section in the Templates notebook, under its name when there are several.
+  const offered = templateMode ? [] : templates
+  const templateSections = [...new Set(offered.map((t) => t.section))]
   const addItems: MenuItem[] = [
     { label: templateMode ? 'New template' : 'New page', onClick: onAdd },
     ...(copiedPageTitle ? [{ label: `${templateMode ? 'Paste template here' : 'Paste page here'}: ${copiedPageTitle}`, onClick: onPastePage }] : []),
-    ...(templateMode ? [] : templates.notebook.length ? [{ separator: true }, ...templates.notebook.map((t) => ({ label: `From template: ${t.name}`, onClick: () => onAddFromTemplate(t.ref) }))] : []),
-    ...(!templateMode && templates.global.length ? [{ separator: true }, ...templates.global.map((t) => ({ label: `From template: ${t.name}`, onClick: () => onAddFromTemplate(t.ref) }))] : [])
+    ...templateSections.flatMap((name): MenuItem[] => [
+      { separator: true },
+      ...(templateSections.length > 1 ? [{ label: name, heading: true }] : []),
+      ...offered.filter((t) => t.section === name).map((t) => ({ label: `From template: ${t.name}`, onClick: () => onAddFromTemplate(t.ref) }))
+    ])
   ]
   const parents = new Set(pages.map((p) => p.id))
   return (
     <aside className="page-list">
       <div className="page-list-head">
         <span>{section ? (templateMode ? `Templates: ${section.name}` : `Pages in ${section.name}`) : 'Pages'}</span>
-        <button type="button" className="icon" onClick={(e) => ((!templateMode && (templates.notebook.length || templates.global.length)) || copiedPageTitle ? setAddMenu({ x: e.clientX, y: e.clientY }) : onAdd())} disabled={!section} title={templateMode ? 'New template (and paste)' : 'Add page (templates and paste)'} onContextMenu={(e) => { e.preventDefault(); setAddMenu({ x: e.clientX, y: e.clientY }) }}>
+        <button type="button" className="icon" onClick={(e) => (offered.length || copiedPageTitle ? setAddMenu({ x: e.clientX, y: e.clientY }) : onAdd())} disabled={!section} title={templateMode ? 'New template (and paste)' : 'Add page (templates and paste)'} onContextMenu={(e) => { e.preventDefault(); setAddMenu({ x: e.clientX, y: e.clientY }) }}>
           +
         </button>
       </div>
@@ -195,7 +202,7 @@ export function PageList({
             const noun = templateMode ? 'templates' : 'pages'
             if (group.length > 1) {
               return [
-                ...(templateMode ? [] : [{ label: `Cut ${group.length} ${noun}`, onClick: () => onCutPages(group) }]),
+                { label: `Cut ${group.length} ${noun}`, onClick: () => onCutPages(group) },
                 { label: `Copy ${group.length} ${noun}`, onClick: () => onCopyPages(group) },
                 { separator: true },
                 { label: `Delete ${group.length} ${noun}`, onClick: () => onDeletePages(group) }
@@ -205,7 +212,7 @@ export function PageList({
               { label: 'Rename…', onClick: () => onStartRename(menu.page.relPath) },
               { label: 'Page history…', onClick: () => onHistory(menu.page.relPath) },
               { separator: true },
-              ...(templateMode ? [] : [{ label: 'Cut page', onClick: () => onCutPages([menu.page]) }]),
+              { label: templateMode ? 'Cut template' : 'Cut page', onClick: () => onCutPages([menu.page]) },
               { label: templateMode ? 'Copy template' : 'Copy page', onClick: () => onCopyPages([menu.page]) },
               ...(templateMode ? [] : [{ label: 'Save as template…', onClick: () => onSaveAsTemplate(menu.page) }]),
               { separator: true },

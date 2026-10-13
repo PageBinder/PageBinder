@@ -1,5 +1,6 @@
 /**
- * Move and copy pages, sections, and section groups within a notebook.
+ * Move and copy pages, sections, and section groups within a notebook (a page copy may also go into
+ * another notebook).
  * Move is a folder rename. Copy duplicates the whole folder with fresh IDs
  * and empty history. See PROGRAM_DESCRIPTION.md section 13.
  */
@@ -9,7 +10,7 @@ import { renameDurable } from './atomic'
 import { FORMAT_VERSION, type PageDoc, type SectionMeta, type GroupMeta, type NotebookMeta } from '../../shared/types'
 import { readJson, writeJson } from './notebook'
 import { newId, now } from './ids'
-import { uniqueName } from './names'
+import { sanitizeName, uniqueName } from './names'
 import { copyDir } from './copy'
 import { withChecksum } from './checksum'
 import { writeRendered } from './page'
@@ -53,22 +54,26 @@ export async function movePage(root: string, pageRel: string, targetSectionRel: 
   return `${targetSectionRel}/${folder}`
 }
 
-/** Duplicate a page folder, attachments included, with a new ID and no history. */
-export async function copyPage(root: string, pageRel: string, targetSectionRel: string): Promise<string> {
-  if (!(await isSection(root, targetSectionRel))) throw new Error('The target is not a section.')
+/**
+ * Duplicate a page folder, attachments included, with a new ID and no history. `into` puts the copy
+ * in another notebook (Save as template copies a page into the Templates notebook), retitled if asked.
+ */
+export async function copyPage(root: string, pageRel: string, targetSectionRel: string, into: { root?: string; title?: string } = {}): Promise<string> {
+  const destRoot = into.root ?? root
+  if (!(await isSection(destRoot, targetSectionRel))) throw new Error('The target is not a section.')
   const src = resolveInside(root, pageRel)
-  const targetAbs = resolveInside(root, targetSectionRel)
-  const folder = await uniqueName(targetAbs, basename(src).slice(0, -PAGE_SUFFIX.length), PAGE_SUFFIX)
+  const targetAbs = resolveInside(destRoot, targetSectionRel)
+  const folder = await uniqueName(targetAbs, into.title ? sanitizeName(into.title) : basename(src).slice(0, -PAGE_SUFFIX.length), PAGE_SUFFIX)
   const dest = join(targetAbs, folder)
   await copyDir(src, dest, (n) => n === '.history' || n === 'page.json.autosave' || n.startsWith('.tmp-') || n.startsWith('page.json.corrupt-'))
   await fs.mkdir(join(dest, '.history'), { recursive: true })
   const doc = await readJson<PageDoc>(join(dest, PAGE_DOC))
   if (doc) {
-    const fresh = withChecksum({ ...doc, id: newId(), created: now(), modified: now() })
+    const fresh = withChecksum({ ...doc, ...(into.title ? { title: into.title } : {}), id: newId(), created: now(), modified: now() })
     await writeJson(join(dest, PAGE_DOC), fresh)
     await writeRendered(dest, fresh)
   }
-  await editPageOrder(root, targetSectionRel, (o) => [...o, folder])
+  await editPageOrder(destRoot, targetSectionRel, (o) => [...o, folder])
   return `${targetSectionRel}/${folder}`
 }
 

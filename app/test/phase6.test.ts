@@ -3,13 +3,14 @@ import { promises as fs } from 'node:fs'
 import { join } from 'node:path'
 import { createNotebook, openNotebook } from '../src/main/storage/notebook'
 import { createSection, createGroup } from '../src/main/storage/section'
-import { createPage, savePage, loadPage } from '../src/main/storage/page'
+import { createPage, savePage, loadPage, renamePage } from '../src/main/storage/page'
 import { copyFileIntoPage, ATTACHMENTS_DIR } from '../src/main/storage/attachments'
-import { saveAsTemplate, listTemplates, createPageFromTemplate, fillPlaceholders, libraryDir, setSectionDefaultTemplate } from '../src/main/storage/templates'
+import { saveAsTemplate, listTemplates, createPageFromTemplate, fillPlaceholders, setSectionDefaultTemplate, sectionDefaultTemplate, ensureTemplatesNotebook, templateSections, findTemplate, templateRef, templateIdOf, TEMPLATES_NOTEBOOK } from '../src/main/storage/templates'
+import { resolveInside } from '../src/main/storage/paths'
 import { movePage, copyPage, moveContainer, copyContainer, recycleContainer } from '../src/main/storage/copymove'
 import { listRecycled, restoreRecycled } from '../src/main/storage/recycle'
 import { tempDir, removeDir } from './helpers'
-import type { TextContainer } from '../src/shared/types'
+import { NEW_NOTEBOOK_PAPER, type TextContainer, type NotebookMeta } from '../src/shared/types'
 
 let dir: string
 let root: string
@@ -27,56 +28,105 @@ async function pageWithText(section: string, title: string, text: string): Promi
 }
 
 describe('templates', () => {
+  let tdir: string
+  beforeEach(() => {
+    tdir = join(dir, 'settings', TEMPLATES_NOTEBOOK)
+  })
+
+  it('the Templates notebook is made on first use with one section, and its pages are the templates', async () => {
+    // Two calls at once (as when a dialog opens twice) still make one notebook with one section.
+    await Promise.all([ensureTemplatesNotebook(tdir), ensureTemplatesNotebook(tdir, { section: true })])
+    await ensureTemplatesNotebook(tdir)
+    const meta = JSON.parse(await fs.readFile(join(tdir, 'notebook.json'), 'utf8')) as NotebookMeta
+    expect(meta.name).toBe('Templates')
+    expect(meta.settings.paper).toEqual(NEW_NOTEBOOK_PAPER)
+    expect((await openNotebook(tdir)).children.map((c) => c.name)).toEqual(['General'])
+    expect(await listTemplates(tdir)).toEqual([])
+    // Groups and sections work as in any notebook; a template is listed under its section's path.
+    const g = await createGroup(tdir, '', 'Farm')
+    const fields = await createSection(tdir, g, 'Fields')
+    const { relPath, doc } = await createPage(tdir, fields, 'Field log')
+    const listed = await listTemplates(tdir)
+    expect(listed).toEqual([{ id: doc.id, ref: `template:${doc.id}`, name: 'Field log', section: 'Farm › Fields', rel: relPath }])
+    expect((await templateSections(tdir)).map((x) => x.name)).toEqual(['General', 'Farm › Fields'])
+    // A missing Templates notebook simply has no templates.
+    expect(await listTemplates(join(dir, 'nowhere'))).toEqual([])
+  })
+
+  it('a Templates notebook left with no sections gets its first section back only when one is needed', async () => {
+    await ensureTemplatesNotebook(tdir)
+    await recycleContainer(tdir, 'General')
+    await ensureTemplatesNotebook(tdir)
+    expect(await templateSections(tdir)).toEqual([])
+    await ensureTemplatesNotebook(tdir, { section: true })
+    expect((await templateSections(tdir)).map((x) => x.name)).toEqual(['General'])
+  })
+
   it('a template carries its page border and grid settings to the pages made from it', async () => {
+    await ensureTemplatesNotebook(tdir)
     const s = await createSection(root, '', 'Plans')
     const rel = await pageWithText(s, 'Sketch', 'Field sketch')
     const loaded = await loadPage(root, rel)
     await savePage(root, rel, { ...loaded.doc, pageBorder: false, pageGrid: true })
-    const lib = libraryDir(root, 'notebook', join(dir, 'global'))
-    const t = await saveAsTemplate(root, rel, lib, 'notebook', 'Sketch page', '')
-    const made = await createPageFromTemplate(root, s, join(lib, t.folder), 'New sketch', { section: 'Plans', notebook: 'nb' })
+    const t = await saveAsTemplate(root, rel, tdir, 'General', 'Sketch page')
+    const made = await createPageFromTemplate(root, s, resolveInside(tdir, t), 'New sketch', { section: 'Plans', notebook: 'nb' })
     expect(made.doc.pageBorder).toBe(false)
     expect(made.doc.pageGrid).toBe(true)
     // A template without the settings gives pages without them (border on, grid off).
     const plainRel = await pageWithText(s, 'Plain', 'Plain text')
-    const t2 = await saveAsTemplate(root, plainRel, lib, 'notebook', 'Plain page', '')
-    const plain = await createPageFromTemplate(root, s, join(lib, t2.folder), 'From plain', { section: 'Plans', notebook: 'nb' })
+    const t2 = await saveAsTemplate(root, plainRel, tdir, 'General', 'Plain page')
+    const plain = await createPageFromTemplate(root, s, resolveInside(tdir, t2), 'From plain', { section: 'Plans', notebook: 'nb' })
     expect(plain.doc.pageBorder).toBeUndefined()
     expect(plain.doc.pageGrid).toBeUndefined()
   })
 
-  it('saves a page as a template, fills placeholders, and refuses pages with attachments', async () => {
+  it('saves a page as a template with its attachments, keeps its placeholders, and fills them in new pages', async () => {
+    await ensureTemplatesNotebook(tdir)
     const s = await createSection(root, '', 'Surveys')
     const rel = await pageWithText(s, 'Survey form', 'Survey of {{section}} on {{date}} in {{notebook}}: {{title}}')
-    const lib = libraryDir(root, 'notebook', join(dir, 'global'))
-    const t = await saveAsTemplate(root, rel, lib, 'notebook', 'Survey page', 'Standard survey layout')
-    expect(t.ref).toBe('notebook:Survey page.template')
-    const listed = await listTemplates(lib, 'notebook')
-    expect(listed.map((x) => x.name)).toEqual(['Survey page'])
-    const made = await createPageFromTemplate(root, s, join(lib, t.folder), 'Ridge Road', { section: 'Surveys', notebook: 'nb' })
+    const src = join(dir, 'checklist.pdf')
+    await fs.writeFile(src, 'pdf bytes')
+    const entry = await copyFileIntoPage(root, rel, src, ATTACHMENTS_DIR)
+    const loaded = await loadPage(root, rel)
+    await savePage(root, rel, { ...loaded.doc, objects: [...loaded.doc.objects, { kind: 'file', id: 'ff', x: 0, y: 0, width: 300, name: entry.name, originalName: 'checklist.pdf' }], manifest: { ...loaded.doc.manifest, attachments: [entry] } })
+
+    const t = await saveAsTemplate(root, rel, tdir, 'General', 'Survey page')
+    expect(t).toBe('General/Survey page.page')
+    const tdoc = (await loadPage(tdir, t)).doc
+    expect(tdoc.title).toBe('Survey page')
+    expect(tdoc.id).not.toBe(loaded.doc.id)
+    expect(JSON.stringify(tdoc.objects)).toContain('{{section}}')
+    expect(await fs.readFile(join(tdir, t, ATTACHMENTS_DIR, entry.name), 'utf8')).toBe('pdf bytes')
+    expect((await listTemplates(tdir)).map((x) => x.name)).toEqual(['Survey page'])
+
+    const made = await createPageFromTemplate(root, s, resolveInside(tdir, t), 'Ridge Road', { section: 'Surveys', notebook: 'nb' })
     const text = JSON.stringify(made.doc.objects)
     expect(text).toContain('Survey of Surveys on ')
     expect(text).toContain('in nb: Ridge Road')
     expect(text).not.toContain('{{')
-    expect(made.doc.id).not.toBe(t.id)
-
-    const src = join(dir, 'big.bin')
-    await fs.writeFile(src, 'x')
-    const entry = await copyFileIntoPage(root, rel, src, ATTACHMENTS_DIR)
-    const loaded = await loadPage(root, rel)
-    await savePage(root, rel, { ...loaded.doc, objects: [...loaded.doc.objects, { kind: 'file', id: 'ff', x: 0, y: 0, width: 300, name: entry.name, originalName: 'big.bin' }], manifest: { ...loaded.doc.manifest, attachments: [entry] } })
-    await expect(saveAsTemplate(root, rel, lib, 'notebook', 'Bad', '')).rejects.toThrow(/big\.bin/)
+    expect(made.doc.id).not.toBe(tdoc.id)
+    expect(made.doc.manifest.attachments.map((a) => a.name)).toEqual([entry.name])
+    expect(await fs.readFile(join(root, made.relPath, ATTACHMENTS_DIR, entry.name), 'utf8')).toBe('pdf bytes')
   })
 
-  it('remembers a default template per section', async () => {
+  it('a section default names a template by its page id, which survives renaming and moving it', async () => {
+    await ensureTemplatesNotebook(tdir)
     const s = await createSection(root, '', 'S')
-    await setSectionDefaultTemplate(root, s, 'notebook:X.template')
-    const tree = await openNotebook(root)
-    const sec = tree.children[0]!
-    if (sec.kind !== 'section') throw new Error()
-    expect((await fs.readFile(join(root, s, 'section.json'), 'utf8'))).toContain('"defaultTemplate": "notebook:X.template"')
+    const t = await saveAsTemplate(root, await pageWithText(s, 'Visit', 'Visit notes'), tdir, 'General', 'Visit form')
+    const { id } = (await listTemplates(tdir))[0]!
+    await setSectionDefaultTemplate(root, s, templateRef(id))
+    expect(await fs.readFile(join(root, s, 'section.json'), 'utf8')).toContain(`"defaultTemplate": "template:${id}"`)
+    expect(templateIdOf(await sectionDefaultTemplate(root, s))).toBe(id)
+    const renamed = await renamePage(tdir, t, 'Visit form v2')
+    const other = await createSection(tdir, '', 'Other')
+    await movePage(tdir, renamed.relPath, other)
+    expect(await findTemplate(tdir, id)).toMatchObject({ name: 'Visit form v2', section: 'Other' })
     await setSectionDefaultTemplate(root, s, null)
-    expect((await fs.readFile(join(root, s, 'section.json'), 'utf8'))).not.toContain('defaultTemplate')
+    expect(await fs.readFile(join(root, s, 'section.json'), 'utf8')).not.toContain('defaultTemplate')
+    // Defaults set by earlier versions name their own template folders, which are no longer used.
+    expect(templateIdOf('global:Visit form.template')).toBeNull()
+    expect(templateIdOf('notebook:Visit form.template')).toBeNull()
+    expect(templateIdOf('template:')).toBeNull()
   })
 
   it('placeholders are case-insensitive and unknown ones are left alone', () => {

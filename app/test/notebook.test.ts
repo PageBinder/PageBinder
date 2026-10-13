@@ -32,10 +32,10 @@ describe('notebook structure', () => {
     expect(renderPageHtml(doc, { view: 'sheets' })).toContain('data-view="sheets"')
   })
 
-  it('creates a notebook with metadata, templates folder, and readme', async () => {
+  it('creates a notebook with metadata and a readme', async () => {
     const root = await createNotebook(dir, 'Farm records 2026')
     const names = await fs.readdir(root)
-    expect(names.sort()).toEqual(['README.txt', 'notebook.json', 'templates'])
+    expect(names.sort()).toEqual(['README.txt', 'notebook.json'])
     const tree = await openNotebook(root)
     expect(tree.meta.name).toBe('Farm records 2026')
     expect(tree.children).toEqual([])

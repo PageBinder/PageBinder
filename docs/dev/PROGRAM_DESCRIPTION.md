@@ -54,7 +54,7 @@ Reasons for this stack: the web editor ecosystem gives the strongest tables, ima
 
 A notebook contains section groups and sections. Section groups can be nested and contain sections and further section groups. Sections contain pages. Pages can have subpages, which are ordinary pages marked as children of the page above them for display and indentation only.
 
-Each notebook is independent. It carries its own templates, its own search index cache, and all of its own attachments, so a notebook folder can be copied to another machine and opened with nothing missing.
+Each notebook is independent. It carries its own search index cache and all of its own attachments, so a notebook folder can be copied to another machine and opened with nothing missing. Pages made from templates are complete copies, so a notebook never depends on the templates it was made with.
 
 Multiple notebooks can be open at once. Search can span all of them.
 
@@ -161,10 +161,6 @@ Every file entering a page folder, whether dropped, pasted, or created by the he
 ```
 Farm records 2026/                    notebook folder
   notebook.json                       notebook id, name, settings, section order
-  templates/                          page templates (see section 12)
-    Survey page.template/
-      page.json
-      images/
   .index/                             rebuildable cache, excluded from backup
     search.sqlite
   Site surveys/                       section group
@@ -242,17 +238,16 @@ There is no notebook-level attachment store and no deduplication. Two pages with
 - Snapshots contain only the page document. Images and attachments are never modified in place; replacing one writes a new file with a new name and the old file is kept while any snapshot still references it. Any snapshot can therefore be reopened with the images it had at the time.
 - Pruning keeps the history from growing without limit: every version for the last day, one per day for the last month, one per week beyond that. The policy is adjustable per notebook and pruning can be disabled.
 - Deleted pages move to a per-notebook recycle folder and can be restored for a configurable period before being removed.
+- Notebooks made by versions before 1.1.4 may hold a `templates/` folder at the top. It is not a section, is left untouched, and is no longer used (see section 12).
 
 ## 12. Templates
 
-- Any page can be saved as a template with a name and description. The template is stored in the notebook's templates folder as a copy of the page document and its inline images.
-- A template may contain only text, tables, and inline images intended to print with the document. Saving as a template refuses if the page has any files in its attachments folder, naming the files in the message.
-- Duplicating a template copies its images into the new page. Every page owns its own copy, so editing or deleting a template never changes pages already made from it.
-- New page from template is available in every section's add page menu.
-- Each section can set a default template so the plain add page action produces that layout.
-- Templates can contain placeholders for the date, section name, notebook name, and page title that are filled in when a page is created from them.
-- Templates belong to the notebook and travel with it when the folder is copied. The Templates notebook, reached from the notebook menu, shows every template as an editable page in one section per library; editing a template there changes pages made from it afterwards, and dragging a template between the sections changes which library holds it.
-- **Global template library.** A second templates folder, in the user's application data folder by default and relocatable to any path such as a NAS share, uses the identical format. The new page menu lists notebook templates first and global templates beneath them. Save as template asks which library to use. Because both libraries are the same folder layout read by the same code, the global library adds one settings entry and one extra folder to scan, and nothing else.
+- **Templates are the pages of the Templates notebook.** It is an ordinary notebook kept in the app's settings folder (`Templates notebook`), made on first use with one section, General, and opened from the notebook switch screen. Everything a notebook does works there: sections and section groups, rename, cut, copy, paste, delete with undo and the recycle folder, search, Page History, Notebook Properties, Export, and Verify. It is not listed among recent notebooks.
+- Any page can be saved as a template: Save as Template copies it, pictures and attached files included, into a section of the Templates notebook under the name given, asking which section when there is more than one. A page copied in a notebook can also be pasted straight into the Templates notebook.
+- New page from template is available in every section's add page menu, which lists every template under its section in the Templates notebook. Creating a page copies the template's pictures and attached files into the new page, so every page owns its own copy and editing or deleting a template never changes pages already made from it.
+- Each section can set a default template so the plain add page action produces that layout. The section stores the template page's permanent ID (`"defaultTemplate": "template:<id>"`), so renaming or moving the template keeps the default.
+- Templates can contain placeholders for the date, time, section name, notebook name, and page title (`{{date}}`, `{{time}}`, `{{datetime}}`, `{{section}}`, `{{notebook}}`, `{{title}}`) that are filled in when a page is created from them. In the Templates notebook they stay as written, and new pages there start blank.
+- Templates kept by versions before 1.1.4 (`.template` folders in the settings folder's `templates` library, or in a notebook's own `templates` folder) are not shown or used, and section defaults naming them (`global:` or `notebook:`) are ignored, so those sections start new pages blank. Their files are left in place. (The user's decision, 2026-10-13.)
 
 ## 13. Copy and move
 
@@ -294,7 +289,7 @@ This section has priority over convenience and performance. The design goal is t
 | History snapshots (`.history/`) | Source, redundant | Older versions of one page | None needed; current page is unaffected |
 | Autosave draft (`page.json.autosave`) | Transient | Unsaved edits of one page | None needed after a clean save |
 | Section, group, and notebook metadata files | Source, small | Order, colors, names, default template of one level | Regenerated from the folder layout with defaults; only ordering and colors are lost |
-| Templates | Source | One template | NAS copy |
+| Templates notebook (settings folder) | Source | Templates | Recycle folder and page history, as any notebook; copy the folder to back it up |
 | Recycle folder | Source | Deleted pages awaiting purge | NAS copy |
 | Search index and tree cache (`.index/`) | Cache | Nothing | Rebuilt automatically |
 | Lock file | Transient | Nothing | Removed automatically when stale |

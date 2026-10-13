@@ -22,6 +22,8 @@ export interface MenuItem {
   /** Opens these items in place of the menu, with a Back entry. */
   submenu?: MenuItem[]
   disabled?: boolean
+  /** A heading over the items that follow (not clickable). */
+  heading?: boolean
 }
 
 function ColorPalette({ pick, onDone }: { pick: ColorPick; onDone: () => void }): JSX.Element {
@@ -104,6 +106,10 @@ export function ContextMenu({ x, y, items: rootItems, onClose }: { x: number; y:
       {items.map((item, i) =>
         item.separator ? (
           <div key={i} className="context-separator" />
+        ) : item.heading ? (
+          <div key={i} className="context-heading">
+            {item.label}
+          </div>
         ) : item.colors ? (
           <ColorPalette key={i} pick={item.colors} onDone={onClose} />
         ) : item.swatches ? (
