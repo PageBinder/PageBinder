@@ -7,7 +7,7 @@ Every version opens, shows, edits, prints, and searches notebooks made by the
 earlier ones. Nothing ever needs converting.
 
 
-Version 1.1.4 - in development (not yet released)
+Version 1.1.5 - in development (not yet released)
 -------------------------------------------------
 
 Templates
@@ -26,7 +26,6 @@ Templates
 - The + menu in the page list offers every template, listed under its
   section in the Templates notebook, and any of them can be a section's
   default template.
-- Pictures show on template pages, including pictures in text boxes.
 - Templates kept by earlier versions are not brought into the Templates
   notebook and are no longer offered, and a section whose default template
   was one of them now starts new pages blank. Their files are left where
@@ -53,6 +52,23 @@ Pages
 - Search now finds pages that were moved, pasted, or restored from the
   recycle folder. Before, such a page could be missed until it was next
   edited or the search index was rebuilt.
+
+
+Version 1.1.4 - draft of 3 October 2026 (not published)
+-------------------------------------------------------
+
+Templates
+- Pictures now show on template pages in the Templates notebook: pictures in
+  a page saved as a template, pictures inserted while editing a template, and
+  pictures in a template's text boxes. Before, only an empty frame showed.
+  Pages made from a template always had their pictures.
+- Templates are now always available in every notebook: Save as Template no
+  longer asks whether a template is for one notebook only, and the Templates
+  notebook shows one Global templates section. Templates saved for a single
+  notebook by earlier versions are no longer shown or used (their files stay
+  in that notebook's templates folder), and a section that used one as its
+  default template now starts new pages blank. Pages already made from a
+  template are not affected: each is its own copy.
 
 
 Version 1.1.3 - 2 October 2026 (pre-release)

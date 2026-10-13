@@ -31,7 +31,7 @@ jobs:
     outputs:
       proceed: ${{ steps.decide.outputs.proceed }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - id: decide
         env:
           GH_TOKEN: ${{ github.token }}
@@ -62,8 +62,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -76,7 +76,7 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       - name: Check the package holds no development or user data
         run: npx tsx scripts/check-package.ts
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-${{ runner.os }}
           path: |
@@ -91,8 +91,8 @@ jobs:
     if: needs.check.outputs.proceed == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           path: app/files
           merge-multiple: true

@@ -18,6 +18,13 @@ Entry format:
 ---
 
 ## 2026-10-13 · lead (macOS, Apple silicon) · main
+**Changed:** Version 1.1.5, at the user's request, built as a new draft release so the v1.1.4 draft (from `aa270d9`) stays as it was. The revision log and the development plan give 1.1.4 its own draft notes and list everything after it under 1.1.5. The GitHub workflows now use the Node.js 24 versions of their steps: `actions/checkout@v7`, `actions/setup-node@v7`, `actions/upload-artifact@v7`, and `actions/download-artifact@v8`.
+**Found:** GitHub warned that the v4 steps target the retired Node.js 20. The newer versions' breaking changes do not touch the inputs these workflows use.
+**Checked:** Type check and 96 unit tests locally. The macOS and Windows run on this push checks the new steps before the v1.1.5 tag is pushed; `release.yml` then builds the draft.
+**Next platform must check:** Windows: install the v1.1.5 draft's installer and try the Templates notebook (the steps in the previous note).
+**Open:** v1.1.4 and v1.1.5 are drafts, and nothing is public.
+
+## 2026-10-13 · lead (macOS, Apple silicon) · main
 **Changed:** 1.1.4 work, commits `dd6a14c..64b8fbd` and this note. Select several pages (Ctrl/Cmd-click, Shift-click) and cut, copy, paste, or delete them together, each as one undo step; Cut moves pages; selected rows stay highlighted under the pointer. The Templates notebook is now an ordinary notebook in the settings folder (`Templates notebook`), so sections, groups, undo, the recycle folder, search, Page History, Properties, Export, and Verify all work there. Save as Template copies the page, attachments included, into a chosen section; section defaults are `template:<page id>`. Templates and defaults from earlier versions are not carried over (the user waived the compatibility rule for templates only; see DECISIONS.md). Copied pages, pictures, and files paste into another notebook (the source must be the Templates notebook or in Recent). At the user's confirmed request, the v1.1.0 to v1.1.3 pre-releases were turned into drafts (notes, installers, and tags kept); nothing is public now.
 **Found:** Search lost a page's text after it was moved, pasted, or restored from the recycle folder: the section refresh records only where a page is, and the folder check skips unchanged files. Fixed with `indexArrivedPage` in `ipc.ts`. Paste page here had been offered in another notebook since 1.1.0 but always failed; it works now. GitHub's `releases/latest` link, used by the README, only finds full releases, so it already led to the Releases list, which is now empty for the public.
 **Checked:** Type check; 96 unit tests; every end-to-end suite (140 s). Phase 6 adds a search check for a pasted and restored page; phase 6b is rewritten for the Templates notebook (11 steps). The user tried it in the running app.
@@ -153,11 +160,4 @@ Entry format:
 **Found:** The first push failed the phase 5 suite on both platforms: the test build is launched from `app/out-e2e/main`, and the app looked for its Help documents only one level above its app path. `about.ts` now tries the app path and the working folder with up to three parent levels each. In a real installation the documents come from `docs-bundle`, which was never affected.
 **Checked:** Type check and unit tests from `app/`; phase 5 suite passes locally after the fix. The workflow run for the fix commit is the proof on CI.
 **Next platform must check:** Nothing.
-**Open:** Unchanged.
-
-## 2026-09-25 · lead (macOS, Apple silicon) · main
-**Changed:** Repository layout, so the GitHub front page shows a short list before the README. The program moved into `app/` (run every npm and npx command there), user documents into `docs/`, and developer notes (this file, the decision log, platform notes, the development plan, the CLAUDE.local example) into `docs/dev/`. Only `README.md`, `LICENSE`, and `CLAUDE.md` stay at the root. The packaged app now receives its help documents from `docs/` as `resources/docs-bundle` (electron-builder `extraResources`), and `app/src/main/about.ts` reads them from there when packaged and from the repository root in development. `app/scripts/check-package.ts` checks that bundle. Workflows run every command in `app/`, and artifact paths are prefixed `app/`. `/sync`, `/handoff`, and `CLAUDE.md` use the new paths.
-**Found:** Nothing new.
-**Checked:** From `app/`: type check clean, 72 unit tests pass, production build succeeds, phase 1 end-to-end suite passes. `npm run dist:mac` built both Mac installers, and the package check passed with the docs-bundle present and `docs/dev` and `docs/images` absent. The macOS and Windows workflow run for this push is the proof for CI.
-**Next platform must check:** On every machine, after `/sync`: `cd app` before any npm command, and move any local `node_modules`, `out`, `out-e2e`, and `test-notebooks` folders into `app/` (or just run `npm ci` there). Nothing else changes.
 **Open:** Unchanged.
