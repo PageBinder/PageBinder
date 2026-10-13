@@ -17,6 +17,13 @@ Entry format:
 
 ---
 
+## 2026-10-13 · lead (macOS, Apple silicon) · main
+**Changed:** 1.1.4 work, commits `dd6a14c..64b8fbd` and this note. Select several pages (Ctrl/Cmd-click, Shift-click) and cut, copy, paste, or delete them together, each as one undo step; Cut moves pages; selected rows stay highlighted under the pointer. The Templates notebook is now an ordinary notebook in the settings folder (`Templates notebook`), so sections, groups, undo, the recycle folder, search, Page History, Properties, Export, and Verify all work there. Save as Template copies the page, attachments included, into a chosen section; section defaults are `template:<page id>`. Templates and defaults from earlier versions are not carried over (the user waived the compatibility rule for templates only; see DECISIONS.md). Copied pages, pictures, and files paste into another notebook (the source must be the Templates notebook or in Recent). At the user's confirmed request, the v1.1.0 to v1.1.3 pre-releases were turned into drafts (notes, installers, and tags kept); nothing is public now.
+**Found:** Search lost a page's text after it was moved, pasted, or restored from the recycle folder: the section refresh records only where a page is, and the folder check skips unchanged files. Fixed with `indexArrivedPage` in `ipc.ts`. Paste page here had been offered in another notebook since 1.1.0 but always failed; it works now. GitHub's `releases/latest` link, used by the README, only finds full releases, so it already led to the Releases list, which is now empty for the public.
+**Checked:** Type check; 96 unit tests; every end-to-end suite (140 s). Phase 6 adds a search check for a pasted and restored page; phase 6b is rewritten for the Templates notebook (11 steps). The user tried it in the running app.
+**Next platform must check:** Windows: open Templates from the start screen (one section, General) and add a section; Save as Template from a notebook page (it asks for the section when there are several); in a notebook, the + menu lists templates under section headings, and a page made from one has its pictures and files; copy a page and a picture in a notebook and paste both into the Templates notebook; search finds a page's text after it is cut and pasted.
+**Open:** The v1.1.4 draft (tag at `aa270d9`) predates this work; rebuild it only when the user asks. Bringing in templates from earlier versions is listed in FUTURE_FEATURES.md.
+
 ## 2026-10-03 · lead (macOS, Apple silicon) · main
 **Changed:** 1.1.4 work: pictures show on template pages in the Templates notebook (the `pagebinder://` handler now serves `@global/…` and `@nb/…` paths with no regular notebook open). Pushed with a v1.1.4 draft release at the user's request.
 **Found:** The Templates notebook is reached through the Welcome screen, which closes the regular notebook; every picture request was refused in that state.
@@ -154,27 +161,3 @@ Entry format:
 **Checked:** From `app/`: type check clean, 72 unit tests pass, production build succeeds, phase 1 end-to-end suite passes. `npm run dist:mac` built both Mac installers, and the package check passed with the docs-bundle present and `docs/dev` and `docs/images` absent. The macOS and Windows workflow run for this push is the proof for CI.
 **Next platform must check:** On every machine, after `/sync`: `cd app` before any npm command, and move any local `node_modules`, `out`, `out-e2e`, and `test-notebooks` folders into `app/` (or just run `npm ci` there). Nothing else changes.
 **Open:** Unchanged.
-
-## 2026-09-25 · lead (macOS, Apple silicon) · main
-**Changed:** Notes only. Recorded that the OneNote importer will be a separate helper app, not a core feature (see `docs/DECISIONS.md`).
-**Found:** The draft v1.1.0 `PageBinder-1.1.0-arm64.dmg` was downloaded and installed on a real Apple silicon Mac by the user with no issue. The first push-triggered macOS and Windows run on the recreated repository passed every job, including both installers and the cross-platform notebook checks.
-**Checked:** Nothing run locally for this note.
-**Next platform must check:**
-- **Windows machine (fresh session, `/sync` first):** download and install the draft `PageBinder-Setup-1.1.0.exe`; confirm it starts and asks Keep or Start fresh only when earlier settings exist. Then the major test: **drag and drop emails from Outlook** onto a page (single and several at once, with the native drop helper). Also run `npx tsx scripts/cross-platform.ts check <folder>` on a notebook made on the Mac.
-**Open:** The draft v1.1.0 release stays unpublished until the Windows installer has been tried. Outlook drag-and-drop remains unverified.
-
-## 2026-09-25 · lead (macOS, Apple silicon) · main
-**Changed:** The GitHub repository was deleted and recreated with the same name, settings, `main`, and `rev1` tag, to remove superseded commits from before the history cleanup that GitHub still served by commit code. The commit codes on `main` are unchanged, so existing clones keep working with no action. Actions run history restarted, and the draft v1.1.0 release was rebuilt by the Release workflow.
-**Found:** Rewriting history does not remove old commits from GitHub. They stay downloadable by code, and the repository's public activity feed lists those codes. Only deleting the repository, or a GitHub Support purge, removes them.
-**Checked:** None of the 15 superseded commits is served any more; every commit in the new repository is authored by the PageBinder noreply address; the macOS and Windows run and the Release run started from the new repository.
-**Next platform must check:** Never push branches or tags from an old clone made before 2026-09-25 that still holds pre-cleanup history. If unsure, clone fresh. Nothing else.
-**Open:** Nothing new.
-
-## 2026-09-25 · lead (macOS, Apple silicon) · main
-**Changed:** Multi-machine workflow. Git is the shared state and every Claude Code session is a disposable worker. Added the working-across-machines rules to `CLAUDE.md`, this file, `docs/DECISIONS.md`, `docs/PLATFORM_NOTES.md`, `docs/CLAUDE.local.example.md`, and the `/sync` and `/handoff` commands in `.claude/commands/`. `CLAUDE.local.md` is now ignored by git. The macOS and Windows workflow runs on every push to `main` and to `fix/**` branches, skipping pushes that change only Markdown, `docs/`, or `.claude/`.
-**Found:** This Mac's clone predated the cloud session's history rewrite; it was reset to `origin/main`. Locally, `node_modules/electron/install.js` had to be run by hand after `npm ci` before Electron would start.
-**Checked:** Type check clean, 72 unit tests pass, production build succeeds, phase 1 end-to-end suite passes (11 steps). The workflow file was validated as YAML; its first push-triggered run starts with this commit.
-**Next platform must check:**
-- **Windows machine:** create `CLAUDE.local.md` from `docs/CLAUDE.local.example.md`, run `/sync`, then install the draft v1.1.0 `PageBinder-Setup-1.1.0.exe`. Confirm it starts, and that it asks Keep or Start fresh only when earlier settings exist. Run `npx tsx scripts/cross-platform.ts check <folder>` on a notebook made on the Mac.
-- **Mac (any):** install the draft v1.1.0 `.dmg` and confirm the Keep or Start fresh question appears over an earlier installation.
-**Open:** The draft v1.1.0 release is unpublished until both installers have been tried on real machines. Outlook email drag-and-drop is still unverified.
