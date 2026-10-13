@@ -202,3 +202,21 @@ export async function moveTemplate(srcDir: string, targetLibrary: string): Promi
   }
   return folder
 }
+
+/**
+ * Duplicate a template within its library: the copy is named "<name> (copy)" and gets its own id.
+ * Its saved versions are not copied, as with a copied page.
+ */
+export async function duplicateTemplate(srcDir: string, library: string): Promise<string> {
+  const meta = await readJson<TemplateMeta>(join(srcDir, TEMPLATE_META))
+  const base = meta?.name ?? basename(srcDir).replace(new RegExp(`${TEMPLATE_SUFFIX}$`), '')
+  const name = `${base} (copy)`
+  const folder = await uniqueName(library, sanitizeName(name), TEMPLATE_SUFFIX)
+  const dest = join(library, folder)
+  await copyDir(srcDir, dest, (n) => n === '.history' || n === 'page.json.autosave' || n.startsWith('.tmp-') || n.startsWith('page.json.corrupt-'))
+  const fresh: TemplateMeta = { format: meta?.format ?? FORMAT_VERSION, id: newId(), name, description: meta?.description ?? '', created: now() }
+  await writeJson(join(dest, TEMPLATE_META), fresh)
+  const doc = await readValidPage(join(srcDir, PAGE_DOC))
+  if (doc) await writeJson(join(dest, PAGE_DOC), withChecksum({ ...doc, id: fresh.id, title: name, created: now(), modified: now() }))
+  return folder
+}

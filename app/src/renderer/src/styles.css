@@ -350,3 +350,6 @@ body.format-painting .canvas .tiptap { cursor: url("data:image/svg+xml,%3Csvg xm
 .properties-list dt { color: var(--muted); font-size: 12px; padding-top: 2px; }
 .properties-list dd { margin: 0; word-break: break-word; }
 .properties-list ul { margin: 0; padding-left: 16px; }
+
+/* Several pages selected in the page list (Ctrl/Cmd-click, Shift-click). */
+.page-row.selected { background: var(--accent-soft, rgba(55, 138, 221, 0.12)); }

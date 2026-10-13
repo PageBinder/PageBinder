@@ -88,7 +88,8 @@ export function App(): JSX.Element {
   const [canPaste, setCanPaste] = useState(false)
   /** The object clipboard holds a picture that can go into a text box. */
   const [canPastePicture, setCanPastePicture] = useState(false)
-  const [copiedPage, setCopiedPage] = useState<PageRef | null>(null)
+  /** Pages (or templates) copied with Copy page, to paste into a section of the same kind. */
+  const [copiedPages, setCopiedPages] = useState<{ pages: PageRef[]; templates: boolean } | null>(null)
   const onSelectionInfo = useCallback((i: { shapes: number; total: number }) => setSelectionInfo((cur) => (cur.shapes === i.shapes && cur.total === i.total ? cur : i)), [])
   const [about, setAbout] = useState<DocName | 'about' | 'dependencies' | null>(null)
   const [templates, setTemplates] = useState<{ notebook: TemplateInfo[]; global: TemplateInfo[] }>({ notebook: [], global: [] })
@@ -479,6 +480,47 @@ export function App(): JSX.Element {
     [openPage, selectSection]
   )
 
+  /** Undoable creation of several pages at once (a paste): one undo recycles them all. */
+  const recordCreateMany = (rels: string[], label: string): void => {
+    if (templateModeRef.current || !rels.length) return
+    if (rels.length === 1) {
+      recordCreate(rels[0]!, label)
+      return
+    }
+    let current = [...rels]
+    let recycled: { name: string; section: string }[] = []
+    pushHistory({
+      kind: 'notebook',
+      label,
+      pageRel: rels[0]!,
+      undo: async () => {
+        recycled = []
+        let last: NotebookTree | null = null
+        for (const rel of current) {
+          if (pageRef.current?.relPath === rel) {
+            clearTimers()
+            setPage(null)
+          }
+          const r = await window.pagebinder.page.delete(rel)
+          recycled.push({ name: r.name, section: rel.slice(0, rel.lastIndexOf('/')) })
+          last = r.tree
+        }
+        if (last) await showPage(last, null, current[0]!.slice(0, current[0]!.lastIndexOf('/')))
+      },
+      redo: async () => {
+        const back: string[] = []
+        let last: NotebookTree | null = null
+        for (const r of recycled) {
+          const res = await window.pagebinder.recycle.restore(r.name, r.section)
+          back.push(res.rel)
+          last = res.tree
+        }
+        current = back
+        if (last) await showPage(last, back[back.length - 1] ?? null)
+      }
+    })
+  }
+
   /** Undoable creation: undo recycles the page, redo restores it. */
   const recordCreate = (relPath: string, label: string): void => {
     if (templateModeRef.current) return
@@ -795,18 +837,94 @@ export function App(): JSX.Element {
   )
 
   const pastePage = useCallback(async (): Promise<void> => {
-    if (!copiedPage || !sectionRel) return
+    const clip = copiedPages
+    if (!clip || !sectionRel || clip.templates !== templateModeRef.current) return
     try {
       await savePage()
-      const { rel, tree: t } = await window.pagebinder.move.copyPage(copiedPage.relPath, sectionRel)
-      setTree(t)
-      await openPage(rel)
-      recordCreate(rel, 'paste page')
+      const made: string[] = []
+      let t: NotebookTree | null = null
+      for (const p of clip.pages) {
+        const r = await window.pagebinder.move.copyPage(p.relPath, sectionRel)
+        made.push(r.rel)
+        t = r.tree
+      }
+      if (t) setTree(t)
+      if (made.length) await openPage(made[made.length - 1]!)
+      recordCreateMany(made, made.length === 1 ? 'paste page' : `paste ${made.length} pages`)
     } catch (err) {
       fail(err)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [copiedPage, sectionRel, savePage, openPage])
+  }, [copiedPages, sectionRel, savePage, openPage])
+
+  /** Delete several pages (or templates) after one confirmation; one undo restores them all. */
+  const deletePages = (targets: PageRef[]): void => {
+    if (targets.length === 1) {
+      deletePage(targets[0]!)
+      return
+    }
+    const n = targets.length
+    setDialog({
+      kind: 'confirm',
+      title: templateMode ? `Delete ${n} templates` : `Delete ${n} pages`,
+      message: templateMode ? `Remove these ${n} templates from the library? Pages already made from them are not affected.` : `Move these ${n} pages to the notebook's recycle folder?`,
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: () => {
+        void (async () => {
+          try {
+            let recycled: { name: string; section: string }[] = []
+            let last: NotebookTree | null = null
+            for (const target of targets) {
+              if (pageRef.current?.relPath === target.relPath) {
+                clearTimers()
+                setPage(null)
+              }
+              const r = await window.pagebinder.page.delete(target.relPath)
+              recycled.push({ name: r.name, section: target.relPath.slice(0, target.relPath.lastIndexOf('/')) })
+              last = r.tree
+            }
+            if (last) setTree(last)
+            if (pageRef.current === null && last) await selectSection(last, sectionRel)
+            if (!templateModeRef.current) {
+              let current: string[] = []
+              pushHistory({
+                kind: 'notebook',
+                label: `delete ${n} pages`,
+                pageRel: targets[0]!.relPath,
+                undo: async () => {
+                  current = []
+                  let t: NotebookTree | null = null
+                  for (const r of recycled) {
+                    const back = await window.pagebinder.recycle.restore(r.name, r.section)
+                    current.push(back.rel)
+                    t = back.tree
+                  }
+                  if (t) await showPage(t, current[0] ?? null)
+                },
+                redo: async () => {
+                  recycled = []
+                  let t: NotebookTree | null = null
+                  for (const rel of current) {
+                    if (pageRef.current?.relPath === rel) {
+                      clearTimers()
+                      setPage(null)
+                    }
+                    const again = await window.pagebinder.page.delete(rel)
+                    recycled.push({ name: again.name, section: rel.slice(0, rel.lastIndexOf('/')) })
+                    t = again.tree
+                  }
+                  if (t) await showPage(t, null, current[0]!.slice(0, current[0]!.lastIndexOf('/')))
+                }
+              })
+            }
+          } catch (err) {
+            fail(err)
+          }
+        })()
+      }
+    })
+  }
 
   /** Full name from the OS account, then the date and time, inserted at the cursor in the current font. */
   const insertSignature = useCallback(async (editor: import('@tiptap/react').Editor): Promise<void> => {
@@ -1527,8 +1645,8 @@ export function App(): JSX.Element {
           counts={counts}
           right={
             templateMode ? (
-              <span className="muted small template-hint" title="Edit a template here to change every page made from it later. Drag a template to another tab to change which library holds it.">
-                Templates notebook · edits apply to pages made later · drag between tabs to move
+              <span className="muted small template-hint" title="Edit a template here to change every page made from it later. Pages already made from it keep their own content.">
+                Templates notebook · edits apply to pages made later
               </span>
             ) : (
               <SearchBox sectionRel={sectionRel} sectionName={section?.name} onOpen={(hit, q) => void openSearchHit(hit, q)} />
@@ -1651,7 +1769,6 @@ export function App(): JSX.Element {
             renamingRel={renamingRel}
             onOpen={(rel) => void openPage(rel)}
             onAdd={() => void addPage()}
-            onDelete={deletePage}
             onStartRename={setRenamingRel}
             onRename={(rel, title) => void renamePage(rel, title)}
             onCancelRename={() => {
@@ -1668,10 +1785,10 @@ export function App(): JSX.Element {
             templateMode={templateMode}
             onAddFromTemplate={(ref) => void addPageFromTemplate(ref)}
             onSaveAsTemplate={(p) => setTemplateFor(p)}
-            onMoveCopy={(p) => setMoveCopy({ mode: 'page', page: p })}
-            onCopyPage={(p) => setCopiedPage(p)}
+            onCopyPages={(pages) => setCopiedPages({ pages, templates: templateMode })}
+            onDeletePages={deletePages}
             onPastePage={() => void pastePage()}
-            copiedPageTitle={copiedPage?.title ?? null}
+            copiedPageTitle={copiedPages && copiedPages.templates === templateMode ? (copiedPages.pages.length === 1 ? copiedPages.pages[0]!.title || 'Untitled page' : `${copiedPages.pages.length} ${templateMode ? 'templates' : 'pages'}`) : null}
           />
         </div>
         {dialog && <Dialog spec={dialog} onClose={() => setDialog(null)} />}

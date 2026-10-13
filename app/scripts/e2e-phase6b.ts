@@ -114,6 +114,22 @@ async function main(): Promise<void> {
   assert(tmeta.name === 'Visit form v2', 'template name follows the page title')
   step('renaming a template page renames the template')
 
+  // 4. Templates are copied and pasted like pages; the old "other library" item is gone.
+  await page.locator('.page-row', { hasText: 'Visit form v2' }).click({ button: 'right' })
+  const tItems = await page.locator('.context-item').allTextContents()
+  assert(tItems.includes('Copy template') && !tItems.some((t) => /other library/i.test(t)), `a template offers Copy template and no library move (${tItems.join(' | ')})`)
+  await page.locator('.context-item', { hasText: /^Copy template$/ }).click()
+  await page.locator('.page-list-head .icon').click()
+  await page.locator('.context-item', { hasText: 'Paste template here: Visit form v2' }).click()
+  await page.waitForSelector('.page-row:has-text("Visit form v2 (copy)")')
+  const copyDir = join(globalDir, 'Visit form v2 (copy).template')
+  const copyMeta = JSON.parse(await fs.readFile(join(copyDir, 'template.json'), 'utf8')) as { id: string; name: string }
+  const origMeta = JSON.parse(await fs.readFile(join(globalDir, 'Visit form.template', 'template.json'), 'utf8')) as { id: string }
+  const copyDoc = JSON.parse(await fs.readFile(join(copyDir, 'page.json'), 'utf8')) as PageDoc
+  assert(copyMeta.name === 'Visit form v2 (copy)' && copyMeta.id !== origMeta.id && copyDoc.id === copyMeta.id, `the copy is its own template (${JSON.stringify(copyMeta)})`)
+  assert(JSON.stringify(copyDoc.objects).includes('plus an edit') && (await fs.readdir(join(copyDir, 'images'))).includes('logo.png'), 'the copy carries the content and pictures')
+  step('templates are copied and pasted like pages')
+
   // 5. Back in the notebook, the global template is offered and carries the edit.
   await page.locator('.notebook-button').click()
   await page.locator('.context-item', { hasText: 'Switch notebook' }).click()
@@ -124,7 +140,7 @@ async function main(): Promise<void> {
   await page.locator('.page-list-head .icon').click()
   const offered = await page.locator('.context-item').allTextContents()
   assert(!offered.some((t) => t.includes('Old notebook form')), `the Add page menu offers no notebook-only template (${offered.join(' | ')})`)
-  await page.locator('.context-item', { hasText: 'From template: Visit form v2' }).click()
+  await page.locator('.context-item', { hasText: /^From template: Visit form v2$/ }).click()
   await page.waitForSelector('.page-row.renaming input')
   assert((await page.locator('.page-row.renaming input').inputValue()) === 'Visit form v2', 'new page named after the template')
   await page.keyboard.press('Enter')
@@ -151,20 +167,23 @@ async function main(): Promise<void> {
   assert(!JSON.stringify(fresh.objects).includes('Original template text'), 'a notebook-only default template is no longer used: the new page is blank')
   step('notebook-only templates from earlier versions are no longer shown or used')
 
-  // 6. Deleting a template page removes it from the library.
+  // 6. Deleting templates removes them from the library; two are selected and deleted together.
   await page.locator('.notebook-button').click()
   await page.locator('.context-item', { hasText: 'Switch notebook' }).click()
   await page.waitForSelector('.welcome')
   await page.locator('.recent-list button', { hasText: 'Templates' }).first().click()
   await page.waitForSelector('.notebook-button.templates')
   await page.locator('.tab', { hasText: 'Global templates' }).click()
-  await page.waitForSelector('.page-row:has-text("Visit form v2")')
-  await page.locator('.page-row', { hasText: 'Visit form v2' }).click({ button: 'right' })
-  await page.locator('.context-item', { hasText: 'Delete template' }).click()
+  await page.waitForFunction(() => document.querySelectorAll('.page-row:not(.add)').length === 2)
+  await page.locator('.page-row:not(.add)').first().click()
+  await page.locator('.page-row:not(.add)').nth(1).click({ modifiers: ['Shift'] })
+  await page.locator('.page-row:not(.add)').nth(1).click({ button: 'right' })
+  await page.locator('.context-item', { hasText: /^Delete 2 templates$/ }).click()
   await page.locator('.dialog button[type=submit]').click()
   await page.waitForFunction(() => !document.querySelector('.page-row:not(.add)'))
-  assert(!(await fs.readdir(globalDir)).includes('Visit form.template'), 'template removed from the library')
-  step('deleting a template page removes it from the available templates')
+  const left = await fs.readdir(globalDir)
+  assert(!left.includes('Visit form.template') && !left.includes('Visit form v2 (copy).template'), `both templates removed from the library (${left.join(', ')})`)
+  step('deleting templates, one or several at once, removes them from the available templates')
 
   await app.close()
   process.stdout.write(`\nPASS. Notebook kept at ${root}\n`)

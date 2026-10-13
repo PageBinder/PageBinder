@@ -22,6 +22,16 @@ Templates
   in that notebook's templates folder), and a section that used one as its
   default template now starts new pages blank. Pages already made from a
   template are not affected: each is its own copy.
+- Templates can be copied and pasted like pages: right-click a template >
+  Copy template, then Paste template here from the + menu. The copy is named
+  "<name> (copy)". The leftover "Move to the other library" item is gone.
+
+Pages
+- Select several pages at once in the page list: Ctrl-click (Cmd-click on a
+  Mac) adds or removes a page, and Shift-click selects every page between the
+  last one clicked and this one, as in File Explorer and Finder. Right-click
+  the selection to copy or delete them all; paste them from the + menu. One
+  Undo reverses the whole paste or delete. This works for templates too.
 
 
 Version 1.1.3 - 2 October 2026 (pre-release)

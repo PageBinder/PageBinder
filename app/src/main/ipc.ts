@@ -29,7 +29,7 @@ import { restoreSnapshot, copySnapshotToNewPage } from './storage/page'
 import { renderPageHtml } from '../shared/render/renderPage'
 import { notebookUrl } from './protocol'
 import { readDoc, aboutInfo, userFullName, type DocName } from './about'
-import { listTemplates, saveAsTemplate, deleteTemplate, createPageFromTemplate, libraryDir, parseRef, setSectionDefaultTemplate, sectionDefaultTemplate, createBlankTemplate, moveTemplate, TEMPLATE_META, type TemplateScope, type TemplateMeta } from './storage/templates'
+import { listTemplates, saveAsTemplate, deleteTemplate, createPageFromTemplate, libraryDir, parseRef, setSectionDefaultTemplate, sectionDefaultTemplate, createBlankTemplate, moveTemplate, duplicateTemplate, TEMPLATE_META, type TemplateScope, type TemplateMeta } from './storage/templates'
 import { movePage, copyPage, moveContainer, copyContainer, recycleContainer } from './storage/copymove'
 import { readJson, writeJson } from './storage/notebook'
 import type { SectionMeta } from '../shared/types'
@@ -602,6 +602,12 @@ export function registerIpc(): void {
     return { rel: newRel, tree }
   })
   ipcMain.handle('page:copy', async (_e, rel: string, targetSectionRel: string) => {
+    // A template is copied within the global library.
+    const src = resolveRel(rel)
+    if (src.template) {
+      const folder = await duplicateTemplate(resolveInside(src.root, src.rel), globalTemplatesDir())
+      return { rel: `${GLOBAL_PREFIX}${folder}`, tree: await templatesTree() }
+    }
     const root = requireRoot()
     const newRel = await copyPage(root, rel, targetSectionRel)
     const tree = await afterSectionChange(targetSectionRel)
