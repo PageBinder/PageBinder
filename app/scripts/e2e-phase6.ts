@@ -271,6 +271,30 @@ async function main(): Promise<void> {
   assert((await pages(target)).length === 2, 'one undo restores both deleted pages')
   step('several pages are selected with Shift and Ctrl/Cmd-click, copied, pasted, and deleted together, each undone in one step')
 
+  // 9. A Ctrl/Cmd-clicked page stays highlighted while the pointer is still over it. Cut pages are
+  //    dimmed until pasted; pasting moves them, and one undo moves them all back.
+  await page.locator('.tab', { hasText: 'Batch' }).click()
+  await page.locator('.page-row', { hasText: 'Two' }).click()
+  await page.locator('.page-row', { hasText: 'Four' }).click({ modifiers: [mod] })
+  const underPointer = await page.locator('.page-row', { hasText: 'Four' }).evaluate((el) => ({ selected: el.classList.contains('selected'), bg: getComputedStyle(el).backgroundColor }))
+  assert(underPointer.selected && underPointer.bg.replace(/\s/g, '') === 'rgba(55,138,221,0.18)', `the page just Ctrl/Cmd-clicked is highlighted under the pointer (${JSON.stringify(underPointer)})`)
+  await page.locator('.page-row', { hasText: 'Four' }).click({ button: 'right' })
+  await page.locator('.context-item', { hasText: /^Cut 2 pages$/ }).click()
+  assert((await page.locator('.page-row.cut').count()) === 2, 'cut pages are shown dimmed')
+  const twoId = (JSON.parse(await fs.readFile(join(root, batch, 'Two.page', 'page.json'), 'utf8')) as PageDoc).id
+  await page.locator('.tab', { hasText: 'Target' }).click()
+  await page.locator('.page-list-head .icon').click()
+  await page.locator('.context-item', { hasText: 'Paste page here: 2 pages' }).click()
+  await page.waitForFunction(() => document.querySelectorAll('.page-row:not(.add)').length === 4)
+  assert(JSON.stringify(await pages(target)) === JSON.stringify(['Four.page', 'One.page', 'Three.page', 'Two.page']) && JSON.stringify(await pages(batch)) === JSON.stringify(['One.page', 'Three.page']), `pasting cut pages moves them (${await pages(target)} / ${await pages(batch)})`)
+  assert((JSON.parse(await fs.readFile(join(root, target, 'Two.page', 'page.json'), 'utf8')) as PageDoc).id === twoId, 'a moved page keeps its identity')
+  assert(!(await page.locator('.page-row.cut').count()), 'nothing stays cut after the paste')
+  await page.keyboard.press('Escape')
+  await page.keyboard.press(`${mod}+z`)
+  await page.waitForFunction(() => document.querySelectorAll('.page-row:not(.add)').length === 4 && !!document.querySelector('.tab.on')?.textContent?.includes('Batch'))
+  assert(JSON.stringify(await pages(batch)) === JSON.stringify(['Four.page', 'One.page', 'Three.page', 'Two.page']), `one undo moves both pages back (${await pages(batch)})`)
+  step('a Ctrl/Cmd-clicked page stays highlighted, and cut pages move on paste with one undo')
+
   await app.close()
   process.stdout.write(`\nPASS. Notebook kept at ${root}\n`)
 }

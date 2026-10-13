@@ -352,4 +352,7 @@ body.format-painting .canvas .tiptap { cursor: url("data:image/svg+xml,%3Csvg xm
 .properties-list ul { margin: 0; padding-left: 16px; }
 
 /* Several pages selected in the page list (Ctrl/Cmd-click, Shift-click). */
-.page-row.selected { background: var(--accent-soft, rgba(55, 138, 221, 0.12)); }
+/* More specific than the general button hover, so a selected row stays highlighted under the pointer. */
+.page-list .page-row.selected, .page-list .page-row.selected:hover:not(:disabled) { background: rgba(55, 138, 221, 0.18); }
+/* Cut pages wait, dimmed, until they are pasted somewhere else. */
+.page-list .page-row.cut { opacity: 0.5; }

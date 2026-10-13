@@ -88,8 +88,8 @@ export function App(): JSX.Element {
   const [canPaste, setCanPaste] = useState(false)
   /** The object clipboard holds a picture that can go into a text box. */
   const [canPastePicture, setCanPastePicture] = useState(false)
-  /** Pages (or templates) copied with Copy page, to paste into a section of the same kind. */
-  const [copiedPages, setCopiedPages] = useState<{ pages: PageRef[]; templates: boolean } | null>(null)
+  /** Pages (or templates) copied or cut, to paste into a section of the same kind. Cut pages move. */
+  const [copiedPages, setCopiedPages] = useState<{ pages: PageRef[]; templates: boolean; cut: boolean } | null>(null)
   const onSelectionInfo = useCallback((i: { shapes: number; total: number }) => setSelectionInfo((cur) => (cur.shapes === i.shapes && cur.total === i.total ? cur : i)), [])
   const [about, setAbout] = useState<DocName | 'about' | 'dependencies' | null>(null)
   const [templates, setTemplates] = useState<{ notebook: TemplateInfo[]; global: TemplateInfo[] }>({ notebook: [], global: [] })
@@ -839,6 +839,10 @@ export function App(): JSX.Element {
   const pastePage = useCallback(async (): Promise<void> => {
     const clip = copiedPages
     if (!clip || !sectionRel || clip.templates !== templateModeRef.current) return
+    if (clip.cut) {
+      await pasteCutPages(clip.pages, sectionRel)
+      return
+    }
     try {
       await savePage()
       const made: string[] = []
@@ -856,6 +860,58 @@ export function App(): JSX.Element {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [copiedPages, sectionRel, savePage, openPage])
+
+  /**
+   * Paste pages that were cut: they move into `target` (pages already there stay put), keeping their
+   * saved versions. The clipboard empties, as in File Explorer, and one undo moves them all back.
+   */
+  const pasteCutPages = async (cutPages: PageRef[], target: string): Promise<void> => {
+    try {
+      await savePage()
+      let moved: { rel: string; from: string }[] = []
+      let t: NotebookTree | null = null
+      for (const p of cutPages) {
+        const from = p.relPath.slice(0, p.relPath.lastIndexOf('/'))
+        if (from === target) continue
+        if (pageRef.current?.relPath === p.relPath) {
+          clearTimers()
+          setPage(null)
+        }
+        const r = await window.pagebinder.move.page(p.relPath, target)
+        moved.push({ rel: r.rel, from })
+        t = r.tree
+      }
+      setCopiedPages(null)
+      if (t) setTree(t)
+      if (!moved.length) return
+      await openPage(moved[moved.length - 1]!.rel)
+      if (templateModeRef.current) return
+      const moveAll = async (to: (m: { rel: string; from: string }) => string): Promise<void> => {
+        const next: { rel: string; from: string }[] = []
+        let tree2: NotebookTree | null = null
+        for (const m of moved) {
+          if (pageRef.current?.relPath === m.rel) {
+            clearTimers()
+            setPage(null)
+          }
+          const r = await window.pagebinder.move.page(m.rel, to(m))
+          next.push({ rel: r.rel, from: m.from })
+          tree2 = r.tree
+        }
+        moved = next
+        if (tree2) await showPage(tree2, next[next.length - 1]?.rel ?? null)
+      }
+      pushHistory({
+        kind: 'notebook',
+        label: moved.length === 1 ? 'move page' : `move ${moved.length} pages`,
+        pageRel: moved[0]!.rel,
+        undo: () => moveAll((m) => m.from),
+        redo: () => moveAll(() => target)
+      })
+    } catch (err) {
+      fail(err)
+    }
+  }
 
   /** Delete several pages (or templates) after one confirmation; one undo restores them all. */
   const deletePages = (targets: PageRef[]): void => {
@@ -1785,7 +1841,9 @@ export function App(): JSX.Element {
             templateMode={templateMode}
             onAddFromTemplate={(ref) => void addPageFromTemplate(ref)}
             onSaveAsTemplate={(p) => setTemplateFor(p)}
-            onCopyPages={(pages) => setCopiedPages({ pages, templates: templateMode })}
+            onCopyPages={(pages) => setCopiedPages({ pages, templates: templateMode, cut: false })}
+            onCutPages={(pages) => setCopiedPages({ pages, templates: templateMode, cut: true })}
+            cutRels={copiedPages?.cut && copiedPages.templates === templateMode ? new Set(copiedPages.pages.map((p) => p.relPath)) : null}
             onDeletePages={deletePages}
             onPastePage={() => void pastePage()}
             copiedPageTitle={copiedPages && copiedPages.templates === templateMode ? (copiedPages.pages.length === 1 ? copiedPages.pages[0]!.title || 'Untitled page' : `${copiedPages.pages.length} ${templateMode ? 'templates' : 'pages'}`) : null}

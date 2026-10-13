@@ -49,6 +49,8 @@ export function PageList({
   onAddFromTemplate,
   onSaveAsTemplate,
   onCopyPages,
+  onCutPages,
+  cutRels,
   onPastePage,
   copiedPageTitle
 }: {
@@ -69,6 +71,10 @@ export function PageList({
   onSaveAsTemplate: (page: PageRef) => void
   /** Copy one or several pages, to paste with the + menu's Paste. */
   onCopyPages: (pages: PageRef[]) => void
+  /** Cut one or several pages: pasting moves them. */
+  onCutPages: (pages: PageRef[]) => void
+  /** Pages waiting to be moved by a paste, shown dimmed. */
+  cutRels: Set<string> | null
   onPastePage: () => void
   copiedPageTitle: string | null
 }): JSX.Element {
@@ -150,7 +156,7 @@ export function PageList({
             <button
               key={p.relPath}
               type="button"
-              className={`page-row${p.relPath === activeRel ? ' on' : ''}${selected.has(p.relPath) && selected.size > 1 ? ' selected' : ''}${p.parentPageId && parents.has(p.parentPageId) ? ' sub' : ''}`}
+              className={`page-row${p.relPath === activeRel ? ' on' : ''}${selected.has(p.relPath) && (selected.size > 1 || p.relPath !== activeRel) ? ' selected' : ''}${cutRels?.has(p.relPath) ? ' cut' : ''}${p.parentPageId && parents.has(p.parentPageId) ? ' sub' : ''}`}
               style={p.relPath === activeRel ? { borderLeftColor: section?.color } : undefined}
               title={`Last edited ${formatDateTime(p.modified)}. Ctrl-click (Cmd-click on a Mac) or Shift-click to select several.`}
               onClick={(e) => choose(e, p.relPath)}
@@ -189,6 +195,7 @@ export function PageList({
             const noun = templateMode ? 'templates' : 'pages'
             if (group.length > 1) {
               return [
+                ...(templateMode ? [] : [{ label: `Cut ${group.length} ${noun}`, onClick: () => onCutPages(group) }]),
                 { label: `Copy ${group.length} ${noun}`, onClick: () => onCopyPages(group) },
                 { separator: true },
                 { label: `Delete ${group.length} ${noun}`, onClick: () => onDeletePages(group) }
@@ -198,6 +205,7 @@ export function PageList({
               { label: 'Rename…', onClick: () => onStartRename(menu.page.relPath) },
               { label: 'Page history…', onClick: () => onHistory(menu.page.relPath) },
               { separator: true },
+              ...(templateMode ? [] : [{ label: 'Cut page', onClick: () => onCutPages([menu.page]) }]),
               { label: templateMode ? 'Copy template' : 'Copy page', onClick: () => onCopyPages([menu.page]) },
               ...(templateMode ? [] : [{ label: 'Save as template…', onClick: () => onSaveAsTemplate(menu.page) }]),
               { separator: true },
