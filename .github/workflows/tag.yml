@@ -33,6 +33,6 @@ jobs:
           MESSAGE: ${{ inputs.message }}
         run: |
           git config user.name PageBinder
-          git config user.email 4245724+PageBinder@users.noreply.github.com
+          git config user.email 4245724+sovnode@users.noreply.github.com
           git tag -a "$TAG" "${COMMIT:-HEAD}" -m "$MESSAGE"
           git push origin "refs/tags/$TAG"

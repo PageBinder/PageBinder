@@ -18,6 +18,13 @@ Entry format:
 ---
 
 ## 2026-10-13 · lead (macOS, Apple silicon) · main
+**Changed:** The user renamed the GitHub account from PageBinder to sovnode (the same account, number 4245724), so the repository is now `sovnode/PageBinder`. The README's download and clone links, the commit email in `CLAUDE.md`, `DECISIONS.md`, `/handoff`, and `tag.yml` (now `4245724+sovnode@users.noreply.github.com`; the author name stays PageBinder), and the v1.1.5 draft's README link point at the new name. This clone's `origin` is `https://github.com/sovnode/PageBinder.git`.
+**Found:** GitHub redirects the old repository links and pushes until someone else takes the name PageBinder and makes a repository called PageBinder. Commits made with the old ID-based noreply address stay linked to the account. The v1.1.0 to v1.1.4 drafts' notes still link to the old README address (it redirects); they were left as they are.
+**Checked:** No app code changed. `git ls-remote` through the new remote; the macOS and Windows run on this push checks the workflows.
+**Next platform must check:** On every other machine, before anything else: `git remote set-url origin https://github.com/sovnode/PageBinder.git` and `git config user.email 4245724+sovnode@users.noreply.github.com` in the clone, and update its `CLAUDE.local.md`.
+**Open:** `gh auth status` still labels the account PageBinder until the next `gh auth login`; the token works.
+
+## 2026-10-13 · lead (macOS, Apple silicon) · main
 **Changed:** Version 1.1.5, at the user's request, built as a new draft release so the v1.1.4 draft (from `aa270d9`) stays as it was. The revision log and the development plan give 1.1.4 its own draft notes and list everything after it under 1.1.5. The GitHub workflows now use the Node.js 24 versions of their steps: `actions/checkout@v7`, `actions/setup-node@v7`, `actions/upload-artifact@v7`, and `actions/download-artifact@v8`.
 **Found:** GitHub warned that the v4 steps target the retired Node.js 20. The newer versions' breaking changes do not touch the inputs these workflows use.
 **Checked:** Type check and 96 unit tests locally. The macOS and Windows run on this push checks the new steps before the v1.1.5 tag is pushed; `release.yml` then builds the draft.
@@ -154,10 +161,3 @@ Entry format:
 **Checked:** LibreOffice recalculated all 734 formulas with no errors, and the pattern lists matched an independent count. The workflow run for this push covers the packaging change.
 **Next platform must check:** Nothing.
 **Open:** Entries marked * in the spreadsheet rest on general knowledge of a project rather than a page read on the date; re-check them when the comparison is next updated.
-
-## 2026-09-25 · lead (macOS, Apple silicon) · main
-**Changed:** Help documents for end users. Help > Program description now shows a new `docs/PROGRAM_OVERVIEW.md`: what the program does, how notes are organised, printing, editing, search, history, templates, where notes live, and what it does not do, with no development history. The developer specification moved to `docs/dev/PROGRAM_DESCRIPTION.md` (kept out of the package). Getting started no longer has an Installing section; the README keeps the install steps.
-**Found:** The first push failed the phase 5 suite on both platforms: the test build is launched from `app/out-e2e/main`, and the app looked for its Help documents only one level above its app path. `about.ts` now tries the app path and the working folder with up to three parent levels each. In a real installation the documents come from `docs-bundle`, which was never affected.
-**Checked:** Type check and unit tests from `app/`; phase 5 suite passes locally after the fix. The workflow run for the fix commit is the proof on CI.
-**Next platform must check:** Nothing.
-**Open:** Unchanged.

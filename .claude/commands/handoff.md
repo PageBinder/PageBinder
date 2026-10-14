@@ -14,7 +14,7 @@ End-of-task handoff for PageBinder. The next session, on this or another machine
    - A user-visible change goes in the version section of `docs/dev/DEVELOPMENT_PLAN.md`.
 5. **Keep it public-safe.** The repository is public. Before committing, check the staged diff (`git diff --cached`) for personal names, email addresses other than the PageBinder noreply address, machine owner details, local absolute paths under a user's home folder, tokens, and passwords. Remove any you find. Never stage `CLAUDE.local.md` or any `PageBinder-*.md` personal file.
 6. **Commit and push.**
-   - Confirm `git config user.name` is `PageBinder` and `git config user.email` is `4245724+PageBinder@users.noreply.github.com`. If they are not, set them in this clone.
+   - Confirm `git config user.name` is `PageBinder` and `git config user.email` is `4245724+sovnode@users.noreply.github.com`. If they are not, set them in this clone.
    - Commit with a plain message describing the task. Add no `Co-Authored-By` or `Claude-Session` lines.
    - Pull with `git pull --ff-only` first (on a conflict, stop and ask), then `git push`.
 7. **On a `fix/*` branch** whose work is complete and whose checks pass, ask the user whether to merge it into `main` now. On a yes:

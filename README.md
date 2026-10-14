@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/PageBinder/PageBinder/releases/latest"><b>Download the latest version</b></a>
+  <a href="https://github.com/sovnode/PageBinder/releases/latest"><b>Download the latest version</b></a>
 </p>
 
 ![A PageBinder notebook open on a page of survey notes, with section tabs across the top and the page list on the right](docs/images/pagebinder.png)
@@ -29,7 +29,7 @@ PageBinder organises notes into **notebooks**, **section groups**, **sections**,
 
 ## Download and install
 
-Download the installer for your computer from the [latest release](https://github.com/PageBinder/PageBinder/releases/latest). It is listed under **Assets** at the bottom of the release.
+Download the installer for your computer from the [latest release](https://github.com/sovnode/PageBinder/releases/latest). It is listed under **Assets** at the bottom of the release.
 
 | Your computer | File to download |
 |---|---|
@@ -108,7 +108,7 @@ Linux should work when built from source, but it is not tested.
 You need [Node.js](https://nodejs.org/) 22 or later and Git.
 
 ```bash
-git clone https://github.com/PageBinder/PageBinder.git
+git clone https://github.com/sovnode/PageBinder.git
 cd PageBinder/app    # the program lives in app/; the documents are in docs/
 npm ci            # install dependencies
 npm run dev       # run the app with live reload
