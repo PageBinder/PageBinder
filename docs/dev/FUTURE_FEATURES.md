@@ -1,6 +1,6 @@
 # Potential future features
 
-Ideas kept for later consideration. Nothing here is decided or scheduled: each item needs the user's go-ahead before work starts. When one is built, move it into the version section of `DEVELOPMENT_PLAN.md` and delete it here. Estimates are rough and include tests.
+Ideas kept for later consideration. Nothing here is decided or scheduled: each item needs the user's go-ahead before work starts. When one is built, move it into the version section of `DEVELOPMENT_PLAN.md` and delete it here. Estimates are rough and include tests. Ideas for keeping compatibility with older versions are not tracked here (the user's decision, 2026-10-13).
 
 ## Searching printouts and attachments
 
@@ -15,14 +15,9 @@ Printout text capture for PDFs with a text layer shipped in 1.1.0: each printout
 
 Pictures anchored in text boxes, with text flowing beside them, were built on 2026-09-28 after the user's testing of a first, in-line version, and moving pictures between the page and a text box by cut and paste in 1.1.2. Text on both sides of a picture, and text wrapping around pictures placed on the page, were considered and dropped by the user on 2026-09-30.
 
-## Protecting pages from older versions
-
-- **An older version must not erase content it does not understand** (noted 2026-09-28). Anchored pictures are an optional list that versions 1.1.1 and earlier simply ignore: those versions show the text without its pictures and, if the page is saved there, drop the list. Content types they do not know at all (the in-line pictures made while testing) are worse: their editor (TipTap 3.31) shows the text box empty, and typing in it there replaces its stored text. From now on, a version meeting unknown content could show the text box read-only with a note to update, and never save over it. Versions already published cannot be changed, so until the next version is installed everywhere, pages with pictures in text should be edited only in the newest version. About 1 day.
-
 ## Editing
 
 - **Document-wide undo** (suggested 2026-09-27). Today undo follows keyboard focus: with the cursor in a text box, Cmd+Z undoes that box's typing and formatting; anywhere else it undoes page actions (creating, moving, deleting objects, page operations). Word and OneNote keep one undo list for the whole document, so Cmd+Z always reverses the most recent change wherever the user last clicked. PageBinder could do the same by keeping one ordered list of undoable steps, where a text step points to the text box whose own history holds it: undo then takes the latest step of either kind, putting the cursor back in that box when it is a text step. Open questions: whether text steps should survive switching pages (each text box's history is lost when its page closes today) and how redo interleaves. Layout and storage are unaffected, so it raises no compatibility concern. About 2 to 3 days.
-- **Bring templates from earlier versions into the Templates notebook** (deferred by the user on 2026-10-13, when the Templates notebook became a real notebook). Earlier versions kept templates as `.template` folders in the settings folder's `templates` library (and, before 1.1.4, in a notebook's own `templates` folder); 1.1.4 leaves them on disk unused, and sections whose default named one start blank. A one-time copy into the Templates notebook, mapping each old default (`global:<folder>`) to the copied page's id, would bring them back without changing the old files. About half a day.
 
 ## Sharing and export
 
