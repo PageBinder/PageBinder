@@ -18,6 +18,13 @@ Entry format:
 ---
 
 ## 2026-10-13 · lead (macOS, Apple silicon) · main
+**Changed:** Version 1.2.0 was published as the first full release (Latest, not a pre-release) from `128d8d0`, at the user's request. Its notes are brief: one sentence, the three downloads, and the install pointer. The revision log now starts at 1.2.0 (the earlier sections were removed; git history keeps them). The pre-release mark was cleared on the v1.1.0 to v1.1.3 drafts, so every earlier release, v1.1.0 to v1.1.5, is a plain draft. The version moved on to 1.2.1, with its revision-log section started. Also: the future-features list no longer keeps ideas for compatibility with older versions (the user's decision).
+**Found:** Nothing new.
+**Checked:** Type check and 96 unit tests locally. The release build and the full macOS and Windows run on `128d8d0` both passed. `releases/latest` now opens v1.2.0.
+**Next platform must check:** Windows: first the remote and email update from the note below, then install `PageBinder-Setup-1.2.0.exe` from the release and check it starts (and asks Keep or Start fresh when earlier settings exist).
+**Open:** Nothing.
+
+## 2026-10-13 · lead (macOS, Apple silicon) · main
 **Changed:** The user renamed the GitHub account from PageBinder to sovnode (the same account, number 4245724), so the repository is now `sovnode/PageBinder`. The README's download and clone links, the commit email in `CLAUDE.md`, `DECISIONS.md`, `/handoff`, and `tag.yml` (now `4245724+sovnode@users.noreply.github.com`; the author name stays PageBinder), and the v1.1.5 draft's README link point at the new name. This clone's `origin` is `https://github.com/sovnode/PageBinder.git`.
 **Found:** GitHub redirects the old repository links and pushes until someone else takes the name PageBinder and makes a repository called PageBinder. Commits made with the old ID-based noreply address stay linked to the account. The v1.1.0 to v1.1.4 drafts' notes still link to the old README address (it redirects); they were left as they are.
 **Checked:** No app code changed. `git ls-remote` through the new remote; the macOS and Windows run on this push checks the workflows.
@@ -154,10 +161,3 @@ Entry format:
 **Checked:** Type check clean; 74 unit tests pass (new: printout indexing, page.html overlay); phase 1, 3, 4, 5, and 8 window suites pass, phase 8 now checks the stored text, the search group, the outlined picture, and that a plain PDF attachment is not searchable.
 **Next platform must check:** Windows: insert a printout of a PDF with text, search for a word from it, and confirm the page appears under In printouts and the picture is outlined.
 **Open:** Draft v1.1.0 is being rebuilt with this change.
-
-## 2026-09-25 · lead (macOS, Apple silicon) · main
-**Changed:** Added `docs/PageBinder-feature-comparison.xlsx`, a feature-by-feature comparison of PageBinder with Joplin, Obsidian, Logseq, Trilium Notes, SiYuan, AFFiNE, AppFlowy, Anytype, Notesnook, Zim Desktop Wiki, and Xournal++ (sheets: PageBinder at a glance, Comparison, Summary, Sources). Every derived value is a formula. The README links it. The packaged app excludes `.xlsx` files from the docs-bundle, and `check-package.ts` checks that.
-**Found:** Nothing new.
-**Checked:** LibreOffice recalculated all 734 formulas with no errors, and the pattern lists matched an independent count. The workflow run for this push covers the packaging change.
-**Next platform must check:** Nothing.
-**Open:** Entries marked * in the spreadsheet rest on general knowledge of a project rather than a page read on the date; re-check them when the comparison is next updated.
