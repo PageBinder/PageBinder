@@ -191,7 +191,11 @@ Published as a pre-release on 30 September 2026.
 - **Recent list remove button.** `.recent-list button { width: 100% }` also stretched the × (`.recent-forget`); it now has its own 28 px size. Phase 8 measures it.
 - **Outlook email text is searchable.** `.msg` bodies were read only from the plain-text body (PidTagBody). Outlook often saves just the HTML body (PidTagHtml, bytes) or only compressed RTF, so their text never reached the index. `msgBodyText` in `app/src/main/search/mail.ts` now falls back to the HTML bytes (decoded with the message's code page) and then to compressed RTF (`@kenjiuno/decompressrtf`, now a direct dependency), turned into text by `rtfToText`, which also handles Outlook's HTML-in-RTF form (`\fromhtml`, `\htmltag`, `\htmlrtf`). `INDEX_VERSION` is 5, so every notebook rebuilds its index once and emails added before the fix become searchable. Unit tests in `test/mail.test.ts` cover each body form; a real Outlook drag still needs checking on Windows.
 
-## Version 1.1.5 (in development)
+## Version 1.2.0
+
+Published on 13 October 2026 as the first full release (not a pre-release), at the user's request, from the commit tagged `v1.2.0`. It is the 1.1.5 program with the version raised and the repository renamed to `sovnode/PageBinder`. The public sees no past development: `docs/REVISION_LOG.txt` now starts at 1.2.0 (the earlier versions' sections were removed; git history keeps them), and the release notes are a few lines. Every earlier release, 1.1.0 to 1.1.5, stays a draft with no pre-release mark.
+
+## Version 1.1.5 (draft of 13 October 2026, not published)
 
 Built as a draft release at the user's request, leaving the 1.1.4 draft as it was.
 
