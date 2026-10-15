@@ -12,10 +12,10 @@ End-of-task handoff for PageBinder. The next session, on this or another machine
    - A choice that should outlive the session goes in `docs/dev/DECISIONS.md`, as one line under the right heading.
    - A platform-specific lesson goes in `docs/dev/PLATFORM_NOTES.md`.
    - A user-visible change goes in the version section of `docs/dev/DEVELOPMENT_PLAN.md`.
-5. **Keep it public-safe.** The repository is public. Before committing, check the staged diff (`git diff --cached`) for personal names, email addresses other than the PageBinder noreply address, machine owner details, local absolute paths under a user's home folder, tokens, and passwords. Remove any you find. Never stage `CLAUDE.local.md` or any `PageBinder-*.md` personal file.
+5. **Keep it public-safe.** The repository is public, and nothing on GitHub may contain personal information (see `CLAUDE.md`). Before committing, check the staged diff (`git diff --cached`), your commit message, and the metadata of any new image or document (`exiftool`; `unzip -p <file> docProps/*` for Office files) for personal names, email addresses other than the PageBinder no-reply address, account or machine names, local absolute paths under a user's home folder, locations, tokens, and passwords. Remove any you find. Never stage `CLAUDE.local.md` or any `PageBinder-*.md` personal file.
 6. **Commit and push.**
    - Confirm `git config user.name` is `PageBinder` and `git config user.email` is `4245724+sovnode@users.noreply.github.com`. If they are not, set them in this clone.
-   - Commit with a plain message describing the task. Add no `Co-Authored-By` or `Claude-Session` lines.
+   - Commit with a plain message describing the task, in UTC (`TZ=UTC git commit …`). Add no `Co-Authored-By` or `Claude-Session` lines.
    - Pull with `git pull --ff-only` first (on a conflict, stop and ask), then `git push`.
 7. **On a `fix/*` branch** whose work is complete and whose checks pass, ask the user whether to merge it into `main` now. On a yes:
    - Rebase onto `origin/main`, and re-run the checks if anything came in.
